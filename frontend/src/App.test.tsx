@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -28,6 +29,79 @@ async function openExisting(
 }
 
 describe("client draft journey", () => {
+  it("clears a stale profile before creating after another tab signs in", async () => {
+    const server = contractServer({ loggedIn: true });
+    const api = createApi(server.fetcher);
+    const user = userEvent.setup();
+    const first = render(<App api={api} />);
+    const second = render(<App api={api} />);
+    const oldTab = within(first.container);
+    const newTab = within(second.container);
+    await oldTab.findByRole("button", { name: "Новая заявка" });
+    await user.click(
+      await newTab.findByRole("button", { name: "Сменить профиль" }),
+    );
+    await user.selectOptions(
+      newTab.getByLabelText("Демонстрационный профиль"),
+      "demo-client-2",
+    );
+    await user.click(newTab.getByRole("button", { name: "Войти в кабинет" }));
+    await newTab.findByText("ООО «Демо Мастерская»");
+    await user.click(oldTab.getByRole("button", { name: "Новая заявка" }));
+    expect(await oldTab.findByRole("alert")).toHaveTextContent(
+      "Профиль изменился",
+    );
+    expect(
+      oldTab.getByRole("button", { name: "Войти в кабинет" }),
+    ).toBeInTheDocument();
+    expect(
+      oldTab.queryByRole("navigation", { name: "Основная навигация" }),
+    ).not.toBeInTheDocument();
+    expect(
+      oldTab.queryByRole("textbox", { name: "На что нужны средства" }),
+    ).not.toBeInTheDocument();
+    expect(server.store.size).toBe(0);
+  });
+
+  it("rejects a different company's response if the session changes during creation", async () => {
+    const server = contractServer({ loggedIn: true });
+    const api = createApi(server.fetcher);
+    let finish!: () => void;
+    server.holdCreates(
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+    );
+    const user = userEvent.setup();
+    render(<App api={api} />);
+    await user.click(
+      await screen.findByRole("button", { name: "Новая заявка" }),
+    );
+    await waitFor(() =>
+      expect(
+        server.fetcher.mock.calls.some(
+          ([, options]) => options?.method === "POST",
+        ),
+      ).toBe(true),
+    );
+    await act(async () => {
+      await api.login("demo-client-2");
+      finish();
+    });
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Профиль изменился",
+    );
+    expect(
+      screen.getByRole("button", { name: "Войти в кабинет" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("navigation", { name: "Основная навигация" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("textbox", { name: "На что нужны средства" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("signs into a demo profile and shows the empty cabinet", async () => {
     const server = contractServer();
     const user = userEvent.setup();

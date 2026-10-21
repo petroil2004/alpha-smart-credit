@@ -61,19 +61,49 @@ export default function App({ api = defaultApi }: { api?: Api }) {
     selected !== null &&
     JSON.stringify(fields) !== JSON.stringify(fromApplication(selected));
 
-  const adopt = (application: Application) => {
+  const clearProfile = () => {
+    setSession(null);
+    setItems([]);
+    setSelected(null);
+    setFields(emptyDraft());
+    setFieldErrors({});
+    setNotice("");
+    createKey.current = null;
+    setUrl();
+  };
+  const requireCompany = (
+    companyId: string,
+    expected = session?.company.id,
+  ) => {
+    if (!expected || companyId !== expected) {
+      clearProfile();
+      throw new ApiError(
+        401,
+        "SESSION_CHANGED",
+        "Профиль изменился в другом окне. Войдите в кабинет заново.",
+      );
+    }
+  };
+  const verifySession = async () => {
+    const current = await api.me();
+    requireCompany(current.company.id);
+  };
+  const adopt = (application: Application, companyId = session?.company.id) => {
+    requireCompany(application.company_id, companyId);
     setSelected(application);
     setFields(fromApplication(application));
     setFieldErrors({});
     setUrl(application.id);
   };
-  const upsert = (application: Application) =>
+  const upsert = (application: Application) => {
+    requireCompany(application.company_id);
     setItems((current) =>
       [
         application,
         ...current.filter((item) => item.id !== application.id),
       ].sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
     );
+  };
 
   useEffect(() => {
     let active = true;
@@ -84,6 +114,9 @@ export default function App({ api = defaultApi }: { api?: Api }) {
         const current = await api.me();
         const list = await api.list();
         if (!active) return;
+        list.items.forEach((item) =>
+          requireCompany(item.company_id, current.company.id),
+        );
         setSession(current);
         setItems(list.items);
         setAccount(current.user.id);
@@ -91,7 +124,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
         if (id) {
           try {
             const application = await api.get(id);
-            if (active) adopt(application);
+            if (active) adopt(application, current.company.id);
           } catch (issue) {
             if (active) {
               setUrl();
@@ -102,7 +135,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
       } catch (issue) {
         if (active) {
           setSession(null);
-          if (!(issue instanceof ApiError && issue.status === 401))
+          if (!(issue instanceof ApiError && issue.code === "UNAUTHENTICATED"))
             setError(asError(issue));
         }
       } finally {
@@ -155,6 +188,9 @@ export default function App({ api = defaultApi }: { api?: Api }) {
     run("login", async () => {
       const current = await api.login(account);
       const list = await api.list();
+      list.items.forEach((item) =>
+        requireCompany(item.company_id, current.company.id),
+      );
       setSession(current);
       setItems(list.items);
       setSelected(null);
@@ -164,7 +200,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
       const id = selectedFromUrl();
       if (id) {
         try {
-          adopt(await api.get(id));
+          adopt(await api.get(id), current.company.id);
         } catch (issue) {
           setUrl();
           setError(asError(issue));
@@ -175,13 +211,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
     if (allowDiscard())
       void run("logout", async () => {
         await api.logout();
-        setSession(null);
-        setItems([]);
-        setSelected(null);
-        setFields(emptyDraft());
-        setFieldErrors({});
-        createKey.current = null;
-        setUrl();
+        clearProfile();
       });
   };
   const showList = () => {
@@ -196,12 +226,14 @@ export default function App({ api = defaultApi }: { api?: Api }) {
   const open = (id: string) => {
     if (busy || !allowDiscard()) return;
     void run("open", async () => {
+      await verifySession();
       adopt(await api.get(id));
     });
   };
   const create = () => {
     if (busy || !allowDiscard()) return;
     void run("create", async () => {
+      await verifySession();
       createKey.current ??= crypto.randomUUID();
       const application = await api.create(createKey.current);
       createKey.current = null;
@@ -233,6 +265,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
       void run("save", async () => {
         setFieldErrors({});
         const payload = toDraftPayload(fields);
+        await verifySession();
         const application = await api.update(selected.id, {
           ...payload,
           version: selected.version,
@@ -245,6 +278,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
   const reloadSelected = () => {
     if (selected && allowDiscard())
       void run("reload", async () => {
+        await verifySession();
         const application = await api.get(selected.id);
         upsert(application);
         adopt(application);
@@ -254,19 +288,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
     if (session)
       void run("reauth", async () => {
         const current = await api.login(session.user.id);
-        if (current.company.id !== session.company.id) {
-          setSelected(null);
-          setFields(emptyDraft());
-          setItems([]);
-          setFieldErrors({});
-          setUrl();
-          createKey.current = null;
-          throw new ApiError(
-            401,
-            "UNAUTHENTICATED",
-            "Профиль изменился. Выйдите и войдите в кабинет заново.",
-          );
-        }
+        requireCompany(current.company.id);
         setSession(current);
         setNotice("Вход подтверждён. Можно сохранить черновик.");
       });

@@ -35,12 +35,12 @@
 
 **Interfaces:** `api.me/login/logout/list/create/get/update`; `DraftFields` contains every editable API field; `Application` includes server id/company/status/version/timestamps. `toDraftPayload` normalizes strings and clears inapplicable fields. `ApiError` retains status, code and field errors. Constructors/options allow injecting fetch in tests, without production test-only cleanup methods.
 
-- [ ] Write tests for monetary input `1 500,25` → `1500.25`, empty → null, negative/double-decimal → field error, ordinary/overdraft/null product clearing, integer days/months.
-- [ ] Run tests: expected RED because formatting behavior does not exist; distinguish missing implementation from broken tooling.
-- [ ] Implement formatting and types without floating-point conversion of money; accept spaces and comma only in UI, send canonical strings.
-- [ ] Test API boundary: create sends Idempotency-Key and `{}`, update sends version, cookie credentials are preserved, 409 and field errors survive, malformed/non-JSON failure is a readable error.
-- [ ] Run tests, implement the boundary, rerun full suite: expected PASS.
-- [ ] Commit the passing focused change with a feat(frontend) message.
+- [x] Write tests for monetary input `1 500,25` → `1500.25`, empty → null, negative/double-decimal → field error, ordinary/overdraft/null product clearing, integer days/months.
+- [x] Run tests: expected RED because formatting behavior does not exist; distinguish missing implementation from broken tooling.
+- [x] Implement formatting and types without floating-point conversion of money; accept spaces and comma only in UI, send canonical strings.
+- [x] Test API boundary: create sends Idempotency-Key and `{}`, update sends version, cookie credentials are preserved, 409 and field errors survive, malformed/non-JSON failure is a readable error.
+- [x] Run tests, implement the boundary, rerun full suite: expected PASS.
+- [x] Commit the passing focused change with a feat(frontend) message.
 
 ## Task 2: Cabinet and editable draft
 
@@ -48,14 +48,14 @@
 
 **Interfaces:** Consume Task 1 API/formatting. App owns session, list, selected server application, editable fields, pending action and errors. Components show and edit values; they do not invent server calculations or persist data in the browser.
 
-- [ ] Write user-level tests with real React components and a fetch-boundary double that enforces contract routes and full response shapes. Cases: login/list; create; edit/save/reopen; save failure retains input; 409 explicit reload; account switch clears previous data; product switch resets fields; duplicate click disabled; failed create retry reuses key.
-- [ ] Run tests: expected RED for missing UI behavior.
-- [ ] Implement the cabinet, accessible labels/buttons, loading/empty/error states and demo login. Saving uses the returned server version and values. Draft unsaved-state indicator remains until server confirmation.
-- [ ] Add deterministic client-side routing by selected id in URL hash so a refreshed page can open the same server draft; list remains the fallback for missing/inaccessible ids. Test initial hash behavior; do not introduce a heavy router for this slice.
-- [ ] Run full suite and production TypeScript/Vite build: expected PASS.
-- [ ] Start frontend and inspect actual UI in browser: login, empty/error and populated form. Browser may use a temporary contract server when Viktor backend is unavailable; disclose this and leave no fake backend in production source.
-- [ ] Document npm ci, npm run dev, npm test, npm run build, backend address/proxy, limits of current slice and joint real-backend acceptance checklist.
-- [ ] Review whole diff, commit checked changes, push branch and open PR when authorized by task scope. Do not merge without human review.
+- [x] Write user-level tests with real React components and a fetch-boundary double that enforces contract routes and full response shapes. Cases: login/list; create; edit/save/reopen; save failure retains input; 409 explicit reload; account switch clears previous data; product switch resets fields; duplicate click disabled; failed create retry reuses key.
+- [x] Run tests: expected RED for missing UI behavior.
+- [x] Implement the cabinet, accessible labels/buttons, loading/empty/error states and demo login. Saving uses the returned server version and values. Draft unsaved-state indicator remains until server confirmation.
+- [x] Add deterministic client-side routing by selected id in URL hash so a refreshed page can open the same server draft; list remains the fallback for missing/inaccessible ids. Test initial hash behavior; do not introduce a heavy router for this slice.
+- [x] Run full suite and production TypeScript/Vite build: expected PASS.
+- [x] Start frontend and inspect actual UI in browser: login, empty/error and populated form. Browser may use a temporary contract server when Viktor backend is unavailable; disclose this and leave no fake backend in production source.
+- [x] Document npm ci, npm run dev, npm test, npm run build, backend address/proxy, limits of current slice and joint real-backend acceptance checklist.
+- [x] Review whole diff, commit checked changes, push branch and open PR when authorized by task scope. Do not merge without human review.
 
 ## Integration handoff
 
