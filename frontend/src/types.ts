@@ -1,7 +1,7 @@
-export type ProductCode = 'working_capital' | 'equipment' | 'overdraft';
+export type ProductCode = "working_capital" | "equipment" | "overdraft";
 
 export interface Session {
-  user: { id: string; name: string; role: 'CLIENT' };
+  user: { id: string; name: string; role: "CLIENT" };
   company: { id: string; name: string };
 }
 
@@ -18,7 +18,7 @@ export interface DraftPayload {
 export interface Application extends DraftPayload {
   id: string;
   company_id: string;
-  status: 'DRAFT';
+  status: "DRAFT";
   version: number;
   created_at: string;
   updated_at: string;
@@ -26,7 +26,7 @@ export interface Application extends DraftPayload {
 
 export interface DraftFields {
   purpose: string;
-  product_code: ProductCode | '';
+  product_code: ProductCode | "";
   amount_rub: string;
   term_months: string;
   usage_days: string;
@@ -43,5 +43,8 @@ export interface Api {
   list(): Promise<{ items: Application[] }>;
   create(key: string): Promise<Application>;
   get(id: string): Promise<Application>;
-  update(id: string, body: Partial<DraftPayload> & { version: number }): Promise<Application>;
+  update(
+    id: string,
+    body: Partial<DraftPayload> & { version: number },
+  ): Promise<Application>;
 }
