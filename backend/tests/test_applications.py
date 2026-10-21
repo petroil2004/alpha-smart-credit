@@ -6,10 +6,13 @@
 from __future__ import annotations
 
 import os
+import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 
 from app.db import Base, engine
 from app.main import app
@@ -138,6 +141,51 @@ def test_stale_version_does_not_overwrite_saved_data(client: TestClient):
     assert stale.status_code == 409
     assert stale.json()["error"]["code"] == "VERSION_CONFLICT"
     assert client.get(f"/api/v1/applications/{application['id']}").json()["purpose"] == "сохранённый текст"
+
+
+def test_concurrent_saves_preserve_the_winner_and_reject_the_stale_version(client: TestClient):
+    login(client, "demo-client-1")
+    application = create(client)
+    path = f"/api/v1/applications/{application['id']}"
+
+    with TestClient(app) as second:
+        login(second, "demo-client-1")
+        with engine.connect() as gate, engine.connect().execution_options(
+            isolation_level="AUTOCOMMIT"
+        ) as observer, ThreadPoolExecutor(max_workers=2) as workers:
+            # Real PostgreSQL gate: both requests must reach the same locked row
+            # before either may commit. This makes the original lost update deterministic.
+            gate.execute(
+                text("SELECT id FROM applications WHERE id = :id FOR UPDATE"),
+                {"id": application["id"]},
+            )
+            futures = [
+                workers.submit(http.patch, path, json={"version": 1, "purpose": purpose})
+                for http, purpose in [(client, "Первое окно"), (second, "Второе окно")]
+            ]
+            try:
+                deadline = time.monotonic() + 10
+                while True:
+                    waiting = observer.scalar(text(
+                        "SELECT count(*) FROM pg_stat_activity "
+                        "WHERE datname = current_database() AND wait_event_type = 'Lock' "
+                        "AND query LIKE '%applications%' AND pid <> pg_backend_pid()"
+                    ))
+                    if waiting >= 2:
+                        break
+                    assert time.monotonic() < deadline, "Both PATCH requests must reach the row lock"
+                    time.sleep(0.01)
+            finally:
+                gate.rollback()
+            responses = [future.result(timeout=10) for future in futures]
+
+    assert sorted(response.status_code for response in responses) == [200, 409]
+    winner = next(response.json() for response in responses if response.status_code == 200)
+    rejected = next(response.json() for response in responses if response.status_code == 409)
+    assert rejected["error"]["code"] == "VERSION_CONFLICT"
+    stored = client.get(path).json()
+    assert stored["purpose"] == winner["purpose"]
+    assert stored["version"] == winner["version"] == 2
 
 
 @pytest.mark.parametrize(

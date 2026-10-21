@@ -201,10 +201,15 @@ def validate_final_values(values: dict[str, Any]) -> None:
         raise validation_error(fields)
 
 
-def application_for_account(application_id: uuid.UUID, account: Account, db: Session) -> Application:
-    application = db.scalar(
-        select(Application).where(Application.id == application_id, Application.company_id == account.company_id)
+def application_for_account(
+    application_id: uuid.UUID, account: Account, db: Session, *, lock: bool = False
+) -> Application:
+    query = select(Application).where(
+        Application.id == application_id, Application.company_id == account.company_id
     )
+    if lock:
+        query = query.with_for_update()
+    application = db.scalar(query)
     if not application:
         raise ApiProblem(404, "NOT_FOUND", "Заявка не найдена")
     return application
@@ -328,7 +333,7 @@ def update_application(
     account: CurrentAccount,
     db: Session = Depends(get_db),
 ):
-    application = application_for_account(application_id, account, db)
+    application = application_for_account(application_id, account, db, lock=True)
     if application.status != "DRAFT":
         raise validation_error({"status": "Редактировать можно только черновик"})
     if payload.version != application.version:
