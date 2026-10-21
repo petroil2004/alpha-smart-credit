@@ -40,7 +40,7 @@
 **Files:** backend/app/main.py, backend/tests/test_applications.py, backend/README.md.
 **Interfaces:** parse_money checks upper bound before quantize; duration checks enforce positive Integer range. Error fields keep API names.
 
-- [ ] Add parameterized tests for both monetary fields at overflow and very long input, and both durations beyond Integer; assert 422 field error, no changed version/data and a later valid PATCH succeeds.
-- [ ] Observe failures, implement bounds, verify exact maximum money/integer and small cent values remain accepted.
-- [ ] Document technical bounds and concurrency behavior, run all backend tests and frontend suite/build, inspect browser ordinary/overdraft saving and field error handling with actual rebuilt backend.
-- [ ] Fresh review of fix diff, resolve important findings with failing tests, then push existing PR branch; update PR description with actual verification. No merge.
+- [x] Add parameterized tests for both monetary fields at overflow and very long input, and both durations beyond Integer; assert 422 field error, no changed version/data and a later valid PATCH succeeds.
+- [x] Observe failures, implement bounds, verify exact maximum money/integer and small cent values remain accepted.
+- [x] Document technical bounds and concurrency behavior, run all backend tests and frontend suite/build, inspect browser ordinary/overdraft saving and field error handling with actual rebuilt backend.
+- [x] Fresh review of fix diff, resolve important findings with failing tests, then push existing PR branch; update PR description with actual verification. No merge.
