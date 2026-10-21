@@ -189,6 +189,61 @@ def test_concurrent_saves_preserve_the_winner_and_reject_the_stale_version(clien
 
 
 @pytest.mark.parametrize(
+    ("field", "product", "invalid", "valid"),
+    [
+        ("amount_rub", "working_capital", "10000000000000000.00", "1.00"),
+        ("expected_inflow_amount_rub", "overdraft", "10000000000000000.00", "1.00"),
+        ("amount_rub", "working_capital", "9" * 100, "1.00"),
+        ("expected_inflow_amount_rub", "overdraft", "9" * 100, "1.00"),
+        ("term_months", "equipment", 2147483648, 1),
+        ("usage_days", "overdraft", 2147483648, 1),
+        ("term_months", "equipment", 10**40, 1),
+        ("usage_days", "overdraft", 10**40, 1),
+    ],
+)
+def test_storage_overflow_is_a_field_error_without_changing_the_draft(field, product, invalid, valid):
+    with TestClient(app, raise_server_exceptions=False) as http:
+        login(http, "demo-client-1")
+        application = create(http)
+        path = f"/api/v1/applications/{application['id']}"
+        response = http.patch(path, json={"version": 1, "product_code": product, field: invalid})
+
+        assert response.status_code == 422
+        assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+        assert field in response.json()["error"]["fields"]
+        assert http.get(path).json() == application
+        # A rejected request must also release its transaction/row lock.
+        corrected = http.patch(path, json={"version": 1, "product_code": product, field: valid})
+        assert corrected.status_code == 200
+        assert corrected.json()[field] == valid
+        assert corrected.json()["version"] == 2
+
+
+@pytest.mark.parametrize(
+    ("field", "product", "value", "expected"),
+    [
+        ("amount_rub", "working_capital", "9999999999999999.99", "9999999999999999.99"),
+        ("expected_inflow_amount_rub", "overdraft", "9999999999999999.99", "9999999999999999.99"),
+        ("amount_rub", "working_capital", "0.01", "0.01"),
+        ("expected_inflow_amount_rub", "overdraft", "0.01", "0.01"),
+        ("amount_rub", "equipment", "000000000000000001.00", "1.00"),
+        ("expected_inflow_amount_rub", "overdraft", "000000000000000001.00", "1.00"),
+        ("term_months", "equipment", 2147483647, 2147483647),
+        ("usage_days", "overdraft", 2147483647, 2147483647),
+    ],
+)
+def test_storage_boundary_values_are_saved_exactly(client, field, product, value, expected):
+    login(client, "demo-client-1")
+    application = create(client)
+    path = f"/api/v1/applications/{application['id']}"
+    response = client.patch(path, json={"version": 1, "product_code": product, field: value})
+
+    assert response.status_code == 200
+    assert response.json()[field] == expected
+    assert client.get(path).json()[field] == expected
+
+
+@pytest.mark.parametrize(
     ("payload", "field"),
     [
         ({"version": 1, "product_code": "working_capital", "usage_days": 10}, "usage_days"),

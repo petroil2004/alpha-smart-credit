@@ -23,6 +23,9 @@ from .settings import settings
 API_PREFIX = "/api/v1"
 MONEY_PATTERN = re.compile(r"^\d+(?:\.\d{1,2})?$")
 DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+# Storage capacity of Numeric(18, 2) and PostgreSQL Integer, not credit policy.
+MAX_STORED_MONEY = Decimal("9999999999999999.99")
+MAX_STORED_INTEGER = 2147483647
 EDITABLE_FIELDS = {
     "purpose",
     "product_code",
@@ -172,6 +175,8 @@ def parse_money(value: str, field: str) -> Decimal:
         raise validation_error({field: "Укажите положительную сумму"}) from exc
     if amount <= 0:
         raise validation_error({field: "Укажите положительную сумму"})
+    if amount > MAX_STORED_MONEY:
+        raise validation_error({field: "Сумма слишком велика для сохранения. Укажите меньшее значение"})
     return amount.quantize(Decimal("0.01"))
 
 
@@ -349,8 +354,9 @@ def update_application(
                 raise validation_error({"purpose": "Текст не должен быть длиннее 500 символов"})
         elif field in {"amount_rub", "expected_inflow_amount_rub"} and value is not None:
             value = parse_money(value, field)
-        elif field in {"term_months", "usage_days"} and value is not None and value <= 0:
-            raise validation_error({field: "Укажите положительное целое число"})
+        elif field in {"term_months", "usage_days"} and value is not None:
+            if not 0 < value <= MAX_STORED_INTEGER:
+                raise validation_error({field: "Укажите положительное целое число не больше 2147483647"})
         elif field == "expected_inflow_date" and value is not None:
             value = parse_date(value)
         values[field] = value
