@@ -1,0 +1,33 @@
+# Local operating-system files
+.DS_Store
+Thumbs.db
+
+# Local configuration; retain a secret-free example
+.env
+.env.*
+!.env.example
+
+# Installed dependencies and caches
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Generated files and local runtime data
+/output/
+dist/
+build/
+coverage/
+.coverage
+htmlcov/
+*.log
+*.sqlite
+*.sqlite3
+
+# Model weights are downloaded by the documented setup
+*.gguf
+*.safetensors
