@@ -48,6 +48,16 @@ export function normalizeMoney(input: string): string | null {
   return `${whole.replace(/^0+(?=\d)/, "")}.${fraction.padEnd(2, "0")}`;
 }
 
+export function formatMoneyRub(value: string | null): string {
+  if (value && /^0+(?:\.0{1,2})?$/.test(value)) return "0,00 ₽";
+  try {
+    const money = normalizeMoney(value ?? "");
+    if (!money) return "Не указано";
+    const [whole, cents] = money.split(".");
+    return `${whole.replace(/\B(?=(\d{3})+(?!\d))/g, " ")},${cents} ₽`;
+  } catch { return value ?? "Не указано"; }
+}
+
 export function toDraftPayload(fields: DraftFields): DraftPayload {
   const errors: FieldErrors = {};
   const money = (key: "amount_rub" | "expected_inflow_amount_rub") => {

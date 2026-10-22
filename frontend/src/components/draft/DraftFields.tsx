@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import type { DraftFields, FieldErrors } from "../../types";
+import type { DraftFields, FieldErrors, ProductCatalog } from "../../types";
+import { formatMoneyRub } from "../../draft";
 import { products } from "../../products";
 
 export interface EditableProps {
@@ -18,7 +19,7 @@ function errorProps(errors: FieldErrors, key: keyof DraftFields) {
   };
 }
 
-function Field({
+export function Field({
   name,
   label,
   errors,
@@ -42,7 +43,7 @@ function Field({
   );
 }
 
-function MoneyField({
+export function MoneyField({
   name,
   label,
   fields,
@@ -90,7 +91,7 @@ export function NeedFields(props: EditableProps) {
   );
 }
 
-export function ProductFields({ fields, errors, onChange }: EditableProps) {
+export function ProductFields({ fields, errors, onChange, catalog }: EditableProps & {catalog?:ProductCatalog|null}) {
   return (
     <div className="field">
       <span id="product-label">Продукт</span>
@@ -117,6 +118,10 @@ export function ProductFields({ fields, errors, onChange }: EditableProps) {
             <span>
               <strong>{product.title}</strong>
               <small>{product.description}</small>
+              {catalog?.items.find(p=>p.code===product.code) && <small className="product-terms">
+                {formatMoneyRub(catalog.items.find(p=>p.code===product.code)!.amount_min_rub)} — {formatMoneyRub(catalog.items.find(p=>p.code===product.code)!.amount_max_rub)}
+                {" · "}{catalog.items.find(p=>p.code===product.code)!.annual_rate_percent.replace(".00","")}% годовых
+              </small>}
             </span>
           </label>
         ))}

@@ -1,5 +1,6 @@
 import { vi } from "vitest";
 import type { Application, Session } from "../types";
+import { annuityResult, catalog } from "./calculator-fixtures";
 
 export const session: Session = {
   user: { id: "demo-client-1", name: "Демо-клиент 1", role: "CLIENT" },
@@ -41,6 +42,7 @@ export function contractServer(
   let nextSaveError: number | null = null;
   let nextCreateError = false;
   let createGate: Promise<void> | null = null;
+  let saveGate: Promise<void> | null = null;
   const json = (data: unknown, status = 200) =>
     new Response(JSON.stringify(data), { status });
   const error = (status: number, code: string, message: string) =>
@@ -71,6 +73,9 @@ export function contractServer(
     }
     if (!current) return error(401, "UNAUTHENTICATED", "Войдите в кабинет");
     if (path === "/me" && method === "GET") return json(current);
+    if (path === "/products" && method === "GET") return json(catalog);
+    if (path === "/calculations/annuity" && method === "POST")
+      return json(annuityResult({ product_code: body.product_code, amount_rub: body.amount_rub, term_months: body.term_months }));
     if (path === "/applications" && method === "GET")
       return json({
         items: [...store.values()].filter(
@@ -102,6 +107,7 @@ export function contractServer(
       return error(404, "NOT_FOUND", "Заявка не найдена");
     if (method === "GET") return json(item);
     if (method === "PATCH") {
+      if (saveGate) await saveGate;
       if (nextSaveError) {
         const status = nextSaveError;
         nextSaveError = null;
@@ -142,5 +148,6 @@ export function contractServer(
     holdCreates: (gate: Promise<void>) => {
       createGate = gate;
     },
+    holdSaves: (gate: Promise<void>) => { saveGate = gate; },
   };
 }

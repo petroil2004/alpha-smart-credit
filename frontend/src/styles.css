@@ -1543,3 +1543,19 @@ textarea[aria-invalid="true"] {
     grid-column: 1 / -1;
   }
 }
+.loan-calculator { min-width: 0; }
+.slider-control { margin: -14px 0 26px; }
+.slider-control input[type="range"] { width: 100%; accent-color: #e52733; cursor: pointer; }
+.slider-control input[type="range"]:focus-visible { outline: 2px solid #e52733; outline-offset: 4px; }
+.slider-limits { display: flex; justify-content: space-between; gap: 12px; color: #686b73; font-size: 12px; }
+.loan-summary { margin-top: 24px; padding: 22px; border: 1px solid #e8e8eb; border-radius: 18px; background: #fafafa; overflow-wrap: anywhere; }
+.loan-summary h3 { margin: 0 0 18px; font-size: 17px; }
+.loan-results { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 0; }
+.loan-results dt { color: #686b73; font-size: 13px; }
+.loan-results dd { margin: 6px 0 0; font-weight: 600; }
+.loan-payment { grid-column: 1 / -1; }
+.loan-payment dd { font-size: clamp(24px, 4vw, 34px); letter-spacing: -.5px; }
+.calculator-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.calculator-disclaimer { color: #686b73; font-size: 12px; line-height: 1.6; margin: 20px 0 0; }
+.product-terms { margin-top: 6px; }
+@media (max-width: 520px) { .loan-results { grid-template-columns: 1fr; } .loan-summary { padding: 16px; } .slider-limits { font-size: 11px; } }

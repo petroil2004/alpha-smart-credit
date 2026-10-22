@@ -521,6 +521,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
           )}
           {selected ? (
             <DraftForm
+              api={api}
               key={selected.id}
               application={selected}
               companyName={session.company.name}
