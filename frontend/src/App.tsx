@@ -53,6 +53,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
   const [selected, setSelected] = useState<Application | null>(null);
   const [fields, setFields] = useState<DraftFields>(emptyDraft);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [fieldErrorAttempt, setFieldErrorAttempt] = useState(0);
   const [error, setError] = useState<ApiError | null>(null);
   const [notice, setNotice] = useState("");
   const [account, setAccount] = useState("demo-client-1");
@@ -166,6 +167,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
     try {
       await action();
     } catch (issue) {
+      setFieldErrorAttempt((value) => value + 1);
       if (issue instanceof DraftValidationError) {
         setFieldErrors(issue.fields);
         setError(new ApiError(422, "VALIDATION_ERROR", issue.message));
@@ -519,7 +521,10 @@ export default function App({ api = defaultApi }: { api?: Api }) {
           )}
           {selected ? (
             <DraftForm
+              key={selected.id}
               application={selected}
+              companyName={session.company.name}
+              errorAttempt={fieldErrorAttempt}
               fields={fields}
               errors={fieldErrors}
               busy={!!busy}

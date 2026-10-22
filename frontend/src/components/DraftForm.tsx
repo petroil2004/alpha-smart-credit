@@ -1,223 +1,180 @@
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import type {
-  Application,
-  DraftFields,
-  FieldErrors,
-  ProductCode,
-} from "../types";
+import type { Application } from "../types";
+import { draftSteps } from "../draft-steps";
+import type { DraftStep } from "../draft-steps";
+import {
+  NeedFields,
+  ParameterFields,
+  ProductFields,
+} from "./draft/DraftFields";
+import type { EditableProps } from "./draft/DraftFields";
+import DraftReview from "./draft/DraftReview";
 import { Icon } from "./Icon";
 
-export const products: {
-  code: ProductCode;
-  title: string;
-  description: string;
-  number: string;
-}[] = [
-  {
-    code: "working_capital",
-    title: "Оборотный кредит",
-    description: "Товар, материалы и текущие расходы",
-    number: "01",
-  },
-  {
-    code: "equipment",
-    title: "Кредит на оборудование",
-    description: "Всё, что помогает бизнесу расти",
-    number: "02",
-  },
-  {
-    code: "overdraft",
-    title: "Овердрафт",
-    description: "На время до следующего поступления",
-    number: "03",
-  },
-];
-
-interface Props {
+interface Props extends EditableProps {
   application: Application;
-  fields: DraftFields;
-  errors: FieldErrors;
+  companyName: string;
+  errorAttempt: number;
   busy: boolean;
   saving: boolean;
   dirty: boolean;
-  onChange: <K extends keyof DraftFields>(
-    key: K,
-    value: DraftFields[K],
-  ) => void;
   onSave: () => void;
 }
 
-export default function DraftForm({
-  application,
-  fields,
-  errors,
-  busy,
-  saving,
-  dirty,
-  onChange,
-  onSave,
-}: Props) {
-  const overdraft = fields.product_code === "overdraft";
-  const errorProps = (key: keyof DraftFields) => ({
-    "aria-invalid": Boolean(errors[key]),
-    "aria-describedby": errors[key] ? `${key}-error` : undefined,
-  });
-  const fieldError = (key: keyof DraftFields) =>
-    errors[key] && (
-      <span className="field-error" id={`${key}-error`}>
-        {errors[key]}
-      </span>
+export default function DraftForm(props: Props) {
+  const {
+    application,
+    companyName,
+    fields,
+    errors,
+    errorAttempt,
+    busy,
+    saving,
+    dirty,
+    onSave,
+  } = props;
+  const [step, setStep] = useState<DraftStep>("need");
+  const lastErrorAttempt = useRef(errorAttempt);
+  const form = useRef<HTMLFormElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const index = draftSteps.findIndex((item) => item.id === step);
+  const current = draftSteps[index];
+  const last = index === draftSteps.length - 1;
+
+  useEffect(() => {
+    if (lastErrorAttempt.current === errorAttempt) return;
+    lastErrorAttempt.current = errorAttempt;
+    const owner = draftSteps.find((item) =>
+      item.fields.some((field) => errors[field]),
     );
+    if (owner) setStep(owner.id);
+  }, [errors, errorAttempt]);
+
+  useEffect(() => {
+    const invalid = form.current?.querySelector<HTMLElement>(
+      '[aria-invalid="true"]',
+    );
+    if (invalid) invalid.focus();
+    else heading.current?.focus();
+  }, [step, errorAttempt]);
+
+  const goTo = (next: DraftStep) => {
+    if (!busy) setStep(next);
+  };
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    onSave();
+    if (busy) return;
+    if (last) onSave();
+    else goTo(draftSteps[index + 1].id);
   };
+
   return (
     <div className="draft-layout">
-      <form className="form-card" onSubmit={submit} noValidate>
-        <fieldset disabled={busy}>
-          <div className="section-heading">
-            <span className="step-marker">01</span>
-            <div>
-              <h2>Расскажите о планах</h2>
-              <p>Можно заполнить часть данных и вернуться позже.</p>
-            </div>
-          </div>
-          <label className="field purpose-field">
-            <span>На что нужны средства</span>
-            <textarea
-              aria-label="На что нужны средства"
-              value={fields.purpose}
-              onChange={(e) => onChange("purpose", e.target.value)}
-              maxLength={500}
-              placeholder="Например, закупить товар к новому сезону"
-              rows={3}
-              {...errorProps("purpose")}
-            />
-            <span className="field-hint">Коротко опишите задачу бизнеса.</span>
-            {fieldError("purpose")}
-          </label>
-          <div className="field">
-            <span id="product-label">Продукт</span>
-            <div
-              className="product-options"
-              role="radiogroup"
-              aria-labelledby="product-label"
-            >
-              {products.map((product) => (
-                <label
-                  key={product.code}
-                  className={`product-option ${fields.product_code === product.code ? "is-selected" : ""}`}
+      <div className="wizard-main">
+        <nav className="draft-stepper" aria-label="Шаги оформления">
+          <ol>
+            {draftSteps.map((item, position) => (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  disabled={busy}
+                  aria-label={`Перейти к шагу «${item.label}»`}
+                  aria-current={step === item.id ? "step" : undefined}
+                  className={`step-button ${step === item.id ? "is-current" : ""} ${item.fields.some((field) => errors[field]) ? "has-error" : ""}`}
+                  onClick={() => goTo(item.id)}
                 >
-                  <input
-                    type="radio"
-                    name="product"
-                    value={product.code}
-                    checked={fields.product_code === product.code}
-                    onChange={() => onChange("product_code", product.code)}
-                  />
-                  <span className="product-radio" aria-hidden="true" />
-                  <span>
-                    <strong>{product.title}</strong>
-                    <small>{product.description}</small>
-                  </span>
-                </label>
-              ))}
+                  <span className="step-number">{position + 1}</span>
+                  <span>{item.label}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        </nav>
+        <form
+          ref={form}
+          className="form-card wizard-card"
+          onSubmit={submit}
+          noValidate
+        >
+          <fieldset disabled={busy}>
+            <div className="company-context">
+              <Icon name="building" size={19} />
+              <div>
+                <span>Ваша компания</span>
+                <strong>{companyName}</strong>
+              </div>
             </div>
-            {fieldError("product_code")}
-          </div>
-          <div className="field-grid">
-            <label className="field">
-              <span>Сумма финансирования</span>
-              <span className="input-with-unit">
-                <input
-                  aria-label="Сумма финансирования"
-                  type="text"
-                  inputMode="decimal"
-                  value={fields.amount_rub}
-                  onChange={(e) => onChange("amount_rub", e.target.value)}
-                  placeholder="Укажите сумму"
-                  {...errorProps("amount_rub")}
-                />
-                <span aria-hidden="true">₽</span>
+            <div className="section-heading">
+              <span className="step-marker">
+                {String(index + 1).padStart(2, "0")}
               </span>
-              {fieldError("amount_rub")}
-            </label>
-            {fields.product_code && (
-              <label className="field">
-                <span>{overdraft ? "Пользование, дней" : "Срок, месяцев"}</span>
-                <input
-                  aria-label={overdraft ? "Пользование, дней" : "Срок, месяцев"}
-                  type="text"
-                  inputMode="numeric"
-                  value={overdraft ? fields.usage_days : fields.term_months}
-                  onChange={(e) =>
-                    onChange(
-                      overdraft ? "usage_days" : "term_months",
-                      e.target.value,
-                    )
-                  }
-                  placeholder={
-                    overdraft ? "Количество дней" : "Количество месяцев"
-                  }
-                  {...errorProps(overdraft ? "usage_days" : "term_months")}
-                />
-                {fieldError(overdraft ? "usage_days" : "term_months")}
-              </label>
+              <div>
+                <h2 ref={heading} tabIndex={-1}>
+                  {current.title}
+                </h2>
+                <p>{current.description}</p>
+              </div>
+            </div>
+            {step === "need" && <NeedFields {...props} />}
+            {step === "product" && <ProductFields {...props} />}
+            {step === "details" && (
+              <>
+                <ParameterFields {...props} />
+                {!fields.product_code && (
+                  <button
+                    className="text-button choose-product"
+                    type="button"
+                    onClick={() => goTo("product")}
+                  >
+                    Выбрать продукт
+                  </button>
+                )}
+              </>
+            )}
+            {step === "review" && (
+              <DraftReview fields={fields} onEdit={goTo} busy={busy} />
+            )}
+          </fieldset>
+          <div className="wizard-navigation">
+            {index > 0 && (
+              <button
+                className="button secondary"
+                type="button"
+                disabled={busy}
+                onClick={() => goTo(draftSteps[index - 1].id)}
+              >
+                Назад
+              </button>
+            )}
+            <button
+              className={`button ${last ? "primary wizard-next" : "secondary"}`}
+              type="button"
+              disabled={busy}
+              onClick={onSave}
+            >
+              {saving ? "Сохраняем…" : "Сохранить черновик"}
+              {!saving && <Icon name="check" size={18} />}
+            </button>
+            {!last && (
+              <button
+                className="button primary wizard-next"
+                type="submit"
+                disabled={busy}
+              >
+                Продолжить
+                <Icon name="arrow" size={18} />
+              </button>
             )}
           </div>
-          {overdraft && (
-            <div className="overdraft-fields">
-              <div className="small-note">
-                Для овердрафта важно знать, когда поступят деньги для возврата.
-              </div>
-              <div className="field-grid">
-                <label className="field">
-                  <span>Дата ожидаемого поступления</span>
-                  <input
-                    aria-label="Дата ожидаемого поступления"
-                    type="date"
-                    value={fields.expected_inflow_date}
-                    onChange={(e) =>
-                      onChange("expected_inflow_date", e.target.value)
-                    }
-                    {...errorProps("expected_inflow_date")}
-                  />
-                  {fieldError("expected_inflow_date")}
-                </label>
-                <label className="field">
-                  <span>Сумма ожидаемого поступления</span>
-                  <span className="input-with-unit">
-                    <input
-                      aria-label="Сумма ожидаемого поступления"
-                      type="text"
-                      inputMode="decimal"
-                      value={fields.expected_inflow_amount_rub}
-                      onChange={(e) =>
-                        onChange("expected_inflow_amount_rub", e.target.value)
-                      }
-                      placeholder="Укажите сумму"
-                      {...errorProps("expected_inflow_amount_rub")}
-                    />
-                    <span aria-hidden="true">₽</span>
-                  </span>
-                  {fieldError("expected_inflow_amount_rub")}
-                </label>
-              </div>
-            </div>
-          )}
-        </fieldset>
-        <div className="form-actions">
-          <button className="button primary" type="submit" disabled={busy}>
-            {saving ? "Сохраняем…" : "Сохранить черновик"}
-            {!saving && <Icon name="check" size={18} />}
-          </button>
-          <span className={`save-indicator ${dirty ? "has-changes" : ""}`}>
+          <div
+            className={`save-indicator wizard-save-indicator ${dirty ? "has-changes" : ""}`}
+          >
             <span className="status-dot" />
             {dirty ? "Есть несохранённые изменения" : "Изменения сохранены"}
-          </span>
-        </div>
-      </form>
+          </div>
+        </form>
+      </div>
       <aside className="draft-aside">
         <div className="journey-card">
           <span className="eyebrow">ВАША ЗАЯВКА</span>
@@ -229,8 +186,11 @@ export default function DraftForm({
             <li className="current">
               <span>1</span>
               <div>
-                <strong>Потребность бизнеса</strong>
-                <small>Сейчас вы здесь</small>
+                <strong>Подготовка черновика</strong>
+                <small>
+                  Шаг {index + 1} из {draftSteps.length}:{" "}
+                  {current.label.toLowerCase()}
+                </small>
               </div>
             </li>
             <li>
@@ -259,8 +219,8 @@ export default function DraftForm({
         <div className="quiet-note">
           <Icon name="clock" size={17} />
           <p>
-            Возвращайтесь, когда удобно. Сохранённые данные останутся в
-            кабинете.
+            Переходы между шагами сохраняют ввод на экране. Чтобы вернуться к
+            нему позже, сохраните черновик.
           </p>
         </div>
         <span className="version-label">
