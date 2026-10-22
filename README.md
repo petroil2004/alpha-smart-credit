@@ -10,6 +10,8 @@
 
 ## Документы для команды
 
+- [Согласованные правила и следующий этап от 23.10.2026](docs/superpowers/specs/2026-10-23-credit-policy-alignment-design.md)
+- [Каталог продуктов](docs/business/product-catalog.md), [поля и обязательность](docs/business/application-fields.md), [правила решений](docs/business/decision-rules.md)
 - [Начало работы и порядок на шесть дней](docs/team/00-start-here.md)
 - [Общие договорённости и границы MVP](docs/superpowers/specs/2026-10-21-credit-cabinet-design.md)
 - [Git, ветки, коммиты и Pull Requests](docs/team/06-git-workflow.md)
