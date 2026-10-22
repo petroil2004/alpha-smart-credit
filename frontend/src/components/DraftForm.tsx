@@ -23,6 +23,7 @@ interface Props extends EditableProps {
   saving: boolean;
   dirty: boolean;
   onSave: () => void;
+  onReauthenticate: (after:()=>void) => void;
 }
 
 export default function DraftForm(props: Props) {
@@ -45,6 +46,7 @@ export default function DraftForm(props: Props) {
   const current = draftSteps[index];
   const last = index === draftSteps.length - 1;
   const calculator = useLoanCalculator(props.api, fields, application.id);
+  const reauthenticate = () => props.onReauthenticate(calculator.retryCatalog);
 
   useEffect(() => {
     if (lastErrorAttempt.current === errorAttempt) return;
@@ -125,7 +127,7 @@ export default function DraftForm(props: Props) {
             {step === "details" && (
               <>
                 {fields.product_code && fields.product_code !== "overdraft"
-                  ? <LoanCalculator fields={fields} onChange={props.onChange} errors={errors} state={calculator}/>
+                  ? <LoanCalculator fields={fields} onChange={props.onChange} errors={errors} state={calculator} onReauthenticate={reauthenticate}/>
                   : <ParameterFields {...props} />}
                 {!fields.product_code && (
                   <button
@@ -140,7 +142,7 @@ export default function DraftForm(props: Props) {
             )}
             {step === "review" && (
               <><DraftReview fields={fields} onEdit={goTo} busy={busy} />
-              {fields.product_code && <LoanCalculationSummary state={calculator}/>}</>
+              {fields.product_code && <LoanCalculationSummary state={calculator} onReauthenticate={reauthenticate}/>}</>
             )}
           </fieldset>
           <div className="wizard-navigation">

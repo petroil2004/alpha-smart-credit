@@ -286,13 +286,14 @@ export default function App({ api = defaultApi }: { api?: Api }) {
         adopt(application);
       });
   };
-  const reauthenticate = () => {
+  const reauthenticate = (after?:()=>void) => {
     if (session)
       void run("reauth", async () => {
         const current = await api.login(session.user.id);
         requireCompany(current.company.id);
         setSession(current);
         setNotice("Вход подтверждён. Можно сохранить черновик.");
+        after?.();
       });
   };
 
@@ -316,7 +317,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
           <button
             className="text-button"
             disabled={!!busy}
-            onClick={reauthenticate}
+            onClick={()=>reauthenticate()}
           >
             Войти снова
           </button>
@@ -533,6 +534,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
               dirty={dirty}
               onChange={change}
               onSave={save}
+              onReauthenticate={reauthenticate}
             />
           ) : (
             <ApplicationsList

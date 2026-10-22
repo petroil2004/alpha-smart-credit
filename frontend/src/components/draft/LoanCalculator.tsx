@@ -5,7 +5,7 @@ import type { FieldErrors } from "../../types";
 import { MoneyField, ParameterFields } from "./DraftFields";
 import type { EditableProps } from "./DraftFields";
 
-export function LoanCalculationSummary({state}:{state:CalculatorState}) {
+export function LoanCalculationSummary({state,onReauthenticate}:{state:CalculatorState;onReauthenticate?:()=>void}) {
   if(state.status==="unsupported") return <p className="small-note">Калькулятор овердрафта пока недоступен.</p>;
   const result=state.result;
   return <section className="loan-summary" aria-label="Предварительный расчёт платежа" aria-busy={state.status==="loading"}>
@@ -21,14 +21,16 @@ export function LoanCalculationSummary({state}:{state:CalculatorState}) {
       </p>}
     </div>
     {state.status==="error" && <div className="calculator-actions">
-      {state.catalogStatus!=="error" && <button type="button" className="text-button" onClick={state.retryCalculation}>Повторить расчёт</button>}
-      <button type="button" className="text-button" onClick={state.retryCatalog}>Повторить загрузку условий</button>
+      {state.authenticationRequired && onReauthenticate ? <button type="button" className="text-button" onClick={onReauthenticate}>Войти снова</button> : <>
+        {state.catalogStatus!=="error" && <button type="button" className="text-button" onClick={state.retryCalculation}>Повторить расчёт</button>}
+        <button type="button" className="text-button" onClick={state.retryCatalog}>Повторить загрузку условий</button>
+      </>}
     </div>}
     <p className="calculator-disclaimer">Демонстрационные условия. Без комиссий и дополнительных платных услуг. Расчёт не означает одобрения кредита. Итог рассчитан как равный платёж × число месяцев; полный график не строится.</p>
   </section>;
 }
 
-export default function LoanCalculator({fields,onChange,state,errors:saveErrors={}}:Pick<EditableProps,"fields"|"onChange"> & {state:CalculatorState;errors?:FieldErrors}) {
+export default function LoanCalculator({fields,onChange,state,errors:saveErrors={},onReauthenticate}:Pick<EditableProps,"fields"|"onChange"> & {state:CalculatorState;errors?:FieldErrors;onReauthenticate?:()=>void}) {
   const product=state.catalog?.items.find(p=>p.code===fields.product_code);
   const errors={...state.errors,...saveErrors};
   const props={fields,onChange,errors};
@@ -44,6 +46,6 @@ export default function LoanCalculator({fields,onChange,state,errors:saveErrors=
       <input type="range" aria-label="Срок, месяцев, ползунок" min={product.term_min_months} max={product.term_max_months} step={1} value={Number.isSafeInteger(term)?Math.max(product.term_min_months,Math.min(product.term_max_months,term)):product.term_min_months} onChange={e=>onChange("term_months",e.target.value)}/>
       <div className="slider-limits"><span>{product.term_min_months} мес.</span><span>{product.term_max_months} мес.</span></div>
     </div>}
-    <LoanCalculationSummary state={state}/>
+    <LoanCalculationSummary state={state} onReauthenticate={onReauthenticate}/>
   </div>;
 }
