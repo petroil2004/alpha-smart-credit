@@ -1,5 +1,5 @@
 import type { Application } from "../types";
-import { products } from "./DraftForm";
+import { products } from "../products";
 import { Icon } from "./Icon";
 
 function amountText(value: string | null) {

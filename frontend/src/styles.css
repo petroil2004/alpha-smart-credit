@@ -1330,3 +1330,216 @@ textarea[aria-invalid="true"] {
     transition: none !important;
   }
 }
+
+/* Draft sections share App's editable state; navigation does not save it. */
+.wizard-main {
+  min-width: 0;
+}
+.draft-stepper {
+  margin-bottom: 18px;
+}
+.draft-stepper ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.step-button {
+  width: 100%;
+  min-height: 58px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #e3e3e2;
+  border-radius: 10px;
+  color: #858890;
+  background: #f8f8f6;
+  font-size: 11px;
+  text-align: left;
+}
+.step-button:hover:not(:disabled) {
+  border-color: #d2a09e;
+  background: #fff;
+}
+.step-number {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #eaeae7;
+  color: #8b8e93;
+  font-size: 10px;
+}
+.step-button.is-current {
+  border-color: #ed2024;
+  color: #bd2427;
+  background: #fff8f7;
+  font-weight: 600;
+}
+.is-current .step-number {
+  background: var(--red);
+  color: white;
+}
+.step-button.has-error:not(.is-current) {
+  border-color: #dc8a8c;
+  color: #b81e28;
+}
+.step-button.has-error .step-number {
+  box-shadow: 0 0 0 2px #e6505540;
+}
+.company-context {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding-bottom: 20px;
+  margin-bottom: 23px;
+  border-bottom: 1px solid var(--border);
+  color: #8f939a;
+}
+.company-context span {
+  display: block;
+  font-size: 10px;
+  margin-bottom: 5px;
+}
+.company-context strong {
+  display: block;
+  color: #555961;
+  font-size: 12px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.wizard-card .section-heading {
+  align-items: flex-start;
+}
+.wizard-card .section-heading p {
+  max-width: 440px;
+}
+.wizard-card h2:focus {
+  outline: 2px solid #ed202440;
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+.wizard-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  padding-top: 22px;
+  margin-top: 6px;
+}
+.wizard-navigation .button {
+  font-size: 11px;
+  min-height: 42px;
+  padding: 10px 14px;
+}
+.wizard-next {
+  margin-left: auto;
+}
+.wizard-save-indicator {
+  margin-top: 15px;
+}
+.parameter-empty {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #7f838a;
+  margin-bottom: 16px;
+}
+.choose-product {
+  margin-bottom: 24px;
+}
+.draft-review {
+  margin-top: -6px;
+}
+.review-section + .review-section {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.review-section header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.review-section h3 {
+  font-size: 12px;
+  font-weight: 600;
+  color: #555961;
+}
+.review-section .text-button {
+  font-size: 11px;
+}
+.review-section dl {
+  margin: 0;
+}
+.review-row {
+  display: grid;
+  grid-template-columns: minmax(100px, 0.8fr) minmax(0, 1.2fr);
+  gap: 15px;
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.review-row dt {
+  color: #8a8e96;
+}
+.review-row dd {
+  margin: 0;
+  color: #3d424a;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.review-disclaimer {
+  font-size: 11px;
+  line-height: 1.8;
+  color: #8d9097;
+  background: #f7f7f5;
+  padding: 14px 16px;
+  border-radius: 8px;
+  margin: 24px 0;
+}
+@media (max-width: 1100px) {
+  .step-button {
+    flex-direction: column;
+    justify-content: center;
+    gap: 7px;
+    text-align: center;
+    padding: 10px 4px;
+  }
+  .wizard-navigation .button {
+    font-size: 10px;
+    padding: 10px 12px;
+  }
+}
+@media (max-width: 600px) {
+  .draft-stepper ol {
+    gap: 5px;
+  }
+  .step-button {
+    font-size: 10px;
+    min-height: 68px;
+  }
+  .review-row {
+    grid-template-columns: 1fr;
+    gap: 2px;
+    margin-top: 14px;
+  }
+  .wizard-navigation {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .wizard-navigation .button {
+    width: 100%;
+    margin-left: 0;
+  }
+  .wizard-navigation .wizard-next {
+    grid-column: 1 / -1;
+  }
+}
