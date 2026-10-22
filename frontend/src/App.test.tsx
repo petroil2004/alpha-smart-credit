@@ -28,6 +28,15 @@ async function openExisting(
   return { user, server, ...view };
 }
 
+async function goToStep(
+  user: ReturnType<typeof userEvent.setup>,
+  label: string,
+) {
+  await user.click(
+    screen.getByRole("button", { name: `Перейти к шагу «${label}»` }),
+  );
+}
+
 describe("client draft journey", () => {
   it("clears a stale profile before creating after another tab signs in", async () => {
     const server = contractServer({ loggedIn: true });
@@ -128,11 +137,13 @@ describe("client draft journey", () => {
       await screen.findByRole("textbox", { name: "На что нужны средства" }),
       "Закупка материалов",
     );
-    await user.click(screen.getByRole("radio", { name: /Оборотный кредит/ }));
     await user.type(
       screen.getByRole("textbox", { name: "Сумма финансирования" }),
       "1 500,25",
     );
+    await goToStep(user, "Продукт");
+    await user.click(screen.getByRole("radio", { name: /Оборотный кредит/ }));
+    await goToStep(user, "Параметры");
     await user.type(screen.getByLabelText("Срок, месяцев"), "12");
     await user.click(
       screen.getByRole("button", { name: "Сохранить черновик" }),
@@ -146,6 +157,7 @@ describe("client draft journey", () => {
     expect(
       screen.getByRole("textbox", { name: "Сумма финансирования" }),
     ).toHaveValue("1500.25");
+    await goToStep(user, "Параметры");
     expect(screen.getByLabelText("Срок, месяцев")).toHaveValue("12");
   });
 
@@ -225,9 +237,13 @@ describe("client draft journey", () => {
 
   it("clears incompatible fields when switching product mechanics", async () => {
     const { user } = await openExisting();
+    await goToStep(user, "Продукт");
     await user.click(screen.getByRole("radio", { name: /Оборотный кредит/ }));
+    await goToStep(user, "Параметры");
     await user.type(screen.getByLabelText("Срок, месяцев"), "24");
+    await goToStep(user, "Продукт");
     await user.click(screen.getByRole("radio", { name: /Овердрафт/ }));
+    await goToStep(user, "Параметры");
     expect(screen.queryByLabelText("Срок, месяцев")).not.toBeInTheDocument();
     await user.type(screen.getByLabelText("Пользование, дней"), "14");
     await user.type(
@@ -237,11 +253,15 @@ describe("client draft journey", () => {
     fireEvent.change(screen.getByLabelText("Дата ожидаемого поступления"), {
       target: { value: "2026-11-01" },
     });
+    await goToStep(user, "Продукт");
     await user.click(
       screen.getByRole("radio", { name: /Кредит на оборудование/ }),
     );
+    await goToStep(user, "Параметры");
     expect(screen.getByLabelText("Срок, месяцев")).toHaveValue("");
+    await goToStep(user, "Продукт");
     await user.click(screen.getByRole("radio", { name: /Овердрафт/ }));
+    await goToStep(user, "Параметры");
     expect(screen.getByLabelText("Пользование, дней")).toHaveValue("");
     expect(screen.getByLabelText("Сумма ожидаемого поступления")).toHaveValue(
       "",
