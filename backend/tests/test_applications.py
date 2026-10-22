@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import os
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -14,24 +13,11 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
-from app.db import Base, engine
+from app.db import engine
 from app.main import app
 
 
-@pytest.fixture(autouse=True)
-def clean_database():
-    """Каждый пример начинает с пустой схемы, но использует PostgreSQL."""
-    assert os.environ["DATABASE_URL"].startswith("postgresql+psycopg://")
-    Base.metadata.drop_all(engine)
-    Base.metadata.create_all(engine)
-    yield
-    Base.metadata.drop_all(engine)
-
-
-@pytest.fixture
-def client():
-    with TestClient(app) as test_client:
-        yield test_client
+pytestmark = pytest.mark.usefixtures("clean_database")
 
 
 def login(client: TestClient, account_id: str):
