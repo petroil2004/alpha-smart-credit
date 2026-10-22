@@ -1,4 +1,4 @@
-import type { Api, Application, FieldErrors, Session } from "./types";
+import type { Api, Application, AnnuityResult, FieldErrors, ProductCatalog, Session } from "./types";
 
 export class ApiError extends Error {
   constructor(
@@ -77,6 +77,8 @@ export function createApi(
     }
   }
   return {
+    products: () => request<ProductCatalog>("/products"),
+    calculateAnnuity: (input) => request<AnnuityResult>("/calculations/annuity", {method: "POST", body: JSON.stringify(input)}),
     me: () => request<Session>("/me"),
     login: (accountId) =>
       request<Session>("/auth/demo-login", {

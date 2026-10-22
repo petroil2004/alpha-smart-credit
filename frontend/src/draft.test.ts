@@ -4,9 +4,16 @@ import {
   toDraftPayload,
   normalizeMoney,
   DraftValidationError,
+  formatMoneyRub,
 } from "./draft";
 
 describe("money input", () => {
+  it("formats zero results and exact large amounts without changing input validation", () => {
+    expect(formatMoneyRub("0.00")).toBe("0,00 ₽");
+    expect(formatMoneyRub("9007199254740993.01")).toBe("9 007 199 254 740 993,01 ₽");
+    expect(formatMoneyRub(null)).toBe("Не указано");
+    expect(() => normalizeMoney("0.00")).toThrow();
+  });
   it("preserves kopecks while accepting spaces and a comma", () => {
     expect(normalizeMoney("1 500,25")).toBe("1500.25");
     expect(normalizeMoney("9007199254740993,01")).toBe("9007199254740993.01");

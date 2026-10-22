@@ -1,19 +1,8 @@
 import type { ReactNode } from "react";
 import type { DraftFields } from "../../types";
 import type { DraftStep } from "../../draft-steps";
-import { normalizeMoney } from "../../draft";
+import { formatMoneyRub } from "../../draft";
 import { products } from "../../products";
-
-function moneyText(value: string) {
-  try {
-    const money = normalizeMoney(value);
-    if (!money) return "Не указано";
-    const [whole, cents] = money.split(".");
-    return `${whole.replace(/\B(?=(\d{3})+(?!\d))/g, " ")},${cents} ₽`;
-  } catch {
-    return value;
-  }
-}
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -52,7 +41,7 @@ export default function DraftReview({
         </header>
         <dl>
           <Row label="Цель">{fields.purpose.trim() || "Не указано"}</Row>
-          <Row label="Сумма">{moneyText(fields.amount_rub)}</Row>
+          <Row label="Сумма">{formatMoneyRub(fields.amount_rub)}</Row>
         </dl>
       </div>
       <div className="review-section">
@@ -97,7 +86,7 @@ export default function DraftReview({
                 {fields.expected_inflow_date || "Не указано"}
               </Row>
               <Row label="Ожидаемая сумма поступления">
-                {moneyText(fields.expected_inflow_amount_rub)}
+              {formatMoneyRub(fields.expected_inflow_amount_rub)}
               </Row>
             </>
           ) : (

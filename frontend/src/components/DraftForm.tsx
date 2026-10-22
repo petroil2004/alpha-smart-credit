@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import type { Application } from "../types";
+import type { Api, Application } from "../types";
+import { useLoanCalculator } from "../hooks/useLoanCalculator";
+import LoanCalculator, { LoanCalculationSummary } from "./draft/LoanCalculator";
 import { draftSteps } from "../draft-steps";
 import type { DraftStep } from "../draft-steps";
 import {
@@ -13,6 +15,7 @@ import DraftReview from "./draft/DraftReview";
 import { Icon } from "./Icon";
 
 interface Props extends EditableProps {
+  api: Api;
   application: Application;
   companyName: string;
   errorAttempt: number;
@@ -20,6 +23,7 @@ interface Props extends EditableProps {
   saving: boolean;
   dirty: boolean;
   onSave: () => void;
+  onReauthenticate: (after:()=>void) => void;
 }
 
 export default function DraftForm(props: Props) {
@@ -41,6 +45,8 @@ export default function DraftForm(props: Props) {
   const index = draftSteps.findIndex((item) => item.id === step);
   const current = draftSteps[index];
   const last = index === draftSteps.length - 1;
+  const calculator = useLoanCalculator(props.api, fields, application.id);
+  const reauthenticate = () => props.onReauthenticate(calculator.retryCatalog);
 
   useEffect(() => {
     if (lastErrorAttempt.current === errorAttempt) return;
@@ -117,10 +123,12 @@ export default function DraftForm(props: Props) {
               </div>
             </div>
             {step === "need" && <NeedFields {...props} />}
-            {step === "product" && <ProductFields {...props} />}
+            {step === "product" && <ProductFields {...props} catalog={calculator.catalog} />}
             {step === "details" && (
               <>
-                <ParameterFields {...props} />
+                {fields.product_code && fields.product_code !== "overdraft"
+                  ? <LoanCalculator fields={fields} onChange={props.onChange} errors={errors} state={calculator} onReauthenticate={reauthenticate}/>
+                  : <ParameterFields {...props} />}
                 {!fields.product_code && (
                   <button
                     className="text-button choose-product"
@@ -133,7 +141,8 @@ export default function DraftForm(props: Props) {
               </>
             )}
             {step === "review" && (
-              <DraftReview fields={fields} onEdit={goTo} busy={busy} />
+              <><DraftReview fields={fields} onEdit={goTo} busy={busy} />
+              {fields.product_code && <LoanCalculationSummary state={calculator} onReauthenticate={reauthenticate}/>}</>
             )}
           </fieldset>
           <div className="wizard-navigation">

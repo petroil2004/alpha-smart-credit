@@ -19,6 +19,8 @@ from sqlalchemy.orm import Session
 from .db import Base, engine, get_db
 from .models import Account, Application, ApplicationCreation, UserSession, utc_now
 from .settings import settings
+from .calculator import CalculationValidationError, calculate_annuity
+from .product_catalog import get_catalog
 
 API_PREFIX = "/api/v1"
 MONEY_PATTERN = re.compile(r"^\d+(?:\.\d{1,2})?$")
@@ -49,6 +51,14 @@ class LoginPayload(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     account_id: StrictStr
+
+
+class AnnuityPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    product_code: Literal["working_capital", "equipment"]
+    amount_rub: StrictStr
+    term_months: StrictInt
 
 
 class PatchPayload(BaseModel):
@@ -256,6 +266,20 @@ def demo_login(payload: LoginPayload, response: Response, db: Session = Depends(
 @app.get(f"{API_PREFIX}/me")
 def me(account: CurrentAccount) -> dict[str, Any]:
     return serialize_session(account)
+
+
+@app.get(f"{API_PREFIX}/products")
+def products(account: CurrentAccount) -> dict[str, Any]:
+    return get_catalog()
+
+
+@app.post(f"{API_PREFIX}/calculations/annuity")
+def annuity(payload: AnnuityPayload, account: CurrentAccount) -> dict[str, Any]:
+    amount = parse_money(payload.amount_rub, "amount_rub")
+    try:
+        return calculate_annuity(payload.product_code, amount, payload.term_months)
+    except CalculationValidationError as error:
+        raise validation_error(error.fields) from error
 
 
 @app.post(f"{API_PREFIX}/auth/logout", status_code=204)

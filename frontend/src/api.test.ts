@@ -3,6 +3,17 @@ import { ApiError, createApi } from "./api";
 import { application } from "./test/api-fixtures";
 
 describe("HTTP boundary", () => {
+  it("loads products and calculates without an application mutation", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => new Response("{}"));
+    const api = createApi(fetcher);
+    await api.products();
+    const input = { product_code: "working_capital" as const, amount_rub: "3000000.01", term_months: 36 };
+    await api.calculateAnnuity(input);
+    expect(fetcher.mock.calls[0][0]).toBe("/api/v1/products");
+    expect(fetcher.mock.calls[1][0]).toBe("/api/v1/calculations/annuity");
+    expect(fetcher.mock.calls[1][1]).toMatchObject({ method: "POST", credentials: "same-origin", body: JSON.stringify(input) });
+    expect(fetcher.mock.calls.some(([, init]) => init?.method === "PATCH")).toBe(false);
+  });
   it("creates an empty draft with a stable idempotency key and cookies", async () => {
     const fetcher = vi
       .fn<typeof fetch>()
