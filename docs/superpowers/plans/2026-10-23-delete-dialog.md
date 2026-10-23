@@ -20,7 +20,9 @@
 5. Company changes clear the old target, no foreign-card deletion.
 
 ## Task 1: Fix and verify
-- [ ] RED: adapt ApplicationActions tests to visible confirmation + Cancel/Delete, add repeated opening/no window.confirm, Escape/focus, pending repeat guard and inline retry.
-- [ ] Add focused dialog component, App target state/open/confirm/cancel; error inside dialog; retain auth/version logic. Fix row-delete centering/active CSS.
-- [ ] Frontend full suite/build; native browser repeat/cancel/hold and mobile screenshot without actual deletion; independent read-only review and single test-backed fix pass if necessary.
-- [ ] Update truthful docs, commit verified fix, push existing PR #8, no merge.
+- [x] RED: adapt ApplicationActions tests to visible confirmation + Cancel/Delete, add repeated opening/no window.confirm, Escape/focus, pending repeat guard and inline retry.
+- [x] Add focused dialog component, App target state/open/confirm/cancel; error inside dialog; retain auth/version logic. Fix row-delete centering/active CSS.
+- [x] Frontend full suite/build; native browser repeat/cancel/hold and mobile screenshot without actual deletion; independent read-only review and single test-backed fix pass if necessary.
+- [x] Update truthful docs and commit verified fix. Delivery after verification: push existing PR #8, no merge.
+
+Result: 117 frontend tests and TypeScript/Vite build pass. In browser: four repeated open/cancel cycles, a 450ms pointer hold, initial Cancel focus, Tab to Delete, Escape cancellation, and a 390px modal with no horizontal overflow. Independent review found no issues. Real records were not deleted; the synthetic draft «Проверка окна удаления» remains for user testing.
