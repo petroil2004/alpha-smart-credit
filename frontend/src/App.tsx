@@ -11,8 +11,8 @@ import {
   DraftValidationError,
   emptyDraft,
   fromApplication,
-  toDraftPayload,
 } from "./draft";
+import { useDraftAutosave } from "./hooks/useDraftAutosave";
 import DraftForm from "./components/DraftForm";
 import ApplicationsList from "./components/ApplicationsList";
 import { Icon } from "./components/Icon";
@@ -54,13 +54,11 @@ export default function App({ api = defaultApi }: { api?: Api }) {
   const [fields, setFields] = useState<DraftFields>(emptyDraft);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [fieldErrorAttempt, setFieldErrorAttempt] = useState(0);
+  const [purposeReset, setPurposeReset] = useState(0);
   const [error, setError] = useState<ApiError | null>(null);
   const [notice, setNotice] = useState("");
   const [account, setAccount] = useState("demo-client-1");
   const createKey = useRef<string | null>(null);
-  const dirty =
-    selected !== null &&
-    JSON.stringify(fields) !== JSON.stringify(fromApplication(selected));
 
   const clearProfile = () => {
     setSession(null);
@@ -105,6 +103,12 @@ export default function App({ api = defaultApi }: { api?: Api }) {
       ].sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
     );
   };
+  const autosave = useDraftAutosave({
+    api, application: selected, fields, reset: purposeReset,
+    onSaved: (application) => { upsert(application); setSelected(application); },
+    onScopeChanged: clearProfile,
+  });
+  const dirty = autosave.dirty || autosave.status === "saving";
 
   useEffect(() => {
     let active = true;
@@ -209,15 +213,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
         }
       }
     });
-  const logout = () => {
-    if (allowDiscard())
-      void run("logout", async () => {
-        await api.logout();
-        clearProfile();
-      });
-  };
-  const showList = () => {
-    if (busy || !allowDiscard()) return;
+  const closeApplication = () => {
     setSelected(null);
     setFields(emptyDraft());
     setFieldErrors({});
@@ -225,6 +221,14 @@ export default function App({ api = defaultApi }: { api?: Api }) {
     setNotice("");
     setUrl();
   };
+  const leave = (name: string, action: () => Promise<void> | void) => {
+    void run(name, async () => {
+      if (selected && !await autosave.flush() && !window.confirm("Не все изменения сохранены. Выйти без их сохранения?")) return;
+      await action();
+    });
+  };
+  const logout = () => leave("logout", async () => { await api.logout(); clearProfile(); });
+  const showList = () => leave("leave", closeApplication);
   const open = (id: string) => {
     if (busy || !allowDiscard()) return;
     void run("open", async () => {
@@ -260,22 +264,29 @@ export default function App({ api = defaultApi }: { api?: Api }) {
       return next;
     });
     setNotice("");
-    setFieldErrors((current) => ({ ...current, [key]: undefined }));
+    setFieldErrors((current) => {
+      const next = { ...current };
+      delete next[key];
+      if (key === "product_code") {
+        if (!value || value === "overdraft") delete next.term_months;
+        if (value !== "overdraft") {
+          delete next.usage_days;
+          delete next.expected_inflow_date;
+          delete next.expected_inflow_amount_rub;
+        }
+      }
+      return next;
+    });
   };
-  const save = () => {
-    if (selected)
-      void run("save", async () => {
-        setFieldErrors({});
-        const payload = toDraftPayload(fields);
-        await verifySession();
-        const application = await api.update(selected.id, {
-          ...payload,
-          version: selected.version,
-        });
-        upsert(application);
-        adopt(application);
-        setNotice("Черновик сохранён");
-      });
+  const finish = () => {
+    if (selected) void run("finish", async () => {
+      if (!await autosave.flush()) {
+        setFieldErrors(autosave.getState().errors);
+        setFieldErrorAttempt(value => value + 1);
+        return;
+      }
+      closeApplication();
+    });
   };
   const reloadSelected = () => {
     if (selected && allowDiscard())
@@ -284,6 +295,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
         const application = await api.get(selected.id);
         upsert(application);
         adopt(application);
+        setPurposeReset((value) => value + 1);
       });
   };
   const reauthenticate = (after?:()=>void) => {
@@ -292,19 +304,22 @@ export default function App({ api = defaultApi }: { api?: Api }) {
         const current = await api.login(session.user.id);
         requireCompany(current.company.id);
         setSession(current);
-        setNotice("Вход подтверждён. Можно сохранить черновик.");
+        setNotice("Вход подтверждён.");
+        void autosave.retry();
         after?.();
       });
   };
 
-  const errorBox = error && (
+  const problem = error ?? autosave.error;
+  const errorBox = problem && (
     <div className="notice error-notice" role="alert">
       <span className="notice-symbol" aria-hidden="true">
         !
       </span>
       <div>
-        <p>{error.message}</p>
-        {error.status === 409 && selected && (
+        <p>{problem.code === "VERSION_CONFLICT" ? "Заявка изменена в другом окне. Загрузите сохранённую версию." : problem.message}</p>
+        {autosave.error && ![401, 409].includes(autosave.error.status) && <button className="text-button" disabled={!!busy} onClick={() => void autosave.retry()}>Повторить сохранение</button>}
+        {problem.status === 409 && selected && (
           <button
             className="text-button"
             disabled={!!busy}
@@ -313,7 +328,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
             Загрузить сохранённую версию
           </button>
         )}
-        {error.status === 401 && session && (
+        {problem.status === 401 && session && (
           <button
             className="text-button"
             disabled={!!busy}
@@ -470,7 +485,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
           </div>
         </header>
         <main className="main-content">
-          <div className="page-header">
+          <div className={`page-header ${selected ? "draft-page-header" : ""}`}>
             <div>
               {selected ? (
                 <>
@@ -482,11 +497,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
                   >
                     ← Все заявки
                   </button>
-                  <h1>
-                    Новая возможность
-                    <br />
-                    для вашего бизнеса<span className="red-text">.</span>
-                  </h1>
+                  <h1>Заявка на финансирование</h1>
                   <div className="draft-subtitle">
                     <span className="draft-badge">Черновик</span>
                     <span>№ {selected.id.slice(-6)}</span>
@@ -527,13 +538,14 @@ export default function App({ api = defaultApi }: { api?: Api }) {
               application={selected}
               companyName={session.company.name}
               errorAttempt={fieldErrorAttempt}
+              purposeReset={purposeReset}
               fields={fields}
-              errors={fieldErrors}
+              errors={{ ...autosave.errors, ...fieldErrors }}
               busy={!!busy}
-              saving={busy === "save"}
-              dirty={dirty}
+              saveStatus={autosave.status}
               onChange={change}
-              onSave={save}
+              onFinish={finish}
+              onNavigate={() => void autosave.flush()}
               onReauthenticate={reauthenticate}
             />
           ) : (

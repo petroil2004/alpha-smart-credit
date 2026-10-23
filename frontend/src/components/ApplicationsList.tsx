@@ -39,16 +39,16 @@ export default function ApplicationsList({
             </div>
             <h3>Пока ни одной заявки</h3>
             <p>
-              Большие планы начинаются с первого шага.
+              Новая возможность для вашего бизнеса.
               <br />
-              Создайте черновик — заполнить его можно позже.
+              Создайте заявку — заполнить её можно позже.
             </p>
             <button
               className="button secondary"
               disabled={busy}
               onClick={onCreate}
             >
-              Создать первый черновик
+              Создать заявку
               <Icon name="arrow" size={18} />
             </button>
           </div>
@@ -84,7 +84,7 @@ export default function ApplicationsList({
                   className="icon-button row-open"
                   disabled={busy}
                   onClick={() => onOpen(item.id)}
-                  aria-label={`Открыть черновик ${item.id.slice(-6)}`}
+                  aria-label={`Открыть заявку ${item.id.slice(-6)}`}
                 >
                   <Icon name="arrow" />
                 </button>

@@ -25,7 +25,7 @@ export default function DraftReview({
   const product = products.find((item) => item.code === fields.product_code);
   const overdraft = fields.product_code === "overdraft";
   return (
-    <section aria-label="Сводка черновика" className="draft-review">
+    <section aria-label="Сводка заявки" className="draft-review">
       <div className="review-section">
         <header>
           <h3>Потребность</h3>
@@ -97,7 +97,7 @@ export default function DraftReview({
         </dl>
       </div>
       <p className="review-disclaimer">
-        Это черновик. Сохранение не отправляет заявку на рассмотрение.
+        Заявка ещё не отправлена на рассмотрение. Данные сохраняются автоматически.
         Незаполненные сведения можно добавить позже.
       </p>
     </section>

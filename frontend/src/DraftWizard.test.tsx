@@ -1,3 +1,4 @@
+import { flushStep } from "./test/save-helpers";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -14,8 +15,10 @@ async function openDraft(
   const user = userEvent.setup();
   render(<App api={createApi(fetcher)} />);
   await user.click(
-    await screen.findByRole("button", { name: "Открыть черновик 000001" }),
+    await screen.findByRole("button", { name: "Открыть заявку 000001" }),
   );
+  const other = await screen.findByRole("radio", { name: "Другое" });
+  if (!(other as HTMLInputElement).checked) await user.click(other);
   return { user, server };
 }
 
@@ -26,12 +29,12 @@ async function goTo(user: ReturnType<typeof userEvent.setup>, title: string) {
 }
 
 describe("draft wizard", () => {
-  it("moves forward and back without losing input or saving implicitly", async () => {
+  it("moves forward and back without losing raw input while autosaving", async () => {
     const { user, server } = await openDraft();
     expect(
-      screen.getByRole("heading", { name: "Расскажите о потребности" }),
+      screen.getByRole("heading", { name: "Для чего нужны деньги?" }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: /Оборотный кредит/ })).not.toBeInTheDocument();
     await user.type(
       screen.getByLabelText("На что нужны средства"),
       "Товар к сезону",
@@ -59,29 +62,23 @@ describe("draft wizard", () => {
     );
     await goTo(user, "Параметры");
     expect(screen.getByLabelText("Срок, месяцев")).toHaveValue("12");
-    expect(
-      server.fetcher.mock.calls.some(
-        ([, options]) => options?.method === "PATCH",
-      ),
-    ).toBe(false);
+    expect(server.store.get(application().id)).toMatchObject({ purpose: "Товар к сезону", amount_rub: "500000.25", term_months: 12 });
   });
 
   it("reviews and saves an incomplete draft without claiming it was submitted", async () => {
     const { user, server } = await openDraft();
     await goTo(user, "Проверка");
     const summary = within(
-      screen.getByRole("region", { name: "Сводка черновика" }),
+      screen.getByRole("region", { name: "Сводка заявки" }),
     );
     expect(summary.getAllByText("Не указано").length).toBeGreaterThan(0);
     expect(
       screen.queryByRole("button", { name: /Отправить заявку/ }),
     ).not.toBeInTheDocument();
-    await user.click(
-      screen.getByRole("button", { name: "Сохранить черновик" }),
-    );
-    expect(await screen.findByText("Черновик сохранён")).toBeInTheDocument();
+    await flushStep(user);
+    expect(await screen.findByText("Изменения сохранены")).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "Проверьте черновик" }),
+      screen.getByRole("heading", { name: "Проверьте заявку" }),
     ).toBeInTheDocument();
     expect(server.store.get(application().id)?.product_code).toBeNull();
   });
@@ -101,7 +98,7 @@ describe("draft wizard", () => {
     const { user } = await openDraft(server);
     await goTo(user, "Проверка");
     const summary = within(
-      screen.getByRole("region", { name: "Сводка черновика" }),
+      screen.getByRole("region", { name: "Сводка заявки" }),
     );
     expect(summary.getByText("9 007 199 254 740 993,01 ₽")).toBeInTheDocument();
     expect(summary.getByText("Станок")).toBeInTheDocument();
@@ -115,9 +112,7 @@ describe("draft wizard", () => {
     const { user, server } = await openDraft();
     await user.type(screen.getByLabelText("Сумма финансирования"), "-12");
     await goTo(user, "Проверка");
-    await user.click(
-      screen.getByRole("button", { name: "Сохранить черновик" }),
-    );
+    await user.click(screen.getByRole("button", { name: "Сохранить и выйти" }));
     expect(await screen.findByLabelText("Сумма финансирования")).toHaveValue(
       "-12",
     );
@@ -160,13 +155,13 @@ describe("draft wizard", () => {
           )
         : server.fetcher(url, options);
     const { user } = await openDraft(server, fetcher);
+    await goTo(user, "Параметры");
+    fireEvent.change(screen.getByLabelText("Сумма ожидаемого поступления"), { target: { value: "700000.01" } });
     await goTo(user, "Проверка");
-    await user.click(
-      screen.getByRole("button", { name: "Сохранить черновик" }),
-    );
+    await user.click(screen.getByRole("button", { name: "Сохранить и выйти" }));
     expect(
       await screen.findByLabelText("Сумма ожидаемого поступления"),
-    ).toHaveValue("700000.00");
+    ).toHaveValue("700000.01");
     expect(
       screen.getByText("Проверьте ожидаемое поступление"),
     ).toBeInTheDocument();
@@ -175,9 +170,7 @@ describe("draft wizard", () => {
       "Сохранённая цель",
     );
     await goTo(user, "Проверка");
-    await user.click(
-      screen.getByRole("button", { name: "Сохранить черновик" }),
-    );
+    await user.click(screen.getByRole("button", { name: "Сохранить и выйти" }));
     expect(
       await screen.findByLabelText("Сумма ожидаемого поступления"),
     ).toHaveAttribute("aria-invalid", "true");
@@ -196,7 +189,7 @@ describe("draft wizard", () => {
     ).toBeInTheDocument();
   });
 
-  it("advances on Enter without implicitly saving", async () => {
+  it("advances on Enter and flushes pending changes", async () => {
     const { user, server } = await openDraft();
     const amount = screen.getByLabelText("Сумма финансирования");
     await user.type(amount, "500000");
@@ -204,11 +197,7 @@ describe("draft wizard", () => {
     expect(
       screen.getByRole("heading", { name: "Выберите продукт" }),
     ).toBeInTheDocument();
-    expect(
-      server.fetcher.mock.calls.some(
-        ([, options]) => options?.method === "PATCH",
-      ),
-    ).toBe(false);
+    expect(server.store.get(application().id)?.amount_rub).toBe("500000.00");
   });
 
   it("saves from the middle step and reopens all fields after reload", async () => {
@@ -219,6 +208,7 @@ describe("draft wizard", () => {
     await user.click(
       await screen.findByRole("button", { name: "Новая заявка" }),
     );
+    await user.click(await screen.findByRole("radio", { name: "Другое" }));
     await user.type(
       screen.getByLabelText("На что нужны средства"),
       "До поступления оплаты",
@@ -234,10 +224,8 @@ describe("draft wizard", () => {
       screen.getByLabelText("Сумма ожидаемого поступления"),
       "700000",
     );
-    await user.click(
-      screen.getByRole("button", { name: "Сохранить черновик" }),
-    );
-    await screen.findByText("Черновик сохранён");
+    await flushStep(user);
+    await screen.findByText("Изменения сохранены");
     expect(screen.getByLabelText("Пользование, дней")).toHaveValue("14");
     first.unmount();
     render(<App api={api} />);
@@ -264,9 +252,10 @@ describe("draft wizard", () => {
       screen.getByRole("button", { name: "Новая заявка" }),
     );
     expect(
-      screen.getByRole("heading", { name: "Расскажите о потребности" }),
+      screen.getByRole("heading", { name: "Для чего нужны деньги?" }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText("На что нужны средства")).toHaveValue("");
+    expect(screen.queryByLabelText("На что нужны средства")).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Другое" })).not.toBeChecked();
   });
 
   it("keeps the review and input on a failed save and allows retry", async () => {
@@ -275,28 +264,24 @@ describe("draft wizard", () => {
       screen.getByLabelText("На что нужны средства"),
       "Не терять сводку",
     );
-    await goTo(user, "Проверка");
     server.failNextSave(503);
-    await user.click(
-      screen.getByRole("button", { name: "Сохранить черновик" }),
-    );
+    await goTo(user, "Проверка");
+    await flushStep(user);
     await screen.findByRole("alert");
     expect(
       within(
-        screen.getByRole("region", { name: "Сводка черновика" }),
+        screen.getByRole("region", { name: "Сводка заявки" }),
       ).getByText("Не терять сводку"),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Черновик сохранён")).not.toBeInTheDocument();
-    await user.click(
-      screen.getByRole("button", { name: "Сохранить черновик" }),
-    );
-    expect(await screen.findByText("Черновик сохранён")).toBeInTheDocument();
+    expect(screen.queryByText("Изменения сохранены")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Повторить сохранение" }));
+    expect(await screen.findByText("Изменения сохранены")).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "Проверьте черновик" }),
+      screen.getByRole("heading", { name: "Проверьте заявку" }),
     ).toBeInTheDocument();
   });
 
-  it("disables navigation and duplicate saves while saving", async () => {
+  it("disables navigation and duplicate final actions while finishing", async () => {
     const server = contractServer({
       loggedIn: true,
       applications: [application()],
@@ -310,10 +295,9 @@ describe("draft wizard", () => {
       return server.fetcher(url, options);
     };
     const { user } = await openDraft(server, fetcher);
+    await user.type(screen.getByLabelText("На что нужны средства"), "Для проверки выхода");
     await goTo(user, "Проверка");
-    await user.click(
-      screen.getByRole("button", { name: "Сохранить черновик" }),
-    );
+    await user.click(screen.getByRole("button", { name: "Сохранить и выйти" }));
     expect(
       await screen.findByRole("button", { name: "Сохраняем…" }),
     ).toBeDisabled();
@@ -326,6 +310,6 @@ describe("draft wizard", () => {
     await act(async () => {
       release();
     });
-    expect(await screen.findByText("Черновик сохранён")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Мои заявки" })).toBeInTheDocument();
   });
 });

@@ -13,16 +13,19 @@ import {
 import type { EditableProps } from "./draft/DraftFields";
 import DraftReview from "./draft/DraftReview";
 import { Icon } from "./Icon";
+import { purposeOptions } from "../purposes";
+import type { SaveState } from "../autosave";
 
 interface Props extends EditableProps {
   api: Api;
   application: Application;
   companyName: string;
   errorAttempt: number;
+  purposeReset: number;
   busy: boolean;
-  saving: boolean;
-  dirty: boolean;
-  onSave: () => void;
+  saveStatus: SaveState["status"];
+  onFinish: () => void;
+  onNavigate: () => void;
   onReauthenticate: (after:()=>void) => void;
 }
 
@@ -34,11 +37,31 @@ export default function DraftForm(props: Props) {
     errors,
     errorAttempt,
     busy,
-    saving,
-    dirty,
-    onSave,
+    saveStatus,
+    onFinish,
   } = props;
   const [step, setStep] = useState<DraftStep>("need");
+  const [other, setOther] = useState(() => ({
+    reset: props.purposeReset,
+    requested: false,
+    cached: purposeOptions.includes(fields.purpose) ? "" : fields.purpose,
+  }));
+  // Explicit server reload discards local UI buffers; ordinary save does not.
+  if (other.reset !== props.purposeReset) {
+    setOther({
+      reset: props.purposeReset,
+      requested: false,
+      cached: purposeOptions.includes(fields.purpose) ? "" : fields.purpose,
+    });
+  }
+  const isOther = other.requested || (!!fields.purpose && !purposeOptions.includes(fields.purpose));
+  const purposeChoice = isOther ? "other" : fields.purpose;
+  const choosePurpose = (choice: string) => {
+    if (choice !== "other" && !purposeOptions.includes(choice)) return;
+    const custom = isOther ? fields.purpose : other.cached;
+    setOther({ ...other, requested: choice === "other", cached: custom });
+    props.onChange("purpose", choice === "other" ? custom : choice);
+  };
   const lastErrorAttempt = useRef(errorAttempt);
   const form = useRef<HTMLFormElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -66,12 +89,12 @@ export default function DraftForm(props: Props) {
   }, [step, errorAttempt]);
 
   const goTo = (next: DraftStep) => {
-    if (!busy) setStep(next);
+    if (!busy) { props.onNavigate(); setStep(next); }
   };
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (busy) return;
-    if (last) onSave();
+    if (last) onFinish();
     else goTo(draftSteps[index + 1].id);
   };
 
@@ -122,7 +145,10 @@ export default function DraftForm(props: Props) {
                 <p>{current.description}</p>
               </div>
             </div>
-            {step === "need" && <NeedFields {...props} />}
+            {step === "need" && <NeedFields {...props} purposeChoice={purposeChoice} onChoosePurpose={choosePurpose} onChange={(name, value) => {
+              if (name === "purpose") setOther((value) => ({ ...value, requested: true }));
+              props.onChange(name, value);
+            }} />}
             {step === "product" && <ProductFields {...props} catalog={calculator.catalog} />}
             {step === "details" && (
               <>
@@ -156,15 +182,15 @@ export default function DraftForm(props: Props) {
                 Назад
               </button>
             )}
-            <button
-              className={`button ${last ? "primary wizard-next" : "secondary"}`}
+            {last && <button
+              className="button primary wizard-next"
               type="button"
               disabled={busy}
-              onClick={onSave}
+              onClick={onFinish}
             >
-              {saving ? "Сохраняем…" : "Сохранить черновик"}
-              {!saving && <Icon name="check" size={18} />}
-            </button>
+              {busy ? "Сохраняем…" : "Сохранить и выйти"}
+              {!busy && <Icon name="check" size={18} />}
+            </button>}
             {!last && (
               <button
                 className="button primary wizard-next"
@@ -177,10 +203,12 @@ export default function DraftForm(props: Props) {
             )}
           </div>
           <div
-            className={`save-indicator wizard-save-indicator ${dirty ? "has-changes" : ""}`}
+            className={`save-indicator wizard-save-indicator ${saveStatus !== "saved" ? "has-changes" : ""}`}
+            role="status"
+            aria-label="Состояние сохранения"
           >
             <span className="status-dot" />
-            {dirty ? "Есть несохранённые изменения" : "Изменения сохранены"}
+            {saveStatus === "saved" ? "Изменения сохранены" : saveStatus === "saving" ? "Сохраняем…" : saveStatus === "error" ? "Не удалось сохранить изменения" : saveStatus === "invalid" ? "Уточните поля: часть изменений не сохранена" : "Есть несохранённые изменения"}
           </div>
         </form>
       </div>
@@ -195,7 +223,7 @@ export default function DraftForm(props: Props) {
             <li className="current">
               <span>1</span>
               <div>
-                <strong>Подготовка черновика</strong>
+                <strong>Подготовка заявки</strong>
                 <small>
                   Шаг {index + 1} из {draftSteps.length}:{" "}
                   {current.label.toLowerCase()}
@@ -220,20 +248,19 @@ export default function DraftForm(props: Props) {
           <div className="aside-note">
             <Icon name="shield" />
             <p>
-              Пока это черновик.
-              <br />В банк он ещё не отправлен.
+              Заявка ещё не отправлена в банк.
             </p>
           </div>
         </div>
         <div className="quiet-note">
           <Icon name="clock" size={17} />
           <p>
-            Переходы между шагами сохраняют ввод на экране. Чтобы вернуться к
-            нему позже, сохраните черновик.
+            Изменения сохраняются автоматически. Перед выходом убедитесь,
+            что отображается «Изменения сохранены».
           </p>
         </div>
         <span className="version-label">
-          Версия черновика {application.version}
+          Версия заявки {application.version}
         </span>
       </aside>
     </div>

@@ -17,7 +17,7 @@ export function LoanCalculationSummary({state,onReauthenticate}:{state:Calculato
         <div><dt>Общая сумма выплат</dt><dd>{formatMoneyRub(result.total_payment_rub)}</dd></div>
         <div><dt>Переплата</dt><dd>{formatMoneyRub(result.overpayment_rub)}</dd></div>
       </dl> : <p className={state.status==="error"?"field-error":"small-note"}>
-        {state.message??(state.catalogStatus==="loading"?"Загружаем условия…":state.status==="loading"?"Рассчитываем платёж…":state.status==="invalid"?"Уточните параметры для расчёта. Черновик можно сохранить.":"Укажите сумму и срок, чтобы увидеть платёж.")}
+        {state.message??(state.catalogStatus==="loading"?"Загружаем условия…":state.status==="loading"?"Рассчитываем платёж…":state.status==="invalid"?"Уточните параметры для расчёта. Неполные данные сохраняются.":"Укажите сумму и срок, чтобы увидеть платёж.")}
       </p>}
     </div>
     {state.status==="error" && <div className="calculator-actions">

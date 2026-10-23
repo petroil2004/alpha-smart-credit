@@ -58,7 +58,7 @@ export function formatMoneyRub(value: string | null): string {
   } catch { return value ?? "Не указано"; }
 }
 
-export function toDraftPayload(fields: DraftFields): DraftPayload {
+export function prepareDraftPayload(fields: DraftFields): { payload: DraftPayload; errors: FieldErrors } {
   const errors: FieldErrors = {};
   const money = (key: "amount_rub" | "expected_inflow_amount_rub") => {
     try {
@@ -102,6 +102,11 @@ export function toDraftPayload(fields: DraftFields): DraftPayload {
       ? money("expected_inflow_amount_rub")
       : null,
   };
+  return { payload, errors };
+}
+
+export function toDraftPayload(fields: DraftFields): DraftPayload {
+  const { payload, errors } = prepareDraftPayload(fields);
   if (Object.keys(errors).length) throw new DraftValidationError(errors);
   return payload;
 }
