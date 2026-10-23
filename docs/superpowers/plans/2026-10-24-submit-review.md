@@ -27,7 +27,7 @@
 - Конкурентные PATCH/DELETE/submit: один согласованный результат без частичного снимка и повторной истории (задача 2).
 - Старая схема и неизвестные сведения компании: миграция сохраняет данные, отсутствие финансов не становится нулём/отказом (задачи 1, 2, 4).
 
-### Задача 1: Серверные роли и минимальные сведения компании
+### Task 1: Серверные роли и минимальные сведения компании
 
 **Files:** изменить `backend/app/main.py`, `models.py`, `seed.py`, `schema_compat.py`; создать `backend/app/access.py`, `backend/app/problems.py`, `backend/app/company_profile.py`; тест `backend/tests/test_staff_access.py`; дополнить `docs/technical/api-contract.md` ссылкой на новый контракт `docs/technical/submission-contract.md`.
 
@@ -43,7 +43,7 @@
 - [ ] Дописать тест миграции: прежняя сессия и черновик доступны после двух повторов обновления схемы; профиль не получает выдуманных ИНН/финансов. Выполнить `pytest -q tests/test_staff_access.py tests/test_applications.py tests/test_deletion.py tests/test_calculator_api.py` на тестовой базе, ожидать PASS.
 - [ ] Проверить diff и сохранить только файлы задачи коммитом `feat(auth): добавить роль сотрудника и сведения компании`.
 
-### Задача 2: Отправка, снимок, история и очередь
+### Task 2: Отправка, снимок, история и очередь
 
 **Files:** создать `backend/app/submissions.py`, `backend/app/serialization.py`, `backend/tests/test_submissions.py`; изменить `models.py`, `main.py`, `schema_compat.py`, `docs/technical/submission-contract.md`.
 
@@ -63,7 +63,7 @@
 - [ ] Добавить `test_financial_period_crosses_year` и границы месяца в Europe/Moscow; проверить апрель–сентябрь при подаче 24.10.2026 и июль–декабрь при подаче 01.01.2027. Период не пересчитывается при чтении. Смена текущего каталога/названия компании не переписывает сохранённый снимок.
 - [ ] Выполнить полный `pytest -q` на отдельной тестовой БД; проверить diff и коммит `feat(applications): отправлять заявку и показывать очередь сотруднику`.
 
-### Задача 3: Клиентская отправка и кабинет сотрудника
+### Task 3: Клиентская отправка и кабинет сотрудника
 
 **Files:** изменить `frontend/src/types.ts`, `api.ts`, `App.tsx`, `hooks/useDraftAutosave.ts`, `components/DraftForm.tsx`, `components/ApplicationsList.tsx`, `components/draft/DraftReview.tsx`, `styles.css`, `test/api-fixtures.ts`, `api.test.ts`; создать `submission.ts`, `submission.test.ts`, `components/SubmittedApplication.tsx`, `components/StaffApplications.tsx`, `SubmissionFlow.test.tsx`, `StaffFlow.test.tsx`.
 
@@ -83,7 +83,7 @@
 - [ ] Написать `test staff sees queue and frozen snapshot`, `test staff cannot create draft`, `test role switch drops delayed response`, `test client cannot open staff URL`, `test same_company_different_user_invalidates_session`. Реализовать вход STAFF/очередь/карточку без будущих действий, сохранить клавиатуру и узкий экран.
 - [ ] Выполнить `npm test` и `npm run build` из frontend; ожидать все прежние 118 и новые проверки без ошибок. Проверить diff и коммит `feat(ui): отправлять заявки и добавить просмотр сотруднику`.
 
-### Задача 4: Сквозная приёмка и документация результата
+### Task 4: Сквозная приёмка и документация результата
 
 **Files:** обновить `README.md`, `frontend/README.md`, `backend/README.md`, `docs/technical/submission-contract.md`; создать `docs/technical/2026-10-24-submit-review-verification.md`.
 

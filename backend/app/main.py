@@ -19,6 +19,9 @@ from sqlalchemy.orm import Session
 from .db import Base, engine, get_db
 from .models import Account, Application, ApplicationCreation, UserSession, utc_now
 from .settings import settings
+from .problems import ApiProblem, validation_error
+from .access import CurrentAccount, ClientAccount
+from .company_profile import get_company_profile
 from .calculator import CalculationValidationError, calculate_annuity
 from .product_catalog import get_catalog
 
@@ -37,14 +40,6 @@ EDITABLE_FIELDS = {
     "expected_inflow_date",
     "expected_inflow_amount_rub",
 }
-
-
-class ApiProblem(Exception):
-    def __init__(self, status_code: int, code: str, message: str, fields: dict[str, str] | None = None):
-        self.status_code = status_code
-        self.code = code
-        self.message = message
-        self.fields = fields or {}
 
 
 class LoginPayload(BaseModel):
@@ -95,9 +90,10 @@ def request_validation_fields(error: RequestValidationError) -> dict[str, str]:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(engine)
-    from .schema_compat import allow_deleted_creation_receipts
+    from .schema_compat import allow_deleted_creation_receipts, allow_staff_accounts
 
     allow_deleted_creation_receipts(engine)
+    allow_staff_accounts(engine)
     from .seed import ensure_demo_accounts
 
     ensure_demo_accounts()
@@ -127,7 +123,7 @@ async def handle_unexpected_error(_: Request, __: Exception):
 def serialize_session(account: Account) -> dict[str, Any]:
     return {
         "user": {"id": account.id, "name": account.name, "role": account.role},
-        "company": {"id": account.company_id, "name": account.company_name},
+        "company": {"id": account.company_id, "name": account.company_name} if account.role == "CLIENT" else None,
     }
 
 
@@ -152,31 +148,6 @@ def serialize_application(application: Application) -> dict[str, Any]:
         "created_at": timestamp(application.created_at),
         "updated_at": timestamp(application.updated_at),
     }
-
-
-def current_account(request: Request, db: Session = Depends(get_db)) -> Account:
-    session_id = request.cookies.get(settings.cookie_name)
-    if not session_id:
-        raise ApiProblem(401, "UNAUTHENTICATED", "Войдите в демонстрационный аккаунт")
-
-    user_session = db.get(UserSession, session_id)
-    if not user_session or user_session.expires_at <= utc_now():
-        if user_session:
-            db.delete(user_session)
-            db.commit()
-        raise ApiProblem(401, "UNAUTHENTICATED", "Сессия истекла. Войдите снова")
-
-    account = db.get(Account, user_session.account_id)
-    if not account:
-        raise ApiProblem(401, "UNAUTHENTICATED", "Сессия недействительна. Войдите снова")
-    return account
-
-
-CurrentAccount = Annotated[Account, Depends(current_account)]
-
-
-def validation_error(fields: dict[str, str]) -> ApiProblem:
-    return ApiProblem(422, "VALIDATION_ERROR", "Проверьте заполнение полей", fields)
 
 
 def parse_money(value: str, field: str) -> Decimal:
@@ -242,7 +213,7 @@ def health() -> dict[str, str]:
 @app.post(f"{API_PREFIX}/auth/demo-login")
 def demo_login(payload: LoginPayload, response: Response, db: Session = Depends(get_db)) -> dict[str, Any]:
     account = db.get(Account, payload.account_id)
-    if not account or account.role != "CLIENT":
+    if not account or account.role not in {"CLIENT", "STAFF"} or (account.role == "CLIENT" and not account.company_id):
         raise validation_error({"account_id": "Неизвестный демонстрационный аккаунт"})
 
     session_id = secrets.token_urlsafe(32)
@@ -272,12 +243,12 @@ def me(account: CurrentAccount) -> dict[str, Any]:
 
 
 @app.get(f"{API_PREFIX}/products")
-def products(account: CurrentAccount) -> dict[str, Any]:
+def products(account: ClientAccount) -> dict[str, Any]:
     return get_catalog()
 
 
 @app.post(f"{API_PREFIX}/calculations/annuity")
-def annuity(payload: AnnuityPayload, account: CurrentAccount) -> dict[str, Any]:
+def annuity(payload: AnnuityPayload, account: ClientAccount) -> dict[str, Any]:
     amount = parse_money(payload.amount_rub, "amount_rub")
     try:
         return calculate_annuity(payload.product_code, amount, payload.term_months)
@@ -299,7 +270,7 @@ def logout(request: Request, db: Session = Depends(get_db)) -> Response:
 
 
 @app.get(f"{API_PREFIX}/applications")
-def list_applications(account: CurrentAccount, db: Session = Depends(get_db)) -> dict[str, list[dict[str, Any]]]:
+def list_applications(account: ClientAccount, db: Session = Depends(get_db)) -> dict[str, list[dict[str, Any]]]:
     applications = db.scalars(
         select(Application)
         .where(Application.company_id == account.company_id)
@@ -317,7 +288,7 @@ def creation_replay(receipt: ApplicationCreation, db: Session):
 
 @app.post(f"{API_PREFIX}/applications")
 def create_application(
-    account: CurrentAccount,
+    account: ClientAccount,
     db: Session = Depends(get_db),
     body: Any = Body(...),
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
@@ -359,7 +330,7 @@ def create_application(
 
 
 @app.get(f"{API_PREFIX}/applications/{{application_id}}")
-def get_application(application_id: uuid.UUID, account: CurrentAccount, db: Session = Depends(get_db)):
+def get_application(application_id: uuid.UUID, account: ClientAccount, db: Session = Depends(get_db)):
     return serialize_application(application_for_account(application_id, account, db))
 
 
@@ -367,7 +338,7 @@ def get_application(application_id: uuid.UUID, account: CurrentAccount, db: Sess
 def update_application(
     application_id: uuid.UUID,
     payload: PatchPayload,
-    account: CurrentAccount,
+    account: ClientAccount,
     db: Session = Depends(get_db),
 ):
     application = application_for_account(application_id, account, db, lock=True)
@@ -406,7 +377,7 @@ def update_application(
 def delete_application(
     application_id: uuid.UUID,
     version: Annotated[int, Query(gt=0)],
-    account: CurrentAccount,
+    account: ClientAccount,
     db: Session = Depends(get_db),
 ):
     application = application_for_account(application_id, account, db, lock=True)
@@ -421,3 +392,8 @@ def delete_application(
     db.delete(application)
     db.commit()
     return Response(status_code=204)
+
+
+@app.get(f"{API_PREFIX}/company-profile")
+def company_profile(account: ClientAccount):
+    return get_company_profile(account)

@@ -20,8 +20,8 @@ class Account(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     role: Mapped[str] = mapped_column(String(32), nullable=False, default="CLIENT")
-    company_id: Mapped[str] = mapped_column(String(64), nullable=False)
-    company_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    company_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    company_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
 
 class UserSession(Base):
