@@ -58,14 +58,14 @@ export default function ApplicationsList({
           <div className="application-list">
             {items.map((item) => (
               <article className="application-row" key={item.id}>
-                <button className="application-open" disabled={busy} onClick={() => onOpen(item.id)} aria-label={`Открыть заявку ${item.id.slice(-6)}`}>
+                <button className="application-open" disabled={busy} onClick={() => onOpen(item.id)} aria-label={`Открыть заявку ${item.id.slice(-6)}`} aria-describedby={`application-details-${item.id} application-amount-${item.id}`}>
                   <span className="row-icon"><Icon name="document" /></span>
-                  <span className="row-main">
+                  <span className="row-main" id={`application-details-${item.id}`}>
                     <span className="row-topline">№ {item.id.slice(-6)} <span className="draft-badge">{item.status === "DRAFT" ? "Черновик" : "Заявка"}</span></span>
                     <span className="row-title">{products.find(product => product.code === item.product_code)?.title || "Новая заявка"}</span>
                     <span className="row-purpose">{item.purpose || "Расскажите о задаче вашего бизнеса"}</span>
                   </span>
-                  <span className="row-amount">
+                  <span className="row-amount" id={`application-amount-${item.id}`}>
                     <strong>{amountText(item.amount_rub)}</strong>
                     <small>{new Intl.DateTimeFormat("ru-RU", {day:"numeric", month:"short"}).format(new Date(item.updated_at))}</small>
                   </span>

@@ -92,3 +92,8 @@ it("refreshes a stale version before allowing a new deletion attempt", async () 
   await h.user.click(screen.getByRole("button", {name:/Удалить черновик/}));
   await waitFor(()=>expect(screen.getByText("Пока ни одной заявки")).toBeInTheDocument());
 });
+
+it("exposes the visible purpose and amount as the card's accessible description", async () => {
+  await setup();
+  expect(screen.getByRole("button", {name:/Открыть заявку/})).toHaveAccessibleDescription(/Купить витрину.*Сумма не указана/);
+});

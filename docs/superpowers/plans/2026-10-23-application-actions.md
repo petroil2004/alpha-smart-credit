@@ -21,13 +21,15 @@
 5. Account switch and network/server failure must not remove a wrong card or claim false success.
 
 ## Task 1: Backend deletion and compatibility
-- [ ] RED tests in backend/tests/test_deletion.py: DELETE success with persisted absence, replay410, 401/foreign404, non-DRAFT409, stale409, same-key independence, migration twice, concurrent PATCH/DELETE.
-- [ ] Implement nullable ApplicationCreation.application_id, app/schema_compat.py migration; run after create_all. Extend create replay for tombstones. Add versioned authenticated DELETE with row lock; unlink creation receipts, delete row, commit atomically.
-- [ ] Run dedicated PostgreSQL tests via temporary Compose backend container with source mounted; full backend suite. Document endpoint/migration, commit.
+- [x] RED tests in backend/tests/test_deletion.py: DELETE success with persisted absence, replay410, 401/foreign404, non-DRAFT409, stale409, same-key independence, migration twice, concurrent PATCH/DELETE.
+- [x] Implement nullable ApplicationCreation.application_id, app/schema_compat.py migration; run after create_all. Extend create replay for tombstones. Add versioned authenticated DELETE with row lock; unlink creation receipts, delete row, commit atomically.
+- [x] Run dedicated PostgreSQL tests via temporary Compose backend container with source mounted; full backend suite. Document endpoint/migration, commit.
 
 ## Task 2: Frontend actions and placement
-- [ ] RED user-flow tests for product-step assistant/retained expansion, text and keyboard opening, delete confirm/cancel/error/delay, status visibility and profile switch.
-- [ ] Add Api.remove(id,version); App guarded delete, list removes only after204 and updates count. Accessible full-card open and separate delete button; keep arrow as decorative cue.
-- [ ] Move AssistantPreview out of NeedFields into product step below ProductFields, keep expansion state in DraftForm. Update old UI tests to same behavior on product step.
-- [ ] Full frontend tests/build; live browser backend/PostgreSQL QA on own synthetic application, responsive check; update truthful docs and common policy.
-- [ ] One final independent whole-branch review; single RED→GREEN fix pass if needed; keep branch for user, no unsolicited merge/push.
+- [x] RED user-flow tests for product-step assistant/retained expansion, text and keyboard opening, delete confirm/cancel/error/delay, status visibility and profile switch.
+- [x] Add Api.remove(id,version); App guarded delete, list removes only after204 and updates count. Accessible full-card open and separate delete button; keep arrow as decorative cue.
+- [x] Move AssistantPreview out of NeedFields into product step below ProductFields, keep expansion state in DraftForm. Update old UI tests to same behavior on product step.
+- [x] Full frontend tests/build; live browser backend/PostgreSQL QA on own synthetic application, responsive check; update truthful docs and common policy.
+- [x] One final independent whole-branch review; single RED→GREEN fix pass if needed; keep branch for user, no unsolicited merge/push.
+
+Verification note: desktop placement and mobile list were visually checked. Native browser confirmation and subsequent navigation stalled the automation; confirm/cancel are covered by component tests, live DELETE was verified through the real HTTP API/PostgreSQL on an executor-created temporary draft. Full manual dialog click remains for user review.
