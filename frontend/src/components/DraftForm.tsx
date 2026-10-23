@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import type { Api, Application } from "../types";
+import type { Api, Application, CompanyProfile } from "../types";
 import { useLoanCalculator } from "../hooks/useLoanCalculator";
 import LoanCalculator, { LoanCalculationSummary } from "./draft/LoanCalculator";
 import { draftSteps } from "../draft-steps";
@@ -24,7 +24,10 @@ interface Props extends EditableProps {
   errorAttempt: number;
   busy: boolean;
   saveStatus: SaveState["status"];
+  resetVersion: number;
   onFinish: () => void;
+  onSubmitApplication: (versions: {profile_version:string;catalog_version:string}) => void;
+  onSessionChanged: () => void;
   onNavigate: () => void;
   onReauthenticate: (after:()=>void) => void;
 }
@@ -39,6 +42,21 @@ export default function DraftForm(props: Props) {
     saveStatus,
     onFinish,
   } = props;
+  const [profile,setProfile]=useState<CompanyProfile|null>(null);
+  const [profileError,setProfileError]=useState<string|null>(null);
+  const [profileAttempt,setProfileAttempt]=useState(0);
+  const [confirmedStamp,setConfirmedStamp]=useState<string|null>(null);
+  useEffect(()=>{
+    let active=true;
+    setProfile(null);setProfileError(null);
+    props.api.companyProfile().then(value=>{
+      if(!active)return;
+      if(value.company_id!==application.company_id){props.onSessionChanged();return;}
+      if(!value.profile_version || !value.company_name || value.source!=='BANK_DATA')throw Error();
+      setProfile(value);
+    }).catch(()=>{if(active)setProfileError('Не удалось загрузить сведения компании. Повторите загрузку.');});
+    return()=>{active=false;};
+  },[props.api,application.id,profileAttempt,props.resetVersion]);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [step, setStep] = useState<DraftStep>("product");
   const lastErrorAttempt = useRef(errorAttempt);
@@ -48,7 +66,20 @@ export default function DraftForm(props: Props) {
   const current = draftSteps[index];
   const last = index === draftSteps.length - 1;
   const calculator = useLoanCalculator(props.api, fields, application.id);
-  const reauthenticate = () => props.onReauthenticate(calculator.retryCatalog);
+  const previousReset=useRef(props.resetVersion);
+  useEffect(()=>{
+    if(previousReset.current===props.resetVersion)return;
+    previousReset.current=props.resetVersion;
+    setConfirmedStamp(null);
+    calculator.retryCatalog();
+  },[props.resetVersion]);
+  const reauthenticate = () => props.onReauthenticate(()=>{calculator.retryCatalog();setProfileAttempt(n=>n+1);setConfirmedStamp(null);});
+  const confirmationStamp=JSON.stringify([fields,profile?.profile_version,calculator.catalog?.catalog_version,props.resetVersion]);
+  const confirmed=confirmedStamp===confirmationStamp;
+  const companyBlock=<section className="company-summary" aria-label="Сведения компании"><h3>Компания</h3>
+    <p>{profile?.company_name ?? props.companyName}</p><p className="small-note">Демонстрационные данные · {application.company_id}</p>
+    {profileError && <p role="alert">{profileError} <button type="button" className="text-button" onClick={()=>setProfileAttempt(n=>n+1)}>Повторить загрузку сведений</button></p>}
+  </section>;
 
   useEffect(() => {
     if (lastErrorAttempt.current === errorAttempt) return;
@@ -116,6 +147,7 @@ export default function DraftForm(props: Props) {
             </>}
             {step === "details" && (
               <>
+                {companyBlock}
                 {fields.product_code && fields.product_code !== "overdraft"
                   ? <LoanCalculator fields={fields} onChange={props.onChange} errors={errors} state={calculator} onReauthenticate={reauthenticate}/>
                   : <><MoneyField {...props} name="amount_rub" label="Сумма финансирования" /><ParameterFields {...props} />{fields.product_code === "overdraft" && <p className="small-note">Калькулятор овердрафта пока недоступен.</p>}</>}
@@ -132,8 +164,10 @@ export default function DraftForm(props: Props) {
               </>
             )}
             {step === "review" && (
-              <><DraftReview fields={fields} onEdit={goTo} busy={busy} />
-              {fields.product_code && <LoanCalculationSummary state={calculator} onReauthenticate={reauthenticate}/>}</>
+              <>{companyBlock}<DraftReview fields={fields} onEdit={goTo} busy={busy} />
+              {fields.product_code && <LoanCalculationSummary state={calculator} onReauthenticate={reauthenticate}/>}
+              {fields.product_code==='working_capital' ? <label className="submission-confirmation"><input type="checkbox" checked={confirmed} disabled={busy || !profile || !calculator.catalog} onChange={e=>setConfirmedStamp(e.target.checked?confirmationStamp:null)}/><span>Подтверждаю актуальность указанных сведений и выбранные параметры заявки</span></label> : <p className="small-note">Отправка этого продукта пока недоступна. Можно сохранить черновик и вернуться позже.</p>}
+              </>
             )}
           </fieldset>
           <div className="wizard-navigation">
@@ -148,7 +182,7 @@ export default function DraftForm(props: Props) {
               </button>
             )}
             {last && <button
-              className="button primary wizard-next"
+              className="button secondary wizard-next"
               type="button"
               disabled={busy}
               onClick={onFinish}
@@ -156,6 +190,9 @@ export default function DraftForm(props: Props) {
               {busy ? "Сохраняем…" : "Сохранить и выйти"}
               {!busy && <Icon name="check" size={18} />}
             </button>}
+            {last && fields.product_code==='working_capital' && <button className="button primary" type="button" disabled={busy || !confirmed || !profile || !calculator.catalog} onClick={()=>{
+              if(profile && calculator.catalog && confirmed)props.onSubmitApplication({profile_version:profile.profile_version,catalog_version:calculator.catalog.catalog_version});
+            }}>{busy ? 'Отправляем…' : 'Отправить заявку'}</button>}
             {!last && (
               <button
                 className="button primary wizard-next"

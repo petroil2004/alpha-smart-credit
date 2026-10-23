@@ -1,8 +1,8 @@
 import { vi } from "vitest";
-import type { Application, Session } from "../types";
+import type { Application, Session, ClientSession, SubmitInput } from "../types";
 import { annuityResult, catalog } from "./calculator-fixtures";
 
-export const session: Session = {
+export const session: ClientSession = {
   user: { id: "demo-client-1", name: "Демо-клиент 1", role: "CLIENT" },
   company: { id: "demo-company-1", name: "ООО «Демо Торг»" },
 };
@@ -43,6 +43,8 @@ export function contractServer(
   let nextDeleteError: number | null = null;
   let deleteGate: Promise<void> | null = null;
   let nextCreateError = false;
+  let nextSubmitError = false;
+  const submissions = new Map<string, {body: SubmitInput; item: Application}>();
   let createGate: Promise<void> | null = null;
   let saveGate: Promise<void> | null = null;
   const json = (data: unknown, status = 200) =>
@@ -55,8 +57,12 @@ export function contractServer(
     const method = init?.method ?? "GET";
     const body = init?.body ? JSON.parse(String(init.body)) : {};
     if (path === "/auth/demo-login" && method === "POST") {
-      if (!["demo-client-1", "demo-client-2"].includes(body.account_id))
+      if (!["demo-client-1", "demo-client-2", "demo-staff-1"].includes(body.account_id))
         return error(422, "VALIDATION_ERROR", "Неизвестный профиль");
+      if (body.account_id === "demo-staff-1") {
+        current = {user:{id:'demo-staff-1',name:'Демо-сотрудник',role:'STAFF'},company:null};
+        return json(current);
+      }
       current =
         body.account_id === "demo-client-1"
           ? structuredClone(session)
@@ -76,13 +82,21 @@ export function contractServer(
     }
     if (!current) return error(401, "UNAUTHENTICATED", "Войдите в кабинет");
     if (path === "/me" && method === "GET") return json(current);
+    if (path.startsWith('/staff/applications')) {
+      if (current.user.role !== 'STAFF') return error(403,'FORBIDDEN','Только сотрудник');
+      if (path === '/staff/applications') return json({items:[...store.values()].filter(item=>item.status === 'UNDER_REVIEW')});
+      const item=store.get(decodeURIComponent(path.split('/')[3]));
+      return item?.status === 'UNDER_REVIEW' ? json(item) : error(404,'NOT_FOUND','Заявка не найдена');
+    }
+    if (!current.company) return error(403,'FORBIDDEN','Только клиент');
+    if (path === '/company-profile') return json({company_id:current.company.id,company_name:current.company.name,profile_version:'profile-v1',source:'BANK_DATA'});
     if (path === "/products" && method === "GET") return json(catalog);
     if (path === "/calculations/annuity" && method === "POST")
       return json(annuityResult({ product_code: body.product_code, amount_rub: body.amount_rub, term_months: body.term_months }));
     if (path === "/applications" && method === "GET")
       return json({
         items: [...store.values()].filter(
-          (item) => item.company_id === current!.company.id,
+          (item) => item.company_id === current!.company!.id,
         ),
       });
     if (path === "/applications" && method === "POST") {
@@ -111,6 +125,20 @@ export function contractServer(
     const item = store.get(id);
     if (!item || item.company_id !== current.company.id)
       return error(404, "NOT_FOUND", "Заявка не найдена");
+    if (path.endsWith('/submit') && method === 'POST') {
+      const key=new Headers(init?.headers).get('Idempotency-Key')!;
+      const existing=submissions.get(key);
+      if(existing) return JSON.stringify(existing.body)===JSON.stringify(body) ? json(existing.item) : error(409,'IDEMPOTENCY_CONFLICT','Ключ уже использован');
+      if(item.status!=='DRAFT') return error(409,'APPLICATION_NOT_DRAFT','Уже отправлено');
+      if(body.version!==item.version) return error(409,'VERSION_CONFLICT','Версия изменилась');
+      if(!item.purpose?.trim()) return json({error:{code:'VALIDATION_ERROR',message:'Проверьте поля',fields:{purpose:'Укажите, на что нужны средства'}}},422);
+      const now='2026-10-24T10:00:00Z';
+      const sent:Application={...item,status:'UNDER_REVIEW',version:item.version+1,company_name:current.company.name,submitted_at:now,
+        submission:{submitted_at:now,submitted_by:current.user.id,snapshot:{application:item,company:{company_id:current.company.id,company_name:current.company.name,profile_version:'profile-v1',source:'BANK_DATA'},calculation:annuityResult({product_code:'working_capital',amount_rub:item.amount_rub!,term_months:item.term_months!}),financial_period:{start_date:'2026-04-01',end_date:'2026-09-30'},confirmed_at:now,confirmed_by:current.user.id}},history:[]};
+      store.set(id,sent);submissions.set(key,{body,item:sent});
+      if(nextSubmitError){nextSubmitError=false;throw new TypeError('Lost reply');}
+      return json(sent);
+    }
     if (method === "GET") return json(item);
     if (method === "DELETE") {
       if (deleteGate) await deleteGate;
@@ -141,6 +169,7 @@ export function contractServer(
             : "Не удалось сохранить",
         );
       }
+      if (item.status !== "DRAFT") return error(409,"APPLICATION_NOT_DRAFT","Только черновик");
       if (body.version !== item.version)
         return error(409, "VERSION_CONFLICT", "Заявка уже изменена");
       const updated = {
@@ -157,6 +186,8 @@ export function contractServer(
   return {
     fetcher,
     store,
+    setSession: (value: Session | null) => {current=value;},
+    failNextSubmitAfterCommit: () => { nextSubmitError=true; },
     failNextSave: (status: number) => {
       nextSaveError = status;
     },
