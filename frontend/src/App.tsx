@@ -364,6 +364,9 @@ export default function App({ api = defaultApi }: { api?: Api }) {
         await verifySession();
         const application = await getFor(selected.id,sessionRef.current!);
         await verifySession();
+        // Recovery is explicit and follows an authoritative, authorised server read.
+        // A new submission still needs fresh confirmation; no POST is retried here.
+        if(receiptBlocked && sessionRef.current?.company)clearAttempt(sessionRef.current.user.id,application.id);
         upsert(application);
         adopt(application);
         setPurposeReset((value) => value + 1);

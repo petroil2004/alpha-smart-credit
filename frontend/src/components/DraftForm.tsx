@@ -75,6 +75,8 @@ export default function DraftForm(props: Props) {
   },[props.resetVersion]);
   const reauthenticate = () => props.onReauthenticate(()=>{calculator.retryCatalog();setProfileAttempt(n=>n+1);setConfirmedStamp(null);});
   const confirmationStamp=JSON.stringify([fields,profile?.profile_version,calculator.catalog?.catalog_version,props.resetVersion]);
+  useEffect(()=>{setConfirmedStamp(null);},[confirmationStamp]);
+  const calculationReady=calculator.status==='ready' && !!calculator.result;
   const confirmed=confirmedStamp===confirmationStamp;
   const companyBlock=<section className="company-summary" aria-label="Сведения компании"><h3>Компания</h3>
     <p>{profile?.company_name ?? props.companyName}</p><p className="small-note">Демонстрационные данные · {application.company_id}</p>
@@ -166,7 +168,7 @@ export default function DraftForm(props: Props) {
             {step === "review" && (
               <>{companyBlock}<DraftReview fields={fields} onEdit={goTo} busy={busy} />
               {fields.product_code && <LoanCalculationSummary state={calculator} onReauthenticate={reauthenticate}/>}
-              {fields.product_code==='working_capital' ? <label className="submission-confirmation"><input type="checkbox" checked={confirmed} disabled={busy || !profile || !calculator.catalog} onChange={e=>setConfirmedStamp(e.target.checked?confirmationStamp:null)}/><span>Подтверждаю актуальность указанных сведений и выбранные параметры заявки</span></label> : <p className="small-note">Отправка этого продукта пока недоступна. Можно сохранить черновик и вернуться позже.</p>}
+              {fields.product_code==='working_capital' ? <label className="submission-confirmation"><input type="checkbox" checked={confirmed} disabled={busy || !profile || !calculator.catalog || !calculationReady} onChange={e=>setConfirmedStamp(e.target.checked?confirmationStamp:null)}/><span>Подтверждаю актуальность указанных сведений и выбранные параметры заявки</span></label> : <p className="small-note">Отправка этого продукта пока недоступна. Можно сохранить черновик и вернуться позже.</p>}
               </>
             )}
           </fieldset>
@@ -190,8 +192,8 @@ export default function DraftForm(props: Props) {
               {busy ? "Сохраняем…" : "Сохранить и выйти"}
               {!busy && <Icon name="check" size={18} />}
             </button>}
-            {last && fields.product_code==='working_capital' && <button className="button primary" type="button" disabled={busy || !confirmed || !profile || !calculator.catalog} onClick={()=>{
-              if(profile && calculator.catalog && confirmed)props.onSubmitApplication({profile_version:profile.profile_version,catalog_version:calculator.catalog.catalog_version});
+            {last && fields.product_code==='working_capital' && <button className="button primary" type="button" disabled={busy || !confirmed || !profile || !calculator.catalog || !calculationReady} onClick={()=>{
+              if(profile && calculator.catalog && confirmed && calculationReady)props.onSubmitApplication({profile_version:profile.profile_version,catalog_version:calculator.catalog.catalog_version});
             }}>{busy ? 'Отправляем…' : 'Отправить заявку'}</button>}
             {!last && (
               <button

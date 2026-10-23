@@ -132,3 +132,42 @@ it('catalog conflict refreshes shown conditions and requires fresh confirmation'
  expect(checkbox()).not.toBeChecked();
  await waitFor(()=>expect(api.products).toHaveBeenCalledTimes(2));
 });
+
+it('confirmation stays reset after editing then reverting the same values',async()=>{
+ const h=await setup();await waitFor(()=>expect(checkbox()).not.toBeDisabled());
+ await h.user.click(checkbox());
+ await h.user.click(screen.getByRole('button',{name:'Изменить потребность'}));
+ const field=screen.getByLabelText('На что нужны средства');
+ fireEvent.change(field,{target:{value:'Другое значение'}});
+ fireEvent.change(field,{target:{value:'Закупка товаров'}});
+ await h.user.click(screen.getByRole('button',{name:'Перейти к шагу «Проверка»'}));
+ expect(checkbox()).not.toBeChecked();expect(send()).toBeDisabled();
+});
+
+it('submission requires a ready calculation shown to the client',async()=>{
+ const item=application({purpose:'Закупка',product_code:'working_capital',amount_rub:'3000000.00',term_months:36});
+ const server=contractServer({loggedIn:true,applications:[item]});
+ const api={...createApi(server.fetcher),calculateAnnuity:async()=>{throw new ApiError(503,'SERVER_ERROR','Расчёт недоступен');}};
+ const user=userEvent.setup();render(<App api={api}/>);
+ await user.click(await screen.findByRole('button',{name:/Открыть заявку/}));
+ await user.click(screen.getByRole('button',{name:'Перейти к шагу «Проверка»'}));
+ await screen.findByText('Расчёт недоступен');
+ expect(checkbox()).toBeDisabled();expect(send()).toBeDisabled();
+ expect(screen.getByRole('button',{name:'Сохранить и выйти'})).toBeEnabled();
+});
+
+it('explicit server state check recovers a corrupt local retry receipt',async()=>{
+ const h=await setup();
+ // A damaged local receipt does not change the authoritative server DRAFT.
+ const {saveAttempt}=await import('./submission');
+ saveAttempt('demo-client-1',h.item.id,{key:crypto.randomUUID(),body:{version:1,profile_version:'profile-v1',catalog_version:'2026-10-23.1',confirmed:true}});
+ sessionStorage.setItem(sessionStorage.key(0)!,'{damaged');
+ h.view.unmount();render(<App api={h.api}/>);
+ const recovery=await screen.findByRole('button',{name:'Обновить карточку'});
+ await h.user.click(recovery);
+ await h.user.click(await screen.findByRole('button',{name:'Перейти к шагу «Проверка»'}));
+ await waitFor(()=>expect(checkbox()).not.toBeDisabled());
+ expect(checkbox()).not.toBeChecked();
+ await h.user.click(checkbox());await h.user.click(send());
+ expect(await screen.findByRole('heading',{name:'Заявка на рассмотрении'})).toBeInTheDocument();
+});
