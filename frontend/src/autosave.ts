@@ -95,6 +95,10 @@ export class DraftAutosave {
         if (result.company_id !== this.saved.company_id || result.id !== this.saved.id) {
           throw new ApiError(401, "SESSION_CHANGED", "Профиль изменился. Войдите в кабинет заново.");
         }
+        if (!Number.isSafeInteger(result.version) || result.version <= this.saved.version ||
+            Object.entries(p.patch).some(([key, value]) => result[key as keyof DraftPayload] !== value)) {
+          throw new ApiError(502, "INVALID_SAVE_RESPONSE", "Сервер не подтвердил сохранение изменений. Повторите попытку.");
+        }
         this.saved = result;
         this.onSaved(result);
       } catch (issue) {

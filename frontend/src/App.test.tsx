@@ -1,3 +1,4 @@
+import { flushStep } from "./test/save-helpers";
 import {
   act,
   fireEvent,
@@ -22,7 +23,7 @@ async function openExisting(
   const user = userEvent.setup();
   const view = render(<App api={createApi(server.fetcher)} />);
   await user.click(
-    await screen.findByRole("button", { name: /Открыть черновик/ }),
+    await screen.findByRole("button", { name: /Открыть заявку/ }),
   );
   await user.click(await screen.findByRole("radio", { name: "Другое" }));
   return { user, server, ...view };
@@ -146,10 +147,8 @@ describe("client draft journey", () => {
     await user.click(screen.getByRole("radio", { name: /Оборотный кредит/ }));
     await goToStep(user, "Параметры");
     await user.type(screen.getByLabelText("Срок, месяцев"), "12");
-    await user.click(
-      screen.getByRole("button", { name: "Сохранить черновик" }),
-    );
-    expect(await screen.findByText("Черновик сохранён")).toBeInTheDocument();
+    await flushStep(user);
+    expect(await screen.findByText("Изменения сохранены")).toBeInTheDocument();
     first.unmount();
     render(<App api={api} />);
     expect(
@@ -169,18 +168,16 @@ describe("client draft journey", () => {
       "Не терять этот текст",
     );
     server.failNextSave(503);
-    await user.click(
-      screen.getByRole("button", { name: "Сохранить черновик" }),
-    );
+    await flushStep(user);
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "временно недоступен",
     );
     expect(
       screen.getByRole("textbox", { name: "На что нужны средства" }),
     ).toHaveValue("Не терять этот текст");
-    expect(screen.queryByText("Черновик сохранён")).not.toBeInTheDocument();
+    expect(screen.queryByText("Изменения сохранены")).not.toBeInTheDocument();
     expect(
-      screen.getByText("Есть несохранённые изменения"),
+      screen.getByText("Не удалось сохранить изменения"),
     ).toBeInTheDocument();
   });
 
@@ -194,9 +191,7 @@ describe("client draft journey", () => {
       application().id,
       application({ purpose: "Сохранено в другом окне", version: 2 }),
     );
-    await user.click(
-      screen.getByRole("button", { name: "Сохранить черновик" }),
-    );
+    await flushStep(user);
     expect(await screen.findByRole("alert")).toHaveTextContent("изменена");
     expect(
       screen.getByRole("textbox", { name: "На что нужны средства" }),
@@ -232,7 +227,7 @@ describe("client draft journey", () => {
       screen.queryByDisplayValue("Сведения первой компании"),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /Открыть черновик/ }),
+      screen.queryByRole("button", { name: /Открыть заявку/ }),
     ).not.toBeInTheDocument();
   });
 
@@ -335,28 +330,25 @@ describe("client draft journey", () => {
       "Ввод до истечения сессии",
     );
     server.failNextSave(401);
-    await user.click(
-      screen.getByRole("button", { name: "Сохранить черновик" }),
-    );
+    await flushStep(user);
     await user.click(
       await screen.findByRole("button", { name: "Войти снова" }),
     );
     expect(
       screen.getByRole("textbox", { name: "На что нужны средства" }),
     ).toHaveValue("Ввод до истечения сессии");
-    await user.click(
-      screen.getByRole("button", { name: "Сохранить черновик" }),
-    );
-    expect(await screen.findByText("Черновик сохранён")).toBeInTheDocument();
+    await flushStep(user);
+    expect(await screen.findByText("Изменения сохранены")).toBeInTheDocument();
   });
 
   it("keeps unsaved input when leaving the form is declined", async () => {
-    const { user } = await openExisting();
+    const { user, server } = await openExisting();
     await user.type(
       screen.getByRole("textbox", { name: "На что нужны средства" }),
       "Остаться на форме",
     );
     vi.spyOn(window, "confirm").mockReturnValue(false);
+    server.failNextSave(503);
     await user.click(screen.getByRole("button", { name: "Все заявки" }));
     expect(
       screen.getByRole("textbox", { name: "На что нужны средства" }),
@@ -369,9 +361,7 @@ describe("client draft journey", () => {
       screen.getByRole("textbox", { name: "Сумма финансирования" }),
       "-12",
     );
-    await user.click(
-      screen.getByRole("button", { name: "Сохранить черновик" }),
-    );
+    await flushStep(user);
     expect(
       await screen.findByText(/Укажите положительную сумму/),
     ).toBeInTheDocument();

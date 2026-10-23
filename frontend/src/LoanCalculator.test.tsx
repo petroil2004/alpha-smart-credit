@@ -1,3 +1,4 @@
+import { flushStep } from "./test/save-helpers";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -28,20 +29,20 @@ describe("loan calculator in draft wizard",()=>{
     await user.click(screen.getByRole("button",{name:"Перейти к шагу «Потребность»"}));
     expect(screen.getByLabelText("Сумма финансирования")).toHaveValue("2 000 000,01");
   });
-  it("shows the same result in review and only explicitly saves",async()=>{
+  it("shows the same result in review without calculation-triggered writes",async()=>{
     const {user,server}=await open();await screen.findByText("119 279,48 ₽");
     expect(server.fetcher.mock.calls.some(([,o])=>o?.method==="PATCH")).toBe(false);
     await user.click(screen.getByRole("button",{name:"Перейти к шагу «Проверка»"}));
     expect(within(screen.getByRole("region",{name:"Предварительный расчёт платежа"})).getByText("119 279,48 ₽")).toBeInTheDocument();
-    await user.click(screen.getByRole("button",{name:"Сохранить черновик"}));
-    await screen.findByText("Черновик сохранён");
+    await flushStep(user);
+    await screen.findByText("Изменения сохранены");
     expect(server.store.values().next().value?.amount_rub).toBe("3000000.00");
   });
   it.each([null,"1234.50","9007199254740993.01"])("preserves blank/legacy values %s and allows save",async amount=>{
     const {user,server}=await open(amount);await screen.findByRole("slider",{name:"Сумма финансирования, ползунок"});
     expect(screen.getByLabelText("Сумма финансирования")).toHaveValue(amount??"");
     expect(server.fetcher.mock.calls.some(([url])=>String(url).includes("calculations"))).toBe(false);
-    await user.click(screen.getByRole("button",{name:"Сохранить черновик"}));await screen.findByText("Черновик сохранён");
+    await flushStep(user);await screen.findByText("Изменения сохранены");
     expect(server.store.values().next().value?.amount_rub).toBe(amount);
   });
   it("keeps manual editing and save when the catalog is unavailable",async()=>{
@@ -50,9 +51,9 @@ describe("loan calculator in draft wizard",()=>{
     const {user}=await open("3000000.00",api);
     expect(await screen.findByRole("button",{name:"Повторить загрузку условий"})).toBeInTheDocument();
     expect(screen.getByLabelText("Сумма финансирования")).toHaveValue("3000000.00");
-    await user.click(screen.getByRole("button",{name:"Сохранить черновик"}));await screen.findByText("Черновик сохранён");
+    await flushStep(user);await screen.findByText("Изменения сохранены");
   });
-  it("lets save during a pending calculation and disables sliders while saving",async()=>{
+  it("saves during a pending calculation while keeping sliders active",async()=>{
     const server=contractServer({loggedIn:true,applications:[application({product_code:"working_capital",amount_rub:"3000000.00",term_months:36})]});
     let finish!:()=>void;server.holdSaves(new Promise<void>(resolve=>{finish=resolve;}));
     const api={...createApi(server.fetcher),calculateAnnuity:vi.fn(()=>new Promise<ReturnType<typeof annuityResult>>(()=>{}))};
@@ -60,8 +61,8 @@ describe("loan calculator in draft wizard",()=>{
     const slider=await screen.findByRole("slider",{name:"Сумма финансирования, ползунок"});
     await waitFor(()=>expect(api.calculateAnnuity).toHaveBeenCalled());
     fireEvent.change(slider,{target:{value:"2000000"}});
-    await user.click(screen.getByRole("button",{name:"Сохранить черновик"}));
-    expect(slider).toBeDisabled();await act(async()=>finish());
-    await screen.findByText("Черновик сохранён");expect(slider).not.toBeDisabled();
+    await flushStep(user);
+    expect(slider).not.toBeDisabled();await act(async()=>finish());
+    await screen.findByText("Изменения сохранены");expect(slider).not.toBeDisabled();
   });
 });

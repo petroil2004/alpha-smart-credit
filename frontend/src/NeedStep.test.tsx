@@ -1,3 +1,4 @@
+import { flushStep } from "./test/save-helpers";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
@@ -23,16 +24,16 @@ it.each([
   "Купить оборудование",
   "Дождаться оплаты от покупателя",
   "Подготовиться к сезону",
-])("saves preset %s only on explicit save and restores selection", async (purpose) => {
+])("saves preset %s on navigation and restores selection", async (purpose) => {
   const h = await open();
   expect(screen.queryByLabelText("На что нужны средства")).not.toBeInTheDocument();
   await h.user.click(screen.getByRole("radio", { name: purpose }));
   expect(h.server.store.get(h.item.id)?.purpose).toBeNull();
   expect(h.server.fetcher.mock.calls.filter(([, init]) => init?.method === "PATCH")).toHaveLength(0);
   await h.user.click(screen.getByRole("button", { name: "Перейти к шагу «Проверка»" }));
-  expect(within(screen.getByRole("region", { name: "Сводка черновика" })).getByText(purpose)).toBeInTheDocument();
-  await h.user.click(screen.getByRole("button", { name: "Сохранить черновик" }));
-  await screen.findByText("Черновик сохранён");
+  expect(within(screen.getByRole("region", { name: "Сводка заявки" })).getByText(purpose)).toBeInTheDocument();
+  await flushStep(h.user);
+  await screen.findByText("Изменения сохранены");
   expect(h.server.store.get(h.item.id)).toMatchObject({ purpose, product_code: null });
   h.unmount();
   render(<App api={h.api} />);
@@ -51,8 +52,8 @@ it("retains custom description across preset choices, steps and saved reload", a
   await h.user.click(screen.getByRole("button", { name: "Перейти к шагу «Потребность»" }));
   await h.user.click(screen.getByRole("radio", { name: "Другое" }));
   expect(screen.getByLabelText("На что нужны средства")).toHaveValue("Купить холодильную витрину для магазина");
-  await h.user.click(screen.getByRole("button", { name: "Сохранить черновик" }));
-  await screen.findByText("Черновик сохранён");
+  await flushStep(h.user);
+  await screen.findByText("Изменения сохранены");
   h.unmount();
   render(<App api={h.api} />);
   expect(await screen.findByLabelText("На что нужны средства")).toHaveValue("Купить холодильную витрину для магазина");
@@ -63,8 +64,8 @@ it("opens Other without filling a fake purpose and permits incomplete save", asy
   const h = await open();
   await h.user.click(screen.getByRole("radio", { name: "Другое" }));
   expect(screen.getByLabelText("На что нужны средства")).toHaveValue("");
-  await h.user.click(screen.getByRole("button", { name: "Сохранить черновик" }));
-  await screen.findByText("Черновик сохранён");
+  await flushStep(h.user);
+  await screen.findByText("Изменения сохранены");
   expect(h.server.store.get(h.item.id)?.purpose).toBeNull();
 });
 
@@ -72,8 +73,9 @@ it.each(["Купить оборудование", null])("discards local purpose
   const h = await open("Локальное описание, от которого откажусь");
   await h.user.click(screen.getByRole("radio", { name: "Подготовиться к сезону" }));
   await h.user.click(screen.getByRole("radio", { name: "Другое" }));
+  await h.user.type(screen.getByLabelText("На что нужны средства"), " — новые правки");
   h.server.store.set(h.item.id, application({ purpose, version: 2 }));
-  await h.user.click(screen.getByRole("button", { name: "Сохранить черновик" }));
+  await flushStep(h.user);
   await screen.findByRole("alert");
   vi.spyOn(window, "confirm").mockReturnValueOnce(true);
   await h.user.click(screen.getByRole("button", { name: "Загрузить сохранённую версию" }));
@@ -85,12 +87,12 @@ it.each(["Купить оборудование", null])("discards local purpose
   expect(screen.getByLabelText("На что нужны средства")).toHaveValue("");
 });
 
-it("keeps custom buffer and wizard step after ordinary save of a preset", async () => {
+it("keeps custom buffer and wizard step after autosave of a preset", async () => {
   const h = await open("Моё описание");
   await h.user.click(screen.getByRole("radio", { name: "Купить оборудование" }));
   await h.user.click(screen.getByRole("button", { name: "Продолжить" }));
-  await h.user.click(screen.getByRole("button", { name: "Сохранить черновик" }));
-  await screen.findByText("Черновик сохранён");
+  await flushStep(h.user);
+  await screen.findByText("Изменения сохранены");
   expect(screen.getByRole("heading", { name: "Выберите продукт" })).toBeInTheDocument();
   await h.user.click(screen.getByRole("button", { name: "Перейти к шагу «Потребность»" }));
   await h.user.click(screen.getByRole("radio", { name: "Другое" }));

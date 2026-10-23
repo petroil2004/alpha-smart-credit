@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { DraftAutosave, prepareSave } from "./autosave";
 import { createApi } from "./api";
+import { ApiError } from "./api";
 import { fromApplication } from "./draft";
 import { application, contractServer } from "./test/api-fixtures";
 
@@ -103,4 +104,19 @@ it("does not save for a different company or invoke callbacks after disposal", a
   h.controller.update({ ...h.fields, purpose: "После закрытия" });
   await tick(5000);
   expect(h.saved).not.toHaveBeenCalled();
+});
+
+it.each([1, 2])("rejects an unconfirmed successful response with version %i", async version => {
+  const h = setup();
+  const api = { ...createApi(h.server.fetcher), update: vi.fn()
+    .mockResolvedValueOnce(application({ version }))
+    .mockRejectedValue(new ApiError(503, "SERVER_ERROR", "Stop invalid retries")) };
+  const controller = new DraftAutosave(api, h.item, h.saved, vi.fn());
+  controller.update({ ...h.fields, purpose: "Новая цель" });
+  expect(await controller.flush()).toBe(false);
+  expect(controller.state.error?.status).toBe(502);
+  expect(api.update).toHaveBeenCalledTimes(1);
+  expect(h.saved).not.toHaveBeenCalled();
+  controller.dispose();
+  h.controller.dispose();
 });

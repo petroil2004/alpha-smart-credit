@@ -161,7 +161,7 @@ export function ParameterFields(props: EditableProps) {
     return (
       <p className="parameter-empty">
         Выберите продукт, чтобы указать срок и другие параметры. Можно вернуться
-        к выбору или сохранить черновик без этих сведений.
+        к выбору или продолжить без этих сведений.
       </p>
     );
   const overdraft = fields.product_code === "overdraft";
