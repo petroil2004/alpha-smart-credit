@@ -20,14 +20,14 @@ async function setup() {
 it("opens the application by its visible card text", async () => {
   const h = await setup();
   await h.user.click(screen.getByText("Купить витрину"));
-  expect(await screen.findByRole("heading", {name:"Для чего нужны деньги?"})).toBeInTheDocument();
+  expect(await screen.findByRole("heading", {name:"Выберите продукт"})).toBeInTheDocument();
 });
 
 it("opens the whole-card control with a keyboard", async () => {
   const h = await setup();
   screen.getByRole("button", {name:/Открыть заявку/}).focus();
   await h.user.keyboard("{Enter}");
-  expect(await screen.findByRole("heading", {name:"Для чего нужны деньги?"})).toBeInTheDocument();
+  expect(await screen.findByRole("heading", {name:"Выберите продукт"})).toBeInTheDocument();
 });
 
 it("cancels deletion without opening or removing the card", async () => {
@@ -35,7 +35,7 @@ it("cancels deletion without opening or removing the card", async () => {
   await h.user.click(screen.getByRole("button", {name:/Удалить черновик/}));
   await h.user.click(within(screen.getByRole("dialog")).getByRole("button", {name:"Отмена"}));
   expect(screen.getByText("Купить витрину")).toBeInTheDocument();
-  expect(screen.queryByRole("heading", {name:"Для чего нужны деньги?"})).not.toBeInTheDocument();
+  expect(screen.queryByRole("heading", {name:"Выберите продукт"})).not.toBeInTheDocument();
   expect(h.server.store.has(h.item.id)).toBe(true);
 });
 
@@ -52,7 +52,7 @@ it("removes a confirmed draft only after the server replies and updates the list
   await act(async()=>release());
   expect(await screen.findByText("Пока ни одной заявки")).toBeInTheDocument();
   expect(h.server.store.has(h.item.id)).toBe(false);
-  expect(screen.queryByRole("heading", {name:"Для чего нужны деньги?"})).not.toBeInTheDocument();
+  expect(screen.queryByRole("heading", {name:"Выберите продукт"})).not.toBeInTheDocument();
 });
 
 it("keeps the card after a deletion error and allows retry", async () => {

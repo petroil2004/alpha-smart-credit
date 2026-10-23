@@ -1,6 +1,6 @@
 import type { DraftFields } from "./types";
 
-export type DraftStep = "need" | "product" | "details" | "review";
+export type DraftStep = "product" | "details" | "review";
 
 // The order and field ownership live together so later sections can be added
 // without changing saved applications or duplicating navigation rules.
@@ -12,14 +12,6 @@ export const draftSteps: {
   fields: (keyof DraftFields)[];
 }[] = [
   {
-    id: "need",
-    label: "Потребность",
-    title: "Для чего нужны деньги?",
-    description:
-      "Выберите задачу и укажите примерную сумму. Продукт выберем следующим шагом.",
-    fields: ["purpose", "amount_rub"],
-  },
-  {
     id: "product",
     label: "Продукт",
     title: "Выберите продукт",
@@ -30,10 +22,12 @@ export const draftSteps: {
   {
     id: "details",
     label: "Параметры",
-    title: "Уточните параметры",
+    title: "Настройте условия",
     description:
-      "Заполните известные сведения. Неполные данные тоже сохраняются.",
+      "Укажите параметры финансирования и опишите задачу бизнеса.",
     fields: [
+      "purpose",
+      "amount_rub",
       "term_months",
       "usage_days",
       "expected_inflow_date",

@@ -7,11 +7,11 @@ export default function AssistantPreview({open, onToggle}: {open:boolean; onTogg
       <div className="assistant-invitation">
         <div>
           <strong>Не уверены, что выбрать?</strong>
-          <p>Помощник поможет разобраться в вариантах финансирования.</p>
+          <p>Поможем сравнить варианты финансирования.</p>
         </div>
         <button
           type="button"
-          className="button secondary"
+          className="button assistant-toggle"
           aria-expanded={open}
           aria-controls={panelId}
           onClick={onToggle}

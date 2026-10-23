@@ -25,10 +25,8 @@ export default function ApplicationsList({
     <>
       <section className="applications-section" aria-label="Сохранённые заявки">
         <div className="list-heading">
-          <h2>
-            Все заявки <span>{items.length}</span>
-          </h2>
-          <span className="muted">Сохранены в вашем кабинете</span>
+          <h2>Мои заявки</h2>
+          <span className="muted">Заявок: {items.length}</span>
         </div>
         {!items.length ? (
           <div className="empty-state">
@@ -84,8 +82,8 @@ export default function ApplicationsList({
         </div>
         <div className="direction-grid">
           {products.map((product) => (
-            <article className="direction-card" key={product.code}>
-              <span className="direction-number">{product.number}</span>
+            <article className={`direction-card ${product.tone}`} key={product.code}>
+              <img src={product.image} alt="" width="120" height="120" loading="lazy" />
               <h3>{product.title}</h3>
               <p>{product.description}</p>
             </article>

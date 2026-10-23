@@ -33,7 +33,7 @@ export default function DraftReview({
             type="button"
             className="text-button"
             disabled={busy}
-            onClick={() => onEdit("need")}
+            onClick={() => onEdit("details")}
             aria-label="Изменить потребность"
           >
             Изменить
