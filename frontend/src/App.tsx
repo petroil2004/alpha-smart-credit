@@ -15,6 +15,7 @@ import {
 import { useDraftAutosave } from "./hooks/useDraftAutosave";
 import DraftForm from "./components/DraftForm";
 import ApplicationsList from "./components/ApplicationsList";
+import DeleteDraftDialog from "./components/DeleteDraftDialog";
 import { Icon } from "./components/Icon";
 
 const defaultApi = createApi();
@@ -50,6 +51,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
   const [busy, setBusy] = useState("");
   const lock = useRef(false);
   const [items, setItems] = useState<Application[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<Application | null>(null);
   const [selected, setSelected] = useState<Application | null>(null);
   const [fields, setFields] = useState<DraftFields>(emptyDraft);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -62,6 +64,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
 
   const clearProfile = () => {
     setSession(null);
+    setDeleteTarget(null);
     setItems([]);
     setSelected(null);
     setFields(emptyDraft());
@@ -262,12 +265,18 @@ export default function App({ api = defaultApi }: { api?: Api }) {
     if (lock.current || selected) return;
     const item = items.find(item => item.id === id);
     if (!item || item.status !== "DRAFT") return;
-    if (!window.confirm(`Удалить черновик № ${id.slice(-6)}? Восстановить его не получится.`)) return;
+    setError(null);
+    setDeleteTarget(item);
+  };
+  const confirmRemoveDraft = () => {
+    if (!deleteTarget || lock.current) return;
+    const {id, version} = deleteTarget;
     void run("delete", async () => {
       await verifySession();
-      await api.remove(id, item.version);
+      await api.remove(id, version);
       await verifySession();
       setItems(current => current.filter(item => item.id !== id));
+      setDeleteTarget(null);
       setNotice(`Черновик № ${id.slice(-6)} удалён.`);
     });
   };
@@ -335,7 +344,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
   };
 
   const problem = error ?? autosave.error;
-  const errorBox = problem && (
+  const errorBox = problem && !deleteTarget && (
     <div className="notice error-notice" role="alert">
       <span className="notice-symbol" aria-hidden="true">
         !
@@ -457,6 +466,8 @@ export default function App({ api = defaultApi }: { api?: Api }) {
 
   return (
     <div className="cabinet">
+      {deleteTarget && <DeleteDraftDialog application={deleteTarget} busy={busy === "delete"} error={error?.message ?? null}
+        onCancel={() => { if (!lock.current) setDeleteTarget(null); }} onConfirm={confirmRemoveDraft} />}
       <aside className="sidebar">
         <div className="brand">
           <span className="brand-mark">А</span>
