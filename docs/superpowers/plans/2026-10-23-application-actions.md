@@ -32,4 +32,4 @@
 - [x] Full frontend tests/build; live browser backend/PostgreSQL QA on own synthetic application, responsive check; update truthful docs and common policy.
 - [x] One final independent whole-branch review; single RED→GREEN fix pass if needed; keep branch for user, no unsolicited merge/push.
 
-Verification note: desktop placement and mobile list were visually checked. Native browser confirmation and subsequent navigation stalled the automation; confirm/cancel are covered by component tests, live DELETE was verified through the real HTTP API/PostgreSQL on an executor-created temporary draft. Full manual dialog click remains for user review.
+Verification note: desktop placement and mobile list were visually checked. Native browser confirmation and subsequent navigation stalled the automation; confirm/cancel are covered by component tests, live DELETE was verified through the real HTTP API/PostgreSQL on an executor-created temporary draft. Петя дополнительно проверил подтверждение удаления вручную и сообщил об успешной проверке перед отправкой ветки 23.10.2026.
