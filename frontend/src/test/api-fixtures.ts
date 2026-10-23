@@ -40,6 +40,8 @@ export function contractServer(
   );
   const keys = new Map<string, string>();
   let nextSaveError: number | null = null;
+  let nextDeleteError: number | null = null;
+  let deleteGate: Promise<void> | null = null;
   let nextCreateError = false;
   let createGate: Promise<void> | null = null;
   let saveGate: Promise<void> | null = null;
@@ -48,7 +50,8 @@ export function contractServer(
   const error = (status: number, code: string, message: string) =>
     json({ error: { code, message } }, status);
   const fetcher = vi.fn<typeof fetch>(async (input, init) => {
-    const path = String(input).replace("/api/v1", "");
+    const url = new URL(String(input), "http://localhost");
+    const path = url.pathname.replace("/api/v1", "");
     const method = init?.method ?? "GET";
     const body = init?.body ? JSON.parse(String(init.body)) : {};
     if (path === "/auth/demo-login" && method === "POST") {
@@ -88,7 +91,10 @@ export function contractServer(
       if (!key || Object.keys(body).length)
         return error(422, "VALIDATION_ERROR", "Некорректное создание");
       const scoped = `${current.user.id}:${key}`;
-      if (keys.has(scoped)) return json(store.get(keys.get(scoped)!));
+      if (keys.has(scoped)) {
+        const existing = store.get(keys.get(scoped)!);
+        return existing ? json(existing) : error(410, "APPLICATION_DELETED", "Черновик удалён");
+      }
       const item = application({
         id: `00000000-0000-4000-8000-${String(store.size + 1).padStart(12, "0")}`,
         company_id: current.company.id,
@@ -106,6 +112,18 @@ export function contractServer(
     if (!item || item.company_id !== current.company.id)
       return error(404, "NOT_FOUND", "Заявка не найдена");
     if (method === "GET") return json(item);
+    if (method === "DELETE") {
+      if (deleteGate) await deleteGate;
+      if (nextDeleteError) {
+        const status = nextDeleteError;
+        nextDeleteError = null;
+        return error(status, "SERVER_ERROR", "Не удалось удалить черновик");
+      }
+      if (item.status !== "DRAFT") return error(409, "APPLICATION_NOT_DRAFT", "Удалять можно только черновик");
+      if (Number(url.searchParams.get("version")) !== item.version) return error(409, "VERSION_CONFLICT", "Обновите список");
+      store.delete(id);
+      return new Response(null, {status:204});
+    }
     if (method === "PATCH") {
       if (saveGate) await saveGate;
       if (nextSaveError) {
@@ -149,5 +167,7 @@ export function contractServer(
       createGate = gate;
     },
     holdSaves: (gate: Promise<void>) => { saveGate = gate; },
+    holdDeletes: (gate: Promise<void>) => { deleteGate = gate; },
+    failNextDelete: (status: number) => { nextDeleteError = status; },
   };
 }

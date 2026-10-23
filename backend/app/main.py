@@ -8,11 +8,11 @@ from datetime import date, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Annotated, Any, Literal
 
-from fastapi import Body, Depends, FastAPI, Header, Request, Response
+from fastapi import Body, Depends, FastAPI, Header, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, StrictInt, StrictStr
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -95,6 +95,9 @@ def request_validation_fields(error: RequestValidationError) -> dict[str, str]:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(engine)
+    from .schema_compat import allow_deleted_creation_receipts
+
+    allow_deleted_creation_receipts(engine)
     from .seed import ensure_demo_accounts
 
     ensure_demo_accounts()
@@ -305,6 +308,13 @@ def list_applications(account: CurrentAccount, db: Session = Depends(get_db)) ->
     return {"items": [serialize_application(application) for application in applications]}
 
 
+def creation_replay(receipt: ApplicationCreation, db: Session):
+    application = db.get(Application, receipt.application_id) if receipt.application_id else None
+    if application is None:
+        raise ApiProblem(410, "APPLICATION_DELETED", "Этот черновик удалён. Создайте новую заявку.")
+    return JSONResponse(status_code=200, content=serialize_application(application))
+
+
 @app.post(f"{API_PREFIX}/applications")
 def create_application(
     account: CurrentAccount,
@@ -326,8 +336,7 @@ def create_application(
         )
     )
     if existing:
-        application = db.get(Application, existing.application_id)
-        return JSONResponse(status_code=200, content=serialize_application(application))
+        return creation_replay(existing, db)
 
     application = Application(company_id=account.company_id)
     db.add(application)
@@ -345,8 +354,7 @@ def create_application(
         )
         if not existing:
             raise
-        application = db.get(Application, existing.application_id)
-        return JSONResponse(status_code=200, content=serialize_application(application))
+        return creation_replay(existing, db)
     return JSONResponse(status_code=201, content=serialize_application(application))
 
 
@@ -392,3 +400,24 @@ def update_application(
     application.updated_at = utc_now()
     db.commit()
     return serialize_application(application)
+
+
+@app.delete(f"{API_PREFIX}/applications/{{application_id}}", status_code=204)
+def delete_application(
+    application_id: uuid.UUID,
+    version: Annotated[int, Query(gt=0)],
+    account: CurrentAccount,
+    db: Session = Depends(get_db),
+):
+    application = application_for_account(application_id, account, db, lock=True)
+    if application.status != "DRAFT":
+        raise ApiProblem(409, "APPLICATION_NOT_DRAFT", "Удалить можно только неотправленный черновик.")
+    if version != application.version:
+        raise ApiProblem(409, "VERSION_CONFLICT", "Заявка изменена в другом окне. Обновите список перед удалением.")
+    # Retain creation keys so a late POST cannot recreate a deleted draft.
+    db.execute(update(ApplicationCreation).where(
+        ApplicationCreation.application_id == application.id
+    ).values(application_id=None))
+    db.delete(application)
+    db.commit()
+    return Response(status_code=204)

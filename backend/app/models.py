@@ -58,5 +58,5 @@ class ApplicationCreation(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     account_id: Mapped[str] = mapped_column(ForeignKey("accounts.id"), nullable=False)
     idempotency_key: Mapped[str] = mapped_column(String(36), nullable=False)
-    application_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("applications.id"), nullable=False)
+    application_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("applications.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)

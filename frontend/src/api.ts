@@ -95,6 +95,7 @@ export function createApi(
       }),
     get: (id) =>
       request<Application>(`/applications/${encodeURIComponent(id)}`),
+    remove: (id, version) => request<void>(`/applications/${encodeURIComponent(id)}?version=${version}`, {method: "DELETE"}),
     update: (id, body) =>
       request<Application>(`/applications/${encodeURIComponent(id)}`, {
         method: "PATCH",

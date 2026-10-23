@@ -3,7 +3,6 @@ import type { DraftFields, FieldErrors, ProductCatalog } from "../../types";
 import { formatMoneyRub } from "../../draft";
 import { products } from "../../products";
 import { purposeOptions } from "../../purposes";
-import AssistantPreview from "./AssistantPreview";
 
 export interface EditableProps {
   fields: DraftFields;
@@ -105,7 +104,6 @@ export function NeedFields(props: EditableProps & { purposeChoice: string; onCho
         />
         <span className="field-hint">Коротко опишите задачу бизнеса.</span>
       </Field>}
-      <AssistantPreview />
       <MoneyField {...props} name="amount_rub" label="Сумма финансирования" />
     </>
   );
