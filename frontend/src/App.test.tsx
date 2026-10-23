@@ -25,7 +25,7 @@ async function openExisting(
   await user.click(
     await screen.findByRole("button", { name: /Открыть заявку/ }),
   );
-  await user.click(await screen.findByRole("radio", { name: "Другое" }));
+  await user.click(await screen.findByRole("button", { name: "Перейти к шагу «Параметры»" }));
   return { user, server, ...view };
 }
 
@@ -134,7 +134,7 @@ describe("client draft journey", () => {
     await user.click(
       await screen.findByRole("button", { name: "Новая заявка" }),
     );
-    await user.click(await screen.findByRole("radio", { name: "Другое" }));
+    await user.click(await screen.findByRole("button", { name: "Перейти к шагу «Параметры»" }));
     await user.type(
       screen.getByRole("textbox", { name: "На что нужны средства" }),
       "Закупка материалов",
@@ -151,6 +151,7 @@ describe("client draft journey", () => {
     expect(await screen.findByText("Изменения сохранены")).toBeInTheDocument();
     first.unmount();
     render(<App api={api} />);
+    await user.click(await screen.findByRole("button", { name: "Перейти к шагу «Параметры»" }));
     expect(
       await screen.findByRole("textbox", { name: "На что нужны средства" }),
     ).toHaveValue("Закупка материалов");
@@ -276,7 +277,7 @@ describe("client draft journey", () => {
     await user.click(
       screen.getByRole("button", { name: "Повторить создание" }),
     );
-    await screen.findByRole("radio", { name: "Другое" });
+    await screen.findByRole("radio", { name: /Оборотный кредит/ });
     const creates = server.fetcher.mock.calls.filter(
       ([url, options]) =>
         url === "/api/v1/applications" && options?.method === "POST",
@@ -309,7 +310,7 @@ describe("client draft journey", () => {
       finish();
     });
     expect(
-      await screen.findByRole("radio", { name: "Другое" }),
+      await screen.findByRole("radio", { name: /Оборотный кредит/ }),
     ).toBeInTheDocument();
   });
 
@@ -318,6 +319,7 @@ describe("client draft journey", () => {
     window.history.replaceState(null, "", `/#draft/${item.id}`);
     const server = contractServer({ loggedIn: true, applications: [item] });
     render(<App api={createApi(server.fetcher)} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Перейти к шагу «Параметры»" }));
     expect(
       await screen.findByRole("textbox", { name: "На что нужны средства" }),
     ).toHaveValue("Открытие по ссылке");

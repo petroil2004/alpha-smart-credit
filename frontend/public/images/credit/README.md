@@ -1,0 +1,12 @@
+# Иллюстрации кредитного кабинета
+
+Созданы 23.10.2026 встроенным ImageGen на основе согласованных Петей макетов. Это декоративные изображения, не скриншоты интерфейса, банковские документы или условия продукта. Новые зависимости и внешние URL не используются. Все четыре PNG содержат RGBA-прозрачность, размер 1254×1254.
+
+| Файл | Объект и применение |
+|---|---|
+| hero.png | Красный кошелёк, сиреневая стрелка и серебряная монета ₽; главная и калькулятор |
+| working-capital.png | Стопка серебряных монет с красным плюсом; оборотный кредит |
+| equipment.png | Серебряный чемодан с красно-зелёно-синим кольцом; оборудование |
+| overdraft.png | Чёрно-красное кольцо и серебряная монета ₽; овердрафт |
+
+Общая формулировка запроса генерации: «Background extraction: isolate the requested object grouping from the approved UI reference, match design/colors/lighting, genuinely transparent background, centered square cutout, full visible edges and transparent margin. No UI, card background, labels, buttons or unrelated objects. Preserve Alfa red and silver-lilac iridescence». Для каждого файла указан соответствующий объект из таблицы; референсы — утверждённые в чате макеты главной и трёх продуктов. Исходные генерации сохранены отдельно; файлы в этой папке — точные копии выбранных результатов.

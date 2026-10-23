@@ -32,7 +32,7 @@ it("reauthenticates straight from calculator 401 while preserving unsaved kopeck
   const transport=createApi(contractServer({loggedIn:true,applications:[example]}).fetcher);
   const api={...transport,login:vi.fn(transport.login),calculateAnnuity:vi.fn().mockRejectedValueOnce(new ApiError(401,"UNAUTHENTICATED","Сессия истекла. Войдите снова")).mockImplementation(async (input:AnnuityRequest)=>annuityResult(input))};
   render(<App api={api}/>);
-  await screen.findByRole("heading",{name:"Для чего нужны деньги?"});
+  await screen.findByRole("heading",{name:"Выберите продукт"});
   fireEvent.click(screen.getByRole("button",{name:"Перейти к шагу «Параметры»"}));
   fireEvent.change(screen.getByLabelText("Сумма финансирования",{exact:true}),{target:{value:"3000000,01"}});
   await screen.findByText("Сессия истекла. Войдите снова");
@@ -47,7 +47,7 @@ it("can reload catalog after server field validation without silently clamping t
   const updated={...catalog,items:catalog.items.map(p=>p.code==="working_capital"?{...p,term_max_months:24}:p)};
   const api={...createApi(contractServer({loggedIn:true,applications:[example]}).fetcher),products:vi.fn().mockResolvedValueOnce(catalog).mockResolvedValue(updated),calculateAnnuity:vi.fn().mockRejectedValue(new ApiError(422,"VALIDATION_ERROR","Проверьте заполнение полей",{term_months:"Для расчёта укажите срок от 12 до 24 месяцев"}))};
   render(<App api={api}/>);
-  await screen.findByRole("heading",{name:"Для чего нужны деньги?"});
+  await screen.findByRole("heading",{name:"Выберите продукт"});
   fireEvent.click(screen.getByRole("button",{name:"Перейти к шагу «Параметры»"}));
   await screen.findByText("Для расчёта укажите срок от 12 до 24 месяцев");
   fireEvent.click(screen.getByRole("button",{name:"Повторить загрузку условий"}));

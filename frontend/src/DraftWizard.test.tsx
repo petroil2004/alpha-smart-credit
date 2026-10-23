@@ -17,8 +17,7 @@ async function openDraft(
   await user.click(
     await screen.findByRole("button", { name: "Открыть заявку 000001" }),
   );
-  const other = await screen.findByRole("radio", { name: "Другое" });
-  if (!(other as HTMLInputElement).checked) await user.click(other);
+  await user.click(await screen.findByRole("button", { name: "Перейти к шагу «Параметры»" }));
   return { user, server };
 }
 
@@ -32,7 +31,7 @@ describe("draft wizard", () => {
   it("moves forward and back without losing raw input while autosaving", async () => {
     const { user, server } = await openDraft();
     expect(
-      screen.getByRole("heading", { name: "Для чего нужны деньги?" }),
+      screen.getByRole("heading", { name: "Настройте условия" }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("radio", { name: /Оборотный кредит/ })).not.toBeInTheDocument();
     await user.type(
@@ -43,7 +42,7 @@ describe("draft wizard", () => {
       screen.getByLabelText("Сумма финансирования"),
       "500 000,25",
     );
-    await user.click(screen.getByRole("button", { name: "Продолжить" }));
+    await goTo(user, "Продукт");
     await user.click(screen.getByRole("radio", { name: /Оборотный кредит/ }));
     await user.click(screen.getByRole("button", { name: "Продолжить" }));
     await user.type(screen.getByLabelText("Срок, месяцев"), "12");
@@ -53,7 +52,7 @@ describe("draft wizard", () => {
     expect(
       screen.getByRole("radio", { name: /Оборотный кредит/ }),
     ).toBeChecked();
-    await goTo(user, "Потребность");
+    await goTo(user, "Параметры");
     expect(screen.getByLabelText("На что нужны средства")).toHaveValue(
       "Товар к сезону",
     );
@@ -165,7 +164,7 @@ describe("draft wizard", () => {
     expect(
       screen.getByText("Проверьте ожидаемое поступление"),
     ).toBeInTheDocument();
-    await goTo(user, "Потребность");
+    await goTo(user, "Параметры");
     expect(screen.getByLabelText("На что нужны средства")).toHaveValue(
       "Сохранённая цель",
     );
@@ -195,7 +194,7 @@ describe("draft wizard", () => {
     await user.type(amount, "500000");
     await user.keyboard("{Enter}");
     expect(
-      screen.getByRole("heading", { name: "Выберите продукт" }),
+      screen.getByRole("heading", { name: "Проверьте заявку" }),
     ).toBeInTheDocument();
     expect(server.store.get(application().id)?.amount_rub).toBe("500000.00");
   });
@@ -208,7 +207,7 @@ describe("draft wizard", () => {
     await user.click(
       await screen.findByRole("button", { name: "Новая заявка" }),
     );
-    await user.click(await screen.findByRole("radio", { name: "Другое" }));
+    await user.click(await screen.findByRole("button", { name: "Перейти к шагу «Параметры»" }));
     await user.type(
       screen.getByLabelText("На что нужны средства"),
       "До поступления оплаты",
@@ -229,6 +228,7 @@ describe("draft wizard", () => {
     expect(screen.getByLabelText("Пользование, дней")).toHaveValue("14");
     first.unmount();
     render(<App api={api} />);
+    await user.click(await screen.findByRole("button", { name: "Перейти к шагу «Параметры»" }));
     expect(await screen.findByLabelText("На что нужны средства")).toHaveValue(
       "До поступления оплаты",
     );
@@ -252,10 +252,10 @@ describe("draft wizard", () => {
       screen.getByRole("button", { name: "Новая заявка" }),
     );
     expect(
-      screen.getByRole("heading", { name: "Для чего нужны деньги?" }),
+      screen.getByRole("heading", { name: "Выберите продукт" }),
     ).toBeInTheDocument();
     expect(screen.queryByLabelText("На что нужны средства")).not.toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Другое" })).not.toBeChecked();
+    expect(screen.getByRole("radio", { name: /Оборотный кредит/ })).not.toBeChecked();
   });
 
   it("keeps the review and input on a failed save and allows retry", async () => {
@@ -302,7 +302,7 @@ describe("draft wizard", () => {
       await screen.findByRole("button", { name: "Сохраняем…" }),
     ).toBeDisabled();
     expect(
-      screen.getByRole("button", { name: "Перейти к шагу «Потребность»" }),
+      screen.getByRole("button", { name: "Перейти к шагу «Параметры»" }),
     ).toBeDisabled();
     expect(
       screen.getByRole("button", { name: "Изменить параметры" }),

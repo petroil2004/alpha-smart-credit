@@ -11,7 +11,7 @@ async function setup() {
   const server = contractServer({ loggedIn: true, applications: [item] });
   const user = userEvent.setup();
   render(<App api={createApi(server.fetcher)} />);
-  await screen.findByRole("heading", { name: "Для чего нужны деньги?" });
+  await user.click(await screen.findByRole("button", { name: "Перейти к шагу «Параметры»" }));
   return { item, server, user };
 }
 
@@ -30,10 +30,10 @@ it("keeps navigation and input active during a delayed save and drains newer edi
   let release!: () => void;
   h.server.holdSaves(new Promise<void>(resolve => { release = resolve; }));
   fireEvent.change(screen.getByLabelText("На что нужны средства"), { target: { value: "Первый ввод" } });
-  await h.user.click(screen.getByRole("button", { name: "Продолжить" }));
+  await h.user.click(screen.getByRole("button", { name: "Перейти к шагу «Продукт»" }));
   await waitFor(() => expect(h.server.fetcher.mock.calls.some(([, init]) => init?.method === "PATCH")).toBe(true));
   expect(screen.getByRole("button", { name: "Продолжить" })).not.toBeDisabled();
-  await h.user.click(screen.getByRole("button", { name: "Назад" }));
+  await h.user.click(screen.getByRole("button", { name: "Перейти к шагу «Параметры»" }));
   fireEvent.change(screen.getByLabelText("На что нужны средства"), { target: { value: "Новый ввод" } });
   expect(screen.getByLabelText("На что нужны средства")).not.toBeDisabled();
   await act(async () => release());
@@ -45,7 +45,7 @@ it("saves valid fields without moving away from an invalid intermediate field", 
   const h = await setup();
   fireEvent.change(screen.getByLabelText("На что нужны средства"), { target: { value: "Новая цель" } });
   fireEvent.change(screen.getByLabelText("Сумма финансирования"), { target: { value: "," } });
-  await h.user.click(screen.getByRole("button", { name: "Продолжить" }));
+  await h.user.click(screen.getByRole("button", { name: "Перейти к шагу «Продукт»" }));
   await waitFor(() => expect(h.server.store.get(h.item.id)?.purpose).toBe("Новая цель"));
   expect(screen.getByRole("heading", { name: "Выберите продукт" })).toBeInTheDocument();
   expect(h.server.store.get(h.item.id)?.amount_rub).toBeNull();

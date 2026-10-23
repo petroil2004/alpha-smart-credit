@@ -11,7 +11,7 @@ async function open(amount: string | null="3000000.00", custom?: ReturnType<type
   const server=contractServer({loggedIn:true,applications:[application({product_code:"working_capital",amount_rub:amount,term_months:36})]});
   const api=custom??createApi(server.fetcher);
   const user=userEvent.setup();render(<App api={api}/>);
-  await screen.findByRole("heading",{name:"Для чего нужны деньги?"});
+  await screen.findByRole("heading",{name:"Выберите продукт"});
   await user.click(screen.getByRole("button",{name:"Перейти к шагу «Параметры»"}));
   return {user,server};
 }
@@ -26,7 +26,7 @@ describe("loan calculator in draft wizard",()=>{
     expect(screen.getByLabelText("Сумма финансирования")).toHaveValue("2000000.00");
     expect(screen.getByLabelText("Срок, месяцев")).toHaveValue("24");
     fireEvent.change(screen.getByLabelText("Сумма финансирования"),{target:{value:"2 000 000,01"}});
-    await user.click(screen.getByRole("button",{name:"Перейти к шагу «Потребность»"}));
+    await user.click(screen.getByRole("button",{name:"Перейти к шагу «Параметры»"}));
     expect(screen.getByLabelText("Сумма финансирования")).toHaveValue("2 000 000,01");
   });
   it("shows the same result in review without calculation-triggered writes",async()=>{

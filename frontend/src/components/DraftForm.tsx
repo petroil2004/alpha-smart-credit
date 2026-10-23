@@ -6,7 +6,8 @@ import LoanCalculator, { LoanCalculationSummary } from "./draft/LoanCalculator";
 import { draftSteps } from "../draft-steps";
 import type { DraftStep } from "../draft-steps";
 import {
-  NeedFields,
+  MoneyField,
+  PurposeField,
   ParameterFields,
   ProductFields,
 } from "./draft/DraftFields";
@@ -14,7 +15,6 @@ import type { EditableProps } from "./draft/DraftFields";
 import DraftReview from "./draft/DraftReview";
 import AssistantPreview from "./draft/AssistantPreview";
 import { Icon } from "./Icon";
-import { purposeOptions } from "../purposes";
 import type { SaveState } from "../autosave";
 
 interface Props extends EditableProps {
@@ -22,7 +22,6 @@ interface Props extends EditableProps {
   application: Application;
   companyName: string;
   errorAttempt: number;
-  purposeReset: number;
   busy: boolean;
   saveStatus: SaveState["status"];
   onFinish: () => void;
@@ -33,7 +32,6 @@ interface Props extends EditableProps {
 export default function DraftForm(props: Props) {
   const {
     application,
-    companyName,
     fields,
     errors,
     errorAttempt,
@@ -42,28 +40,7 @@ export default function DraftForm(props: Props) {
     onFinish,
   } = props;
   const [assistantOpen, setAssistantOpen] = useState(false);
-  const [step, setStep] = useState<DraftStep>("need");
-  const [other, setOther] = useState(() => ({
-    reset: props.purposeReset,
-    requested: false,
-    cached: purposeOptions.includes(fields.purpose) ? "" : fields.purpose,
-  }));
-  // Explicit server reload discards local UI buffers; ordinary save does not.
-  if (other.reset !== props.purposeReset) {
-    setOther({
-      reset: props.purposeReset,
-      requested: false,
-      cached: purposeOptions.includes(fields.purpose) ? "" : fields.purpose,
-    });
-  }
-  const isOther = other.requested || (!!fields.purpose && !purposeOptions.includes(fields.purpose));
-  const purposeChoice = isOther ? "other" : fields.purpose;
-  const choosePurpose = (choice: string) => {
-    if (choice !== "other" && !purposeOptions.includes(choice)) return;
-    const custom = isOther ? fields.purpose : other.cached;
-    setOther({ ...other, requested: choice === "other", cached: custom });
-    props.onChange("purpose", choice === "other" ? custom : choice);
-  };
+  const [step, setStep] = useState<DraftStep>("product");
   const lastErrorAttempt = useRef(errorAttempt);
   const form = useRef<HTMLFormElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -124,33 +101,15 @@ export default function DraftForm(props: Props) {
         </nav>
         <form
           ref={form}
-          className="form-card wizard-card"
+          className={`form-card wizard-card wizard-${step}`}
           onSubmit={submit}
           noValidate
         >
           <fieldset disabled={busy}>
-            <div className="company-context">
-              <Icon name="building" size={19} />
-              <div>
-                <span>Ваша компания</span>
-                <strong>{companyName}</strong>
-              </div>
-            </div>
             <div className="section-heading">
-              <span className="step-marker">
-                {String(index + 1).padStart(2, "0")}
-              </span>
-              <div>
-                <h2 ref={heading} tabIndex={-1}>
-                  {current.title}
-                </h2>
-                <p>{current.description}</p>
-              </div>
+              <h1 ref={heading} tabIndex={-1}>{current.title}</h1>
+              <p>{step === "details" ? "Выберите подходящие сумму и срок. Расчёт обновится автоматически." : current.description}</p>
             </div>
-            {step === "need" && <NeedFields {...props} purposeChoice={purposeChoice} onChoosePurpose={choosePurpose} onChange={(name, value) => {
-              if (name === "purpose") setOther((value) => ({ ...value, requested: true }));
-              props.onChange(name, value);
-            }} />}
             {step === "product" && <>
               <ProductFields {...props} catalog={calculator.catalog} />
               <AssistantPreview open={assistantOpen} onToggle={() => setAssistantOpen(value => !value)} />
@@ -159,7 +118,8 @@ export default function DraftForm(props: Props) {
               <>
                 {fields.product_code && fields.product_code !== "overdraft"
                   ? <LoanCalculator fields={fields} onChange={props.onChange} errors={errors} state={calculator} onReauthenticate={reauthenticate}/>
-                  : <ParameterFields {...props} />}
+                  : <><MoneyField {...props} name="amount_rub" label="Сумма финансирования" /><ParameterFields {...props} />{fields.product_code === "overdraft" && <p className="small-note">Калькулятор овердрафта пока недоступен.</p>}</>}
+                <PurposeField {...props} />
                 {!fields.product_code && (
                   <button
                     className="text-button choose-product"
@@ -219,19 +179,14 @@ export default function DraftForm(props: Props) {
       </div>
       <aside className="draft-aside">
         <div className="journey-card">
-          <span className="eyebrow">ВАША ЗАЯВКА</span>
-          <h2>
-            От идеи
-            <br />к следующему шагу
-          </h2>
+          <h2>Путь заявки</h2>
           <ol className="journey">
             <li className="current">
               <span>1</span>
               <div>
                 <strong>Подготовка заявки</strong>
                 <small>
-                  Шаг {index + 1} из {draftSteps.length}:{" "}
-                  {current.label.toLowerCase()}
+                  Шаг {index + 1} из {draftSteps.length}: {current.label.toLowerCase()}
                 </small>
               </div>
             </li>

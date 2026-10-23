@@ -1,8 +1,6 @@
 import type { ReactNode } from "react";
 import type { DraftFields, FieldErrors, ProductCatalog } from "../../types";
-import { formatMoneyRub } from "../../draft";
 import { products } from "../../products";
-import { purposeOptions } from "../../purposes";
 
 export interface EditableProps {
   fields: DraftFields;
@@ -72,85 +70,39 @@ export function MoneyField({
   );
 }
 
-export function NeedFields(props: EditableProps & { purposeChoice: string; onChoosePurpose: (choice: string) => void }) {
-  const other = props.purposeChoice === "other";
-  return (
-    <>
-      <fieldset className="purpose-group" aria-describedby={!other && props.errors.purpose ? "purpose-error" : undefined}>
-        <legend>Выберите задачу бизнеса</legend>
-        <div className="purpose-options">
-          {[...purposeOptions, "Другое"].map((title) => {
-            const value = title === "Другое" ? "other" : title;
-            return (
-              <label key={value} className={`purpose-option ${props.purposeChoice === value ? "is-selected" : ""} ${value === "other" ? "purpose-other" : ""}`}>
-                <input type="radio" name="purpose-choice" value={value} checked={props.purposeChoice === value} onChange={() => props.onChoosePurpose(value)} />
-                <span className="product-radio" aria-hidden="true" />
-                <span>{title}</span>
-              </label>
-            );
-          })}
-        </div>
-        {!other && props.errors.purpose && <p className="field-error" id="purpose-error">{props.errors.purpose}</p>}
-      </fieldset>
-      {other && <Field name="purpose" label="На что нужны средства" errors={props.errors}>
-        <textarea
-          aria-label="На что нужны средства"
-          value={props.fields.purpose}
-          onChange={(event) => props.onChange("purpose", event.target.value)}
-          maxLength={500}
-          placeholder="Например, закупить товар к новому сезону"
-          rows={3}
-          {...errorProps(props.errors, "purpose")}
-        />
-        <span className="field-hint">Коротко опишите задачу бизнеса.</span>
-      </Field>}
-      <MoneyField {...props} name="amount_rub" label="Сумма финансирования" />
-    </>
-  );
+export function PurposeField(props: EditableProps) {
+  const equipment = props.fields.product_code === "equipment";
+  return <div className="purpose-description">
+    <Field name="purpose" label="На что нужны средства" errors={props.errors}>
+      <textarea aria-label="На что нужны средства" value={props.fields.purpose}
+        onChange={event => props.onChange("purpose", event.target.value)} maxLength={500} rows={3}
+        placeholder={equipment ? "Например, купить холодильную витрину для магазина" : "Например, закупить зимнюю обувь для магазина перед сезоном"}
+        {...errorProps(props.errors, "purpose")} />
+      <span className="field-hint">Коротко опишите, что планируете оплатить и для какой задачи бизнеса. Можно дополнить позже.</span>
+    </Field>
+  </div>;
 }
 
 export function ProductFields({ fields, errors, onChange, catalog }: EditableProps & {catalog?:ProductCatalog|null}) {
-  return (
-    <div className="field">
-      <span id="product-label">Продукт</span>
-      <div
-        className="product-options"
-        role="radiogroup"
-        tabIndex={-1}
-        aria-labelledby="product-label"
-        {...errorProps(errors, "product_code")}
-      >
-        {products.map((product) => (
-          <label
-            key={product.code}
-            className={`product-option ${fields.product_code === product.code ? "is-selected" : ""}`}
-          >
-            <input
-              type="radio"
-              name="product"
-              value={product.code}
-              checked={fields.product_code === product.code}
-              onChange={() => onChange("product_code", product.code)}
-            />
-            <span className="product-radio" aria-hidden="true" />
-            <span>
-              <strong>{product.title}</strong>
-              <small>{product.description}</small>
-              {catalog?.items.find(p=>p.code===product.code) && <small className="product-terms">
-                {formatMoneyRub(catalog.items.find(p=>p.code===product.code)!.amount_min_rub)} — {formatMoneyRub(catalog.items.find(p=>p.code===product.code)!.amount_max_rub)}
-                {" · "}{catalog.items.find(p=>p.code===product.code)!.annual_rate_percent.replace(".00","")}% годовых
-              </small>}
-            </span>
-          </label>
-        ))}
-      </div>
-      {errors.product_code && (
-        <span className="field-error" id="product_code-error">
-          {errors.product_code}
-        </span>
-      )}
+  const compact = (value: string) => {
+    const amount = Number(value);
+    return amount >= 1_000_000 ? `${new Intl.NumberFormat("ru-RU").format(amount / 1_000_000)} млн` : `${new Intl.NumberFormat("ru-RU").format(amount / 1000)} тыс.`;
+  };
+  return <div className="product-selector">
+    <div className="product-options" role="radiogroup" tabIndex={-1} aria-label="Продукт" {...errorProps(errors, "product_code")}>
+      {products.map(product => {
+        const terms = catalog?.items.find(item => item.code === product.code);
+        return <label key={product.code} className={`product-option ${product.tone} ${fields.product_code === product.code ? "is-selected" : ""}`}>
+          <input type="radio" name="product" value={product.code} checked={fields.product_code === product.code} onChange={() => onChange("product_code", product.code)} />
+          <span className="product-radio" aria-hidden="true" />
+          <strong>{product.title}</strong><span className="product-description">{product.description}</span>
+          <img className="product-art" src={product.image} alt="" width="180" height="180" />
+          <span className="product-terms">{terms ? <><b>{compact(terms.amount_min_rub)} — {compact(terms.amount_max_rub)} ₽</b><span>{product.code === "overdraft" ? `Использование до ${terms.usage_max_days} дней` : `${terms.term_min_months}–${terms.term_max_months} месяцев`}</span><small>{terms.annual_rate_percent.replace(/\.00$/, "")}% годовых · демо</small></> : <span>Условия появятся после загрузки каталога</span>}</span>
+        </label>;
+      })}
     </div>
-  );
+    {errors.product_code && <span className="field-error" id="product_code-error">{errors.product_code}</span>}
+  </div>;
 }
 
 export function ParameterFields(props: EditableProps) {

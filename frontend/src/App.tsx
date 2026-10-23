@@ -414,7 +414,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
               есть следующий шаг<span className="red-text">.</span>
             </h1>
             <p>
-              Начните с потребности вашего бизнеса.
+              Выберите финансирование для вашего бизнеса.
               <br />
               Сохраните заявку и возвращайтесь, когда удобно.
             </p>
@@ -468,137 +468,26 @@ export default function App({ api = defaultApi }: { api?: Api }) {
     <div className="cabinet">
       {deleteTarget && <DeleteDraftDialog application={deleteTarget} busy={busy === "delete"} error={error?.message ?? null}
         onCancel={() => { if (!lock.current) setDeleteTarget(null); }} onConfirm={confirmRemoveDraft} />}
-      <aside className="sidebar">
-        <div className="brand">
-          <span className="brand-mark">А</span>
-          <span>
-            АЛЬФА<span className="brand-sub">БИЗНЕС</span>
-          </span>
-        </div>
-        <div className="workspace-label">КРЕДИТНЫЙ КАБИНЕТ</div>
-        <nav aria-label="Основная навигация">
-          <button
-            className="nav-item active"
-            onClick={showList}
-            disabled={!!busy}
-          >
-            <Icon name="grid" />
-            Мои заявки<span className="nav-count">{items.length}</span>
-          </button>
-        </nav>
-        <div className="sidebar-bottom">
-          <div className="sidebar-note">
-            <Icon name="shield" />
-            <p>
-              Все шаги —<br />в одном кабинете
-            </p>
-          </div>
-          <span className="demo-label">
-            <span />
-            Демонстрационная версия
-          </span>
-        </div>
-      </aside>
-      <div className="workspace">
-        <header className="topbar">
-          <div className="breadcrumb">
-            Бизнесу <span>/</span> Финансирование
-          </div>
-          <div className="account">
-            <div className="account-icon">
-              <Icon name="building" size={18} />
-            </div>
-            <span>{session.company.name}</span>
-            <button
-              className="icon-button"
-              aria-label="Сменить профиль"
-              title="Сменить профиль"
-              disabled={!!busy}
-              onClick={logout}
-            >
-              <Icon name="logout" size={18} />
-            </button>
-          </div>
-        </header>
-        <main className="main-content">
-          <div className={`page-header ${selected ? "draft-page-header" : ""}`}>
-            <div>
-              {selected ? (
-                <>
-                  <button
-                    className="back-button"
-                    aria-label="Все заявки"
-                    onClick={showList}
-                    disabled={!!busy}
-                  >
-                    ← Все заявки
-                  </button>
-                  <h1>Заявка на финансирование</h1>
-                  <div className="draft-subtitle">
-                    <span className="draft-badge">Черновик</span>
-                    <span>№ {selected.id.slice(-6)}</span>
-                    <span className="separator-dot">·</span>
-                    <span>Заполните в своём темпе</span>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <span className="eyebrow">ФИНАНСИРОВАНИЕ БИЗНЕСА</span>
-                  <h1>Мои заявки</h1>
-                  <p>Ваши планы, предложения и следующие шаги — здесь.</p>
-                </>
-              )}
-            </div>
-            {!selected && (
-              <button
-                className="button primary new-application"
-                onClick={create}
-                disabled={!!busy}
-              >
-                <Icon name="plus" size={18} />
-                {busy === "create" ? "Создаём…" : "Новая заявка"}
-              </button>
-            )}
-          </div>
-          {errorBox}
-          {notice && (
-            <div className="notice success-notice" role="status">
-              <Icon name="check" size={18} />
-              <p>{notice}</p>
-            </div>
-          )}
-          {selected ? (
-            <DraftForm
-              api={api}
-              key={selected.id}
-              application={selected}
-              companyName={session.company.name}
-              errorAttempt={fieldErrorAttempt}
-              purposeReset={purposeReset}
-              fields={fields}
-              errors={{ ...autosave.errors, ...fieldErrors }}
-              busy={!!busy}
-              saveStatus={autosave.status}
-              onChange={change}
-              onFinish={finish}
-              onNavigate={() => void autosave.flush()}
-              onReauthenticate={reauthenticate}
-            />
-          ) : (
-            <ApplicationsList
-              items={items}
-              busy={!!busy}
-              onOpen={open}
-              onDelete={removeDraft}
-              onCreate={create}
-            />
-          )}
-          <footer className="page-footer">
-            <span>Альфа Бизнес · Кредитный кабинет</span>
-            <span>Хакатонный прототип. Операции моделируются.</span>
-          </footer>
-        </main>
-      </div>
+      <header className="cabinet-header">
+        <div className="brand"><span className="brand-mark" aria-hidden="true">А</span><span>Кредитный кабинет</span></div>
+        <nav aria-label="Основная навигация"><button className="header-link" onClick={showList} disabled={!!busy} aria-current={!selected ? "page" : undefined}>Мои заявки</button></nav>
+        <div className="account"><span>{session.company.name}</span><button className="icon-button" aria-label="Сменить профиль" title="Сменить профиль" disabled={!!busy} onClick={logout}><Icon name="logout" size={18} /></button></div>
+      </header>
+      {!selected && <section className="cabinet-hero" aria-labelledby="welcome-title">
+        <div><h1 id="welcome-title">Новая возможность<br />для вашего бизнеса</h1><p>Выберите финансирование и следите за заявками<br className="desktop-break" /> в одном кабинете</p>
+          <button className="button primary new-application" onClick={create} disabled={!!busy}>{busy === "create" ? "Создаём…" : "Новая заявка"}</button>
+        </div><img className="hero-art" src="/images/credit/hero.png" alt="" width="460" height="460" fetchPriority="high" />
+      </section>}
+      <main className={`main-content ${selected ? "application-content" : "home-content"}`}>
+        {selected && <div className="draft-page-header"><button className="back-button" aria-label="Все заявки" onClick={showList} disabled={!!busy}>← Все заявки</button><span className="draft-subtitle"><span className="draft-badge">Черновик</span> № {selected.id.slice(-6)}</span></div>}
+        {errorBox}
+        {notice && <div className="notice success-notice" role="status"><Icon name="check" size={18} /><p>{notice}</p></div>}
+        {selected ? <DraftForm api={api} key={selected.id} application={selected} companyName={session.company.name}
+          errorAttempt={fieldErrorAttempt} fields={fields} errors={{ ...autosave.errors, ...fieldErrors }} busy={!!busy}
+          saveStatus={autosave.status} onChange={change} onFinish={finish} onNavigate={() => void autosave.flush()} onReauthenticate={reauthenticate} />
+          : <ApplicationsList items={items} busy={!!busy} onOpen={open} onDelete={removeDraft} onCreate={create} />}
+        <footer className="page-footer"><span>Альфа Бизнес · Кредитный кабинет</span><span>Демонстрационный проект · Все данные синтетические</span></footer>
+      </main>
     </div>
   );
 }
