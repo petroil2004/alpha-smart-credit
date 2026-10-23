@@ -22,6 +22,7 @@ from .settings import settings
 from .problems import ApiProblem, validation_error
 from .access import CurrentAccount, ClientAccount
 from .company_profile import get_company_profile
+from .serialization import serialize_application
 from .calculator import CalculationValidationError, calculate_annuity
 from .product_catalog import get_catalog
 
@@ -124,29 +125,6 @@ def serialize_session(account: Account) -> dict[str, Any]:
     return {
         "user": {"id": account.id, "name": account.name, "role": account.role},
         "company": {"id": account.company_id, "name": account.company_name} if account.role == "CLIENT" else None,
-    }
-
-
-def timestamp(value) -> str:
-    return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
-
-
-def serialize_application(application: Application) -> dict[str, Any]:
-    money = lambda value: format(value, ".2f") if value is not None else None
-    return {
-        "id": str(application.id),
-        "company_id": application.company_id,
-        "status": application.status,
-        "purpose": application.purpose,
-        "product_code": application.product_code,
-        "amount_rub": money(application.amount_rub),
-        "term_months": application.term_months,
-        "usage_days": application.usage_days,
-        "expected_inflow_date": application.expected_inflow_date.isoformat() if application.expected_inflow_date else None,
-        "expected_inflow_amount_rub": money(application.expected_inflow_amount_rub),
-        "version": application.version,
-        "created_at": timestamp(application.created_at),
-        "updated_at": timestamp(application.updated_at),
     }
 
 
@@ -276,14 +254,14 @@ def list_applications(account: ClientAccount, db: Session = Depends(get_db)) -> 
         .where(Application.company_id == account.company_id)
         .order_by(Application.updated_at.desc(), Application.id.desc())
     ).all()
-    return {"items": [serialize_application(application) for application in applications]}
+    return {"items": [serialize_application(application, db, detail=False) for application in applications]}
 
 
 def creation_replay(receipt: ApplicationCreation, db: Session):
     application = db.get(Application, receipt.application_id) if receipt.application_id else None
     if application is None:
         raise ApiProblem(410, "APPLICATION_DELETED", "Этот черновик удалён. Создайте новую заявку.")
-    return JSONResponse(status_code=200, content=serialize_application(application))
+    return JSONResponse(status_code=200, content=serialize_application(application, db))
 
 
 @app.post(f"{API_PREFIX}/applications")
@@ -326,12 +304,12 @@ def create_application(
         if not existing:
             raise
         return creation_replay(existing, db)
-    return JSONResponse(status_code=201, content=serialize_application(application))
+    return JSONResponse(status_code=201, content=serialize_application(application, db))
 
 
 @app.get(f"{API_PREFIX}/applications/{{application_id}}")
 def get_application(application_id: uuid.UUID, account: ClientAccount, db: Session = Depends(get_db)):
-    return serialize_application(application_for_account(application_id, account, db))
+    return serialize_application(application_for_account(application_id, account, db), db)
 
 
 @app.patch(f"{API_PREFIX}/applications/{{application_id}}")
@@ -370,7 +348,7 @@ def update_application(
     application.version += 1
     application.updated_at = utc_now()
     db.commit()
-    return serialize_application(application)
+    return serialize_application(application, db)
 
 
 @app.delete(f"{API_PREFIX}/applications/{{application_id}}", status_code=204)
@@ -397,3 +375,7 @@ def delete_application(
 @app.get(f"{API_PREFIX}/company-profile")
 def company_profile(account: ClientAccount):
     return get_company_profile(account)
+
+
+from .submissions import router as submissions_router
+app.include_router(submissions_router)
