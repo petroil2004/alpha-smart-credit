@@ -54,6 +54,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
   const [fields, setFields] = useState<DraftFields>(emptyDraft);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [fieldErrorAttempt, setFieldErrorAttempt] = useState(0);
+  const [purposeReset, setPurposeReset] = useState(0);
   const [error, setError] = useState<ApiError | null>(null);
   const [notice, setNotice] = useState("");
   const [account, setAccount] = useState("demo-client-1");
@@ -284,6 +285,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
         const application = await api.get(selected.id);
         upsert(application);
         adopt(application);
+        setPurposeReset((value) => value + 1);
       });
   };
   const reauthenticate = (after?:()=>void) => {
@@ -523,6 +525,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
               application={selected}
               companyName={session.company.name}
               errorAttempt={fieldErrorAttempt}
+              purposeReset={purposeReset}
               fields={fields}
               errors={fieldErrors}
               busy={!!busy}

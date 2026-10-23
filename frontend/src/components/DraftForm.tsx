@@ -20,6 +20,7 @@ interface Props extends EditableProps {
   application: Application;
   companyName: string;
   errorAttempt: number;
+  purposeReset: number;
   busy: boolean;
   saving: boolean;
   dirty: boolean;
@@ -40,15 +41,25 @@ export default function DraftForm(props: Props) {
     onSave,
   } = props;
   const [step, setStep] = useState<DraftStep>("need");
-  const [otherRequested, setOtherRequested] = useState(false);
-  const [otherPurpose, setOtherPurpose] = useState(() => purposeOptions.includes(fields.purpose) ? "" : fields.purpose);
-  const isOther = otherRequested || (!!fields.purpose && !purposeOptions.includes(fields.purpose));
+  const [other, setOther] = useState(() => ({
+    reset: props.purposeReset,
+    requested: false,
+    cached: purposeOptions.includes(fields.purpose) ? "" : fields.purpose,
+  }));
+  // Explicit server reload discards local UI buffers; ordinary save does not.
+  if (other.reset !== props.purposeReset) {
+    setOther({
+      reset: props.purposeReset,
+      requested: false,
+      cached: purposeOptions.includes(fields.purpose) ? "" : fields.purpose,
+    });
+  }
+  const isOther = other.requested || (!!fields.purpose && !purposeOptions.includes(fields.purpose));
   const purposeChoice = isOther ? "other" : fields.purpose;
   const choosePurpose = (choice: string) => {
     if (choice !== "other" && !purposeOptions.includes(choice)) return;
-    const custom = isOther ? fields.purpose : otherPurpose;
-    if (isOther) setOtherPurpose(fields.purpose);
-    setOtherRequested(choice === "other");
+    const custom = isOther ? fields.purpose : other.cached;
+    setOther({ ...other, requested: choice === "other", cached: custom });
     props.onChange("purpose", choice === "other" ? custom : choice);
   };
   const lastErrorAttempt = useRef(errorAttempt);
@@ -135,7 +146,7 @@ export default function DraftForm(props: Props) {
               </div>
             </div>
             {step === "need" && <NeedFields {...props} purposeChoice={purposeChoice} onChoosePurpose={choosePurpose} onChange={(name, value) => {
-              if (name === "purpose") setOtherRequested(true);
+              if (name === "purpose") setOther((value) => ({ ...value, requested: true }));
               props.onChange(name, value);
             }} />}
             {step === "product" && <ProductFields {...props} catalog={calculator.catalog} />}

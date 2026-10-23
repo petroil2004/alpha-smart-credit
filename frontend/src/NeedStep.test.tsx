@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, expect, it } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 import App from "./App";
 import { createApi } from "./api";
 import { application, contractServer } from "./test/api-fixtures";
@@ -66,6 +66,35 @@ it("opens Other without filling a fake purpose and permits incomplete save", asy
   await h.user.click(screen.getByRole("button", { name: "Сохранить черновик" }));
   await screen.findByText("Черновик сохранён");
   expect(h.server.store.get(h.item.id)?.purpose).toBeNull();
+});
+
+it.each(["Купить оборудование", null])("discards local purpose selection and buffer when reloading server purpose %s", async (purpose) => {
+  const h = await open("Локальное описание, от которого откажусь");
+  await h.user.click(screen.getByRole("radio", { name: "Подготовиться к сезону" }));
+  await h.user.click(screen.getByRole("radio", { name: "Другое" }));
+  h.server.store.set(h.item.id, application({ purpose, version: 2 }));
+  await h.user.click(screen.getByRole("button", { name: "Сохранить черновик" }));
+  await screen.findByRole("alert");
+  vi.spyOn(window, "confirm").mockReturnValueOnce(true);
+  await h.user.click(screen.getByRole("button", { name: "Загрузить сохранённую версию" }));
+  await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
+  if (purpose) expect(screen.getByRole("radio", { name: purpose })).toBeChecked();
+  expect(screen.getByRole("radio", { name: "Другое" })).not.toBeChecked();
+  expect(screen.queryByLabelText("На что нужны средства")).not.toBeInTheDocument();
+  await h.user.click(screen.getByRole("radio", { name: "Другое" }));
+  expect(screen.getByLabelText("На что нужны средства")).toHaveValue("");
+});
+
+it("keeps custom buffer and wizard step after ordinary save of a preset", async () => {
+  const h = await open("Моё описание");
+  await h.user.click(screen.getByRole("radio", { name: "Купить оборудование" }));
+  await h.user.click(screen.getByRole("button", { name: "Продолжить" }));
+  await h.user.click(screen.getByRole("button", { name: "Сохранить черновик" }));
+  await screen.findByText("Черновик сохранён");
+  expect(screen.getByRole("heading", { name: "Выберите продукт" })).toBeInTheDocument();
+  await h.user.click(screen.getByRole("button", { name: "Перейти к шагу «Потребность»" }));
+  await h.user.click(screen.getByRole("radio", { name: "Другое" }));
+  expect(screen.getByLabelText("На что нужны средства")).toHaveValue("Моё описание");
 });
 
 it("opens and collapses a clearly disconnected assistant without sending anything", async () => {
