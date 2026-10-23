@@ -12,6 +12,7 @@ import {
 } from "./draft/DraftFields";
 import type { EditableProps } from "./draft/DraftFields";
 import DraftReview from "./draft/DraftReview";
+import AssistantPreview from "./draft/AssistantPreview";
 import { Icon } from "./Icon";
 import { purposeOptions } from "../purposes";
 import type { SaveState } from "../autosave";
@@ -40,6 +41,7 @@ export default function DraftForm(props: Props) {
     saveStatus,
     onFinish,
   } = props;
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const [step, setStep] = useState<DraftStep>("need");
   const [other, setOther] = useState(() => ({
     reset: props.purposeReset,
@@ -149,7 +151,10 @@ export default function DraftForm(props: Props) {
               if (name === "purpose") setOther((value) => ({ ...value, requested: true }));
               props.onChange(name, value);
             }} />}
-            {step === "product" && <ProductFields {...props} catalog={calculator.catalog} />}
+            {step === "product" && <>
+              <ProductFields {...props} catalog={calculator.catalog} />
+              <AssistantPreview open={assistantOpen} onToggle={() => setAssistantOpen(value => !value)} />
+            </>}
             {step === "details" && (
               <>
                 {fields.product_code && fields.product_code !== "overdraft"

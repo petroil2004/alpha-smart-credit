@@ -76,6 +76,7 @@ export interface Api {
   list(): Promise<{ items: Application[] }>;
   create(key: string): Promise<Application>;
   get(id: string): Promise<Application>;
+  remove(id: string, version: number): Promise<void>;
   update(
     id: string,
     body: Partial<DraftPayload> & { version: number },

@@ -3,6 +3,7 @@ export function Icon({
   size = 20,
 }: {
   name:
+    | "trash"
     | "grid"
     | "arrow"
     | "plus"
@@ -15,6 +16,7 @@ export function Icon({
   size?: number;
 }) {
   const paths = {
+    trash: <><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" /></>,
     grid: (
       <>
         <rect x="3" y="3" width="7" height="7" rx="1.5" />

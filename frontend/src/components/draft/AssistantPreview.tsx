@@ -1,7 +1,6 @@
-import { useId, useState } from "react";
+import { useId } from "react";
 
-export default function AssistantPreview() {
-  const [open, setOpen] = useState(false);
+export default function AssistantPreview({open, onToggle}: {open:boolean; onToggle:()=>void}) {
   const panelId = useId();
   return (
     <div className={`assistant-preview ${open ? "is-open" : ""}`}>
@@ -15,7 +14,7 @@ export default function AssistantPreview() {
           className="button secondary"
           aria-expanded={open}
           aria-controls={panelId}
-          onClick={() => setOpen(!open)}
+          onClick={onToggle}
         >
           {open ? "Свернуть помощника" : "Помочь с выбором"}
         </button>
@@ -25,7 +24,7 @@ export default function AssistantPreview() {
           <h3>Помощник по финансированию</h3>
           <div className="assistant-placeholder">
             <span className="assistant-status">Ассистент пока не подключён</span>
-            <p>Здесь можно будет обсудить задачу бизнеса и выбор продукта. Сейчас выберите цель самостоятельно и продолжите оформление.</p>
+            <p>Здесь можно будет обсудить задачу бизнеса и выбор продукта. Сейчас выберите продукт самостоятельно и продолжите оформление.</p>
           </div>
           <label className="field">
             <span>Сообщение помощнику</span>

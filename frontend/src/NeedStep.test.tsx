@@ -102,6 +102,9 @@ it("keeps custom buffer and wizard step after autosave of a preset", async () =>
 it("opens and collapses a clearly disconnected assistant without sending anything", async () => {
   const h = await open();
   await h.user.click(screen.getByRole("radio", { name: "Купить оборудование" }));
+  expect(screen.queryByRole("button", { name: "Помочь с выбором" })).not.toBeInTheDocument();
+  await h.user.click(screen.getByRole("button", { name: "Продолжить" }));
+  await screen.findByText("Изменения сохранены");
   const before = h.server.fetcher.mock.calls.length;
   const toggle = screen.getByRole("button", { name: "Помочь с выбором" });
   expect(toggle).toHaveAttribute("aria-expanded", "false");
@@ -112,6 +115,20 @@ it("opens and collapses a clearly disconnected assistant without sending anythin
   expect(preview.getByRole("button", { name: "Отправить сообщение" })).toBeDisabled();
   await h.user.click(screen.getByRole("button", { name: "Свернуть помощника" }));
   await waitFor(() => expect(screen.queryByRole("region", { name: "Помощник по финансированию" })).not.toBeInTheDocument());
-  expect(screen.getByRole("radio", { name: "Купить оборудование" })).toBeChecked();
+  expect(screen.getByRole("heading", { name: "Выберите продукт" })).toBeInTheDocument();
   expect(h.server.fetcher.mock.calls.length).toBe(before);
+});
+
+
+it("keeps assistant expansion on returning to product, hidden on all other steps", async () => {
+  const h = await open();
+  await h.user.click(screen.getByRole("button", { name: "Продолжить" }));
+  await h.user.click(screen.getByRole("button", { name: "Помочь с выбором" }));
+  for (const step of ["Потребность", "Параметры", "Проверка"]) {
+    await h.user.click(screen.getByRole("button", { name: `Перейти к шагу «${step}»` }));
+    expect(screen.queryByRole("region", { name: "Помощник по финансированию" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Помочь с выбором" })).not.toBeInTheDocument();
+    await h.user.click(screen.getByRole("button", { name: "Перейти к шагу «Продукт»" }));
+    expect(screen.getByRole("region", { name: "Помощник по финансированию" })).toBeInTheDocument();
+  }
 });

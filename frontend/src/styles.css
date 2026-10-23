@@ -1692,3 +1692,21 @@ textarea[aria-invalid="true"] {
 .calculator-disclaimer { color: #686b73; font-size: 12px; line-height: 1.6; margin: 20px 0 0; }
 .product-terms { margin-top: 6px; }
 @media (max-width: 520px) { .loan-results { grid-template-columns: 1fr; } .loan-summary { padding: 16px; } .slider-limits { font-size: 11px; } }
+
+/* One accessible opening button per card; deletion is a separate sibling. */
+.application-row { position: relative; display: block; padding: 0; }
+.application-open { display: flex; align-items: center; gap: 15px; width: 100%; padding: 23px 76px 23px 26px; background: transparent; border: 0; color: inherit; text-align: left; font: inherit; cursor: pointer; }
+.application-open:hover:not(:disabled) { background: #faf8f7; }
+.application-open:focus-visible { outline: 2px solid var(--red); outline-offset: -3px; border-radius: 8px; }
+.application-open:disabled { cursor: wait; opacity: .65; }
+.row-title { display: block; font-size: 13px; font-weight: 600; margin: 9px 0 5px; }
+.row-purpose { display: block; font-size: 11px; line-height: 1.5; color: #8c8e94; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 340px; }
+.row-delete { position: absolute; right: 21px; top: 50%; transform: translateY(-50%); color: #96999f; }
+.row-delete:hover:not(:disabled) { color: var(--red); background: #fff0ef; }
+@media (max-width: 600px) {
+  .application-open { padding: 18px 52px 18px 14px; gap: 10px; flex-wrap: wrap; }
+  .application-open .row-main { flex-basis: calc(100% - 56px); }
+  .application-open .row-amount { text-align: left; margin-left: 53px; margin-right: auto; }
+  .row-delete { right: 10px; }
+  .row-purpose { max-width: 100%; }
+}

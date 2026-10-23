@@ -241,10 +241,34 @@ export default function App({ api = defaultApi }: { api?: Api }) {
     void run("create", async () => {
       await verifySession();
       createKey.current ??= crypto.randomUUID();
-      const application = await api.create(createKey.current);
+      let application: Application;
+      try { application = await api.create(createKey.current); }
+      catch (issue) {
+        if (issue instanceof ApiError && issue.code === "APPLICATION_DELETED") createKey.current = null;
+        throw issue;
+      }
       createKey.current = null;
       upsert(application);
       adopt(application);
+    });
+  };
+  const refreshList = () => void run("refresh-list", async () => {
+    await verifySession();
+    const list = await api.list();
+    list.items.forEach(item => requireCompany(item.company_id));
+    setItems(list.items);
+  });
+  const removeDraft = (id: string) => {
+    if (lock.current || selected) return;
+    const item = items.find(item => item.id === id);
+    if (!item || item.status !== "DRAFT") return;
+    if (!window.confirm(`Удалить черновик № ${id.slice(-6)}? Восстановить его не получится.`)) return;
+    void run("delete", async () => {
+      await verifySession();
+      await api.remove(id, item.version);
+      await verifySession();
+      setItems(current => current.filter(item => item.id !== id));
+      setNotice(`Черновик № ${id.slice(-6)} удалён.`);
     });
   };
   const change = <K extends keyof DraftFields>(
@@ -317,7 +341,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
         !
       </span>
       <div>
-        <p>{problem.code === "VERSION_CONFLICT" ? "Заявка изменена в другом окне. Загрузите сохранённую версию." : problem.message}</p>
+        <p>{problem.code === "VERSION_CONFLICT" ? (selected ? "Заявка изменена в другом окне. Загрузите сохранённую версию." : "Заявка изменена в другом окне. Обновите список перед удалением.") : problem.message}</p>
         {autosave.error && ![401, 409].includes(autosave.error.status) && <button className="text-button" disabled={!!busy} onClick={() => void autosave.retry()}>Повторить сохранение</button>}
         {problem.status === 409 && selected && (
           <button
@@ -328,6 +352,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
             Загрузить сохранённую версию
           </button>
         )}
+        {!selected && session && [404, 409, 410].includes(problem.status) && <button className="text-button" disabled={!!busy} onClick={refreshList}>Обновить список</button>}
         {problem.status === 401 && session && (
           <button
             className="text-button"
@@ -553,6 +578,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
               items={items}
               busy={!!busy}
               onOpen={open}
+              onDelete={removeDraft}
               onCreate={create}
             />
           )}
