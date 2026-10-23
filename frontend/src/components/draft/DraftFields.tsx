@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import type { DraftFields, FieldErrors, ProductCatalog } from "../../types";
 import { formatMoneyRub } from "../../draft";
 import { products } from "../../products";
+import { purposeOptions } from "../../purposes";
+import AssistantPreview from "./AssistantPreview";
 
 export interface EditableProps {
   fields: DraftFields;
@@ -71,10 +73,27 @@ export function MoneyField({
   );
 }
 
-export function NeedFields(props: EditableProps) {
+export function NeedFields(props: EditableProps & { purposeChoice: string; onChoosePurpose: (choice: string) => void }) {
+  const other = props.purposeChoice === "other";
   return (
     <>
-      <Field name="purpose" label="На что нужны средства" errors={props.errors}>
+      <fieldset className="purpose-group" aria-describedby={!other && props.errors.purpose ? "purpose-error" : undefined}>
+        <legend>Выберите задачу бизнеса</legend>
+        <div className="purpose-options">
+          {[...purposeOptions, "Другое"].map((title) => {
+            const value = title === "Другое" ? "other" : title;
+            return (
+              <label key={value} className={`purpose-option ${props.purposeChoice === value ? "is-selected" : ""} ${value === "other" ? "purpose-other" : ""}`}>
+                <input type="radio" name="purpose-choice" value={value} checked={props.purposeChoice === value} onChange={() => props.onChoosePurpose(value)} />
+                <span className="product-radio" aria-hidden="true" />
+                <span>{title}</span>
+              </label>
+            );
+          })}
+        </div>
+        {!other && props.errors.purpose && <p className="field-error" id="purpose-error">{props.errors.purpose}</p>}
+      </fieldset>
+      {other && <Field name="purpose" label="На что нужны средства" errors={props.errors}>
         <textarea
           aria-label="На что нужны средства"
           value={props.fields.purpose}
@@ -85,7 +104,8 @@ export function NeedFields(props: EditableProps) {
           {...errorProps(props.errors, "purpose")}
         />
         <span className="field-hint">Коротко опишите задачу бизнеса.</span>
-      </Field>
+      </Field>}
+      <AssistantPreview />
       <MoneyField {...props} name="amount_rub" label="Сумма финансирования" />
     </>
   );

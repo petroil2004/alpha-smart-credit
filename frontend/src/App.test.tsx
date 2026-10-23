@@ -24,7 +24,7 @@ async function openExisting(
   await user.click(
     await screen.findByRole("button", { name: /Открыть черновик/ }),
   );
-  await screen.findByRole("textbox", { name: "На что нужны средства" });
+  await user.click(await screen.findByRole("radio", { name: "Другое" }));
   return { user, server, ...view };
 }
 
@@ -133,8 +133,9 @@ describe("client draft journey", () => {
     await user.click(
       await screen.findByRole("button", { name: "Новая заявка" }),
     );
+    await user.click(await screen.findByRole("radio", { name: "Другое" }));
     await user.type(
-      await screen.findByRole("textbox", { name: "На что нужны средства" }),
+      screen.getByRole("textbox", { name: "На что нужны средства" }),
       "Закупка материалов",
     );
     await user.type(
@@ -280,7 +281,7 @@ describe("client draft journey", () => {
     await user.click(
       screen.getByRole("button", { name: "Повторить создание" }),
     );
-    await screen.findByRole("textbox", { name: "На что нужны средства" });
+    await screen.findByRole("radio", { name: "Другое" });
     const creates = server.fetcher.mock.calls.filter(
       ([url, options]) =>
         url === "/api/v1/applications" && options?.method === "POST",
@@ -313,7 +314,7 @@ describe("client draft journey", () => {
       finish();
     });
     expect(
-      await screen.findByRole("textbox", { name: "На что нужны средства" }),
+      await screen.findByRole("radio", { name: "Другое" }),
     ).toBeInTheDocument();
   });
 

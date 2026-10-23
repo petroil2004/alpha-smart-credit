@@ -470,7 +470,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
           </div>
         </header>
         <main className="main-content">
-          <div className="page-header">
+          <div className={`page-header ${selected ? "draft-page-header" : ""}`}>
             <div>
               {selected ? (
                 <>
@@ -482,11 +482,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
                   >
                     ← Все заявки
                   </button>
-                  <h1>
-                    Новая возможность
-                    <br />
-                    для вашего бизнеса<span className="red-text">.</span>
-                  </h1>
+                  <h1>Заявка на финансирование</h1>
                   <div className="draft-subtitle">
                     <span className="draft-badge">Черновик</span>
                     <span>№ {selected.id.slice(-6)}</span>

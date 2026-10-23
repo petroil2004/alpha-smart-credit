@@ -16,6 +16,8 @@ async function openDraft(
   await user.click(
     await screen.findByRole("button", { name: "Открыть черновик 000001" }),
   );
+  const other = await screen.findByRole("radio", { name: "Другое" });
+  if (!(other as HTMLInputElement).checked) await user.click(other);
   return { user, server };
 }
 
@@ -29,9 +31,9 @@ describe("draft wizard", () => {
   it("moves forward and back without losing input or saving implicitly", async () => {
     const { user, server } = await openDraft();
     expect(
-      screen.getByRole("heading", { name: "Расскажите о потребности" }),
+      screen.getByRole("heading", { name: "Для чего нужны деньги?" }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: /Оборотный кредит/ })).not.toBeInTheDocument();
     await user.type(
       screen.getByLabelText("На что нужны средства"),
       "Товар к сезону",
@@ -219,6 +221,7 @@ describe("draft wizard", () => {
     await user.click(
       await screen.findByRole("button", { name: "Новая заявка" }),
     );
+    await user.click(await screen.findByRole("radio", { name: "Другое" }));
     await user.type(
       screen.getByLabelText("На что нужны средства"),
       "До поступления оплаты",
@@ -264,9 +267,10 @@ describe("draft wizard", () => {
       screen.getByRole("button", { name: "Новая заявка" }),
     );
     expect(
-      screen.getByRole("heading", { name: "Расскажите о потребности" }),
+      screen.getByRole("heading", { name: "Для чего нужны деньги?" }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText("На что нужны средства")).toHaveValue("");
+    expect(screen.queryByLabelText("На что нужны средства")).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Другое" })).not.toBeChecked();
   });
 
   it("keeps the review and input on a failed save and allows retry", async () => {

@@ -13,6 +13,7 @@ import {
 import type { EditableProps } from "./draft/DraftFields";
 import DraftReview from "./draft/DraftReview";
 import { Icon } from "./Icon";
+import { purposeOptions } from "../purposes";
 
 interface Props extends EditableProps {
   api: Api;
@@ -39,6 +40,17 @@ export default function DraftForm(props: Props) {
     onSave,
   } = props;
   const [step, setStep] = useState<DraftStep>("need");
+  const [otherRequested, setOtherRequested] = useState(false);
+  const [otherPurpose, setOtherPurpose] = useState(() => purposeOptions.includes(fields.purpose) ? "" : fields.purpose);
+  const isOther = otherRequested || (!!fields.purpose && !purposeOptions.includes(fields.purpose));
+  const purposeChoice = isOther ? "other" : fields.purpose;
+  const choosePurpose = (choice: string) => {
+    if (choice !== "other" && !purposeOptions.includes(choice)) return;
+    const custom = isOther ? fields.purpose : otherPurpose;
+    if (isOther) setOtherPurpose(fields.purpose);
+    setOtherRequested(choice === "other");
+    props.onChange("purpose", choice === "other" ? custom : choice);
+  };
   const lastErrorAttempt = useRef(errorAttempt);
   const form = useRef<HTMLFormElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -122,7 +134,10 @@ export default function DraftForm(props: Props) {
                 <p>{current.description}</p>
               </div>
             </div>
-            {step === "need" && <NeedFields {...props} />}
+            {step === "need" && <NeedFields {...props} purposeChoice={purposeChoice} onChoosePurpose={choosePurpose} onChange={(name, value) => {
+              if (name === "purpose") setOtherRequested(true);
+              props.onChange(name, value);
+            }} />}
             {step === "product" && <ProductFields {...props} catalog={calculator.catalog} />}
             {step === "details" && (
               <>

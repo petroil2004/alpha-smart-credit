@@ -10,7 +10,7 @@ async function open(amount: string | null="3000000.00", custom?: ReturnType<type
   const server=contractServer({loggedIn:true,applications:[application({product_code:"working_capital",amount_rub:amount,term_months:36})]});
   const api=custom??createApi(server.fetcher);
   const user=userEvent.setup();render(<App api={api}/>);
-  await screen.findByRole("heading",{name:"Расскажите о потребности"});
+  await screen.findByRole("heading",{name:"Для чего нужны деньги?"});
   await user.click(screen.getByRole("button",{name:"Перейти к шагу «Параметры»"}));
   return {user,server};
 }
