@@ -65,6 +65,7 @@ it("sends a hidden invalid amount back to parameters and focuses it", async () =
 it("edits the shared amount and inflows for overdraft without an annuity payment", async () => {
   const { user, server, item } = await open({ product_code: "overdraft" });
   await user.click(screen.getByRole("button", { name: "Продолжить" }));
+  expect(screen.queryByText(/Расчёт обновится автоматически/)).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText("Сумма финансирования"), { target: { value: "100000,25" } });
   fireEvent.change(screen.getByLabelText("Пользование, дней"), { target: { value: "14" } });
   fireEvent.change(screen.getByLabelText("Сумма ожидаемого поступления"), { target: { value: "150000" } });

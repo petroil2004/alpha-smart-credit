@@ -108,7 +108,7 @@ export default function DraftForm(props: Props) {
           <fieldset disabled={busy}>
             <div className="section-heading">
               <h1 ref={heading} tabIndex={-1}>{current.title}</h1>
-              <p>{step === "details" ? "Выберите подходящие сумму и срок. Расчёт обновится автоматически." : current.description}</p>
+              <p>{current.description}</p>
             </div>
             {step === "product" && <>
               <ProductFields {...props} catalog={calculator.catalog} />
