@@ -4,6 +4,22 @@ import type { Api, Application, DraftFields, DraftPayload, FieldErrors } from ".
 
 const productFields = ["product_code", "term_months", "usage_days", "expected_inflow_date", "expected_inflow_amount_rub"] as const;
 
+function isApplication(value: unknown): value is Application {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Record<string, unknown>;
+  const nullableString = (v: unknown) => v === null || typeof v === "string";
+  const nullableInteger = (v: unknown) => v === null || (typeof v === "number" && Number.isSafeInteger(v) && v > 0);
+  const timestamp = (v: unknown) => typeof v === "string" && Number.isFinite(Date.parse(v));
+  return typeof item.id === "string" && item.id.length > 0 &&
+    typeof item.company_id === "string" && item.company_id.length > 0 &&
+    item.status === "DRAFT" && Number.isSafeInteger(item.version) &&
+    nullableString(item.purpose) &&
+    (item.product_code === null || item.product_code === "working_capital" || item.product_code === "equipment" || item.product_code === "overdraft") &&
+    nullableString(item.amount_rub) && nullableInteger(item.term_months) && nullableInteger(item.usage_days) &&
+    nullableString(item.expected_inflow_date) && nullableString(item.expected_inflow_amount_rub) &&
+    timestamp(item.created_at) && timestamp(item.updated_at);
+}
+
 export function prepareSave(fields: DraftFields, saved: Application) {
   const { payload, errors } = prepareDraftPayload(fields);
   const patch: Partial<DraftPayload> = {};
@@ -92,6 +108,9 @@ export class DraftAutosave {
         }
         const result = await this.api.update(this.saved.id, { ...p.patch, version: this.saved.version });
         if (!this.active) return false;
+        if (!isApplication(result)) {
+          throw new ApiError(502, "INVALID_SAVE_RESPONSE", "Сервер не подтвердил сохранение изменений. Повторите попытку.");
+        }
         if (result.company_id !== this.saved.company_id || result.id !== this.saved.id) {
           throw new ApiError(401, "SESSION_CHANGED", "Профиль изменился. Войдите в кабинет заново.");
         }

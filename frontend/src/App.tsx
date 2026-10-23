@@ -267,6 +267,14 @@ export default function App({ api = defaultApi }: { api?: Api }) {
     setFieldErrors((current) => {
       const next = { ...current };
       delete next[key];
+      if (key === "product_code") {
+        if (!value || value === "overdraft") delete next.term_months;
+        if (value !== "overdraft") {
+          delete next.usage_days;
+          delete next.expected_inflow_date;
+          delete next.expected_inflow_amount_rub;
+        }
+      }
       return next;
     });
   };

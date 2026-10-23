@@ -79,3 +79,19 @@ it("failed leave stays in the form on cancellation and can retry", async () => {
   await h.user.click(screen.getByRole("button", { name: "Повторить сохранение" }));
   await waitFor(() => expect(h.server.store.get(h.item.id)?.purpose).toBe("Не потерять"));
 });
+
+it("clears validation markers for parameters removed by a product change", async () => {
+  const h = await setup();
+  await h.user.click(screen.getByRole("button", { name: "Перейти к шагу «Продукт»" }));
+  await h.user.click(screen.getByRole("radio", { name: /Овердрафт/ }));
+  await h.user.click(screen.getByRole("button", { name: "Перейти к шагу «Параметры»" }));
+  fireEvent.change(screen.getByLabelText("Пользование, дней"), { target: { value: "x" } });
+  await h.user.click(screen.getByRole("button", { name: "Перейти к шагу «Проверка»" }));
+  await h.user.click(screen.getByRole("button", { name: "Сохранить и выйти" }));
+  expect(await screen.findByLabelText("Пользование, дней")).toHaveAttribute("aria-invalid", "true");
+  await h.user.click(screen.getByRole("button", { name: "Перейти к шагу «Продукт»" }));
+  await h.user.click(screen.getByRole("radio", { name: /Оборотный/ }));
+  await h.user.click(screen.getByRole("button", { name: "Перейти к шагу «Проверка»" }));
+  await waitFor(() => expect(h.server.store.get(h.item.id)?.product_code).toBe("working_capital"));
+  expect(screen.getByRole("button", { name: "Перейти к шагу «Параметры»" })).not.toHaveClass("has-error");
+});

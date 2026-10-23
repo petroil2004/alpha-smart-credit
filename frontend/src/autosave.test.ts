@@ -120,3 +120,24 @@ it.each([1, 2])("rejects an unconfirmed successful response with version %i", as
   controller.dispose();
   h.controller.dispose();
 });
+
+it.each([
+  { amount_rub: undefined },
+  { status: undefined },
+  { usage_days: "14" },
+  { product_code: "unknown" },
+  { created_at: null },
+])("rejects an incomplete or malformed full snapshot: %j", async invalid => {
+  const h = setup();
+  const api = { ...createApi(h.server.fetcher), update: vi.fn()
+    .mockResolvedValueOnce({ ...application({ purpose: "Новая цель", version: 2 }), ...invalid })
+    .mockRejectedValue(new ApiError(503, "STOP", "Bound invalid response loop")) };
+  const controller = new DraftAutosave(api, h.item, h.saved, vi.fn());
+  controller.update({ ...h.fields, purpose: "Новая цель" });
+  expect(await controller.flush()).toBe(false);
+  expect(controller.state.error?.status).toBe(502);
+  expect(api.update).toHaveBeenCalledTimes(1);
+  expect(h.saved).not.toHaveBeenCalled();
+  controller.dispose();
+  h.controller.dispose();
+});
