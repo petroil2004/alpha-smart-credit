@@ -379,3 +379,9 @@ def company_profile(account: ClientAccount):
 
 from .submissions import router as submissions_router
 app.include_router(submissions_router)
+
+from .info_requests import router as info_router
+app.include_router(info_router)
+
+from .info_files import router as info_files_router
+app.include_router(info_files_router)

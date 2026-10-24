@@ -78,6 +78,8 @@ export interface Application extends DraftPayload {
   submitted_at?: string | null;
   submission?: {submitted_at: string; submitted_by: string; snapshot: SubmissionSnapshot} | null;
   history?: ApplicationEvent[];
+  info_requests?: InfoRequest[];
+  next_action?: "CLIENT"|"STAFF"|null;
   version: number;
   created_at: string;
   updated_at: string;
@@ -96,6 +98,7 @@ export interface DraftFields {
 export type FieldErrors = Partial<Record<keyof DraftFields, string>>;
 
 export interface Api {
+  info?: InfoApi;
   companyProfile(): Promise<CompanyProfile>;
   submit(id: string, input: SubmitInput, key: string): Promise<Application>;
   staffList(): Promise<{items: Application[]}>;
@@ -113,4 +116,25 @@ export interface Api {
     id: string,
     body: Partial<DraftPayload> & { version: number },
   ): Promise<Application>;
+}
+
+export interface InfoAttachment {
+  id:string; filename:string; content_type:string; size_bytes:number; actor_id:string; created_at:string;
+}
+export interface InfoMessage {id:number; text:string; actor_id:string; actor_role:string; created_at:string;}
+export interface InfoRequest {
+  id:string; question:string; reason:string; document_required:boolean; revision:number; reply_text:string;
+  source:'SELF_REPORTED'; created_at:string; created_by:string; reply_by:string|null; closed_at:string|null; closed_by:string|null;
+  messages:InfoMessage[]; attachments:InfoAttachment[];
+}
+export interface InfoCreate {version:number; question:string; reason:string; document_required:boolean;}
+export interface InfoSubmit {version:number; revision:number;}
+export interface InfoApi {
+  create(id:string,body:InfoCreate,key:string):Promise<Application>;
+  save(id:string,rid:string,revision:number,text:string):Promise<Application>;
+  submit(id:string,rid:string,body:InfoSubmit,key:string):Promise<Application>;
+  message(id:string,rid:string,staff:boolean,text:string,key:string):Promise<Application>;
+  upload(id:string,rid:string,fid:string,revision:number,file:File):Promise<Application>;
+  detach(id:string,rid:string,fid:string,revision:number):Promise<Application>;
+  download(id:string,rid:string,fid:string,staff:boolean):Promise<Blob>;
 }

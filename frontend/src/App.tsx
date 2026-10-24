@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   Api,
   Application,
@@ -22,6 +22,9 @@ import {sameSession} from "./session";
 import {readAttempt,saveAttempt,clearAttempt} from "./submission";
 import type {SubmissionAttempt} from "./submission";
 import { Icon } from "./components/Icon";
+
+import InfoRequests from "./components/InfoRequests";
+import type {InfoController} from "./components/InfoRequests";
 
 const defaultApi = createApi();
 const asError = (error: unknown) =>
@@ -70,8 +73,12 @@ export default function App({ api = defaultApi }: { api?: Api }) {
   const [notice, setNotice] = useState("");
   const [account, setAccount] = useState("demo-client-1");
   const createKey = useRef<string | null>(null);
+  const infoController=useRef<InfoController|null>(null);
+  const [infoDirty,setInfoDirty]=useState(false);
+  const registerInfo=useCallback((controller:InfoController|null)=>{infoController.current=controller;setInfoDirty(controller?.dirty??false);},[]);
 
   const clearProfile = () => {
+    infoController.current=null;setInfoDirty(false);
     sessionRef.current=null;
     setSession(null);
     setPendingSubmit(null);
@@ -139,7 +146,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
     onSaved: (application) => { upsert(application); setSelected(application); },
     onScopeChanged: clearProfile,
   });
-  const dirty = autosave.dirty || autosave.status === "saving";
+  const dirty = autosave.dirty || autosave.status === "saving" || infoDirty;
 
   useEffect(() => {
     let active = true;
@@ -257,7 +264,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
   };
   const leave = (name: string, action: () => Promise<void> | void) => {
     void run(name, async () => {
-      if (selected && !await autosave.flush() && !window.confirm("Не все изменения сохранены. Выйти без их сохранения?")) return;
+      if (selected && (!await autosave.flush() || (infoController.current&&!await infoController.current.flush())) && !window.confirm("Не все изменения сохранены. Выйти без их сохранения?")) return;
       await action();
     });
   };
@@ -405,7 +412,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
       try{
         const result=await api.submit(id,operation.body,operation.key);
         await verifySession(expected);
-        if(result.id!==id || result.company_id!==expected.company!.id || result.status!=='UNDER_REVIEW' || !result.submission || !Array.isArray(result.history)){
+        if(result.id!==id || result.company_id!==expected.company!.id || !['UNDER_REVIEW','NEEDS_INFO'].includes(result.status) || !result.submission || !Array.isArray(result.history)){
           throw new ApiError(502,"INVALID_SUBMIT_RESPONSE","Сервер не подтвердил отправку. Проверьте её повтором.");
         }
         clearAttempt(expected.user.id,id);setPendingSubmit(null);
@@ -570,7 +577,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
           errorAttempt={fieldErrorAttempt} fields={fields} errors={{ ...autosave.errors, ...fieldErrors }} busy={!!busy || !!pendingSubmit || receiptBlocked}
           saveStatus={autosave.status} onChange={change} onFinish={finish} onNavigate={() => void autosave.flush()} onReauthenticate={reauthenticate}
           onSubmitApplication={submitApplication} onSessionChanged={clearProfile}/>
-          : <SubmittedApplication application={selected}/>
+          : <><SubmittedApplication application={selected} staff={!session.company}/><InfoRequests key={session.user.id+selected.id} api={api} session={session} application={selected} onUpdated={value=>{upsert(value);setSelected(value);}} onSessionChanged={clearProfile} register={registerInfo}/></>
           : session.company ? <ApplicationsList items={items} busy={!!busy} onOpen={open} onDelete={removeDraft} onCreate={create} />
           : <StaffApplications items={items} busy={!!busy} onOpen={open} onRefresh={refreshList}/>}
         <footer className="page-footer"><span>Альфа Бизнес · Кредитный кабинет</span><span>Демонстрационный проект · Все данные синтетические</span></footer>

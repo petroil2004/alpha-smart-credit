@@ -4,7 +4,7 @@ import uuid
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Index, LargeBinary, text, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -90,3 +90,52 @@ class ApplicationEvent(Base):
     catalog_version: Mapped[str] = mapped_column(String(100), nullable=False)
     offer_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     check_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class InfoRequest(Base):
+    __tablename__ = 'info_requests'
+    __table_args__ = (Index('uq_open_info_request', 'application_id', unique=True, postgresql_where=text('closed_at IS NULL')),)
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    application_id: Mapped[uuid.UUID] = mapped_column(ForeignKey('applications.id'), nullable=False, index=True)
+    question: Mapped[str] = mapped_column(Text, nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    document_required: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    reply_text: Mapped[str] = mapped_column(Text, nullable=False, default='')
+    created_by: Mapped[str] = mapped_column(ForeignKey('accounts.id'), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+    reply_by: Mapped[str | None] = mapped_column(ForeignKey('accounts.id'), nullable=True)
+    closed_by: Mapped[str | None] = mapped_column(ForeignKey('accounts.id'), nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class InfoMessage(Base):
+    __tablename__ = 'info_messages'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    request_id: Mapped[uuid.UUID] = mapped_column(ForeignKey('info_requests.id'), nullable=False, index=True)
+    actor_id: Mapped[str] = mapped_column(ForeignKey('accounts.id'), nullable=False)
+    actor_role: Mapped[str] = mapped_column(String(32), nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+
+class InfoOperation(Base):
+    __tablename__ = 'info_operations'
+    actor_id: Mapped[str] = mapped_column(ForeignKey('accounts.id'), primary_key=True)
+    key: Mapped[str] = mapped_column(String(36), primary_key=True)
+    signature: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+
+class InfoAttachment(Base):
+    __tablename__ = 'info_attachments'
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
+    request_id: Mapped[uuid.UUID] = mapped_column(ForeignKey('info_requests.id'), nullable=False, index=True)
+    actor_id: Mapped[str] = mapped_column(ForeignKey('accounts.id'), nullable=False)
+    filename: Mapped[str] = mapped_column(String(128), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    content: Mapped[bytes] = mapped_column(LargeBinary, nullable=False, deferred=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+    detached_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

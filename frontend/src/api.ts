@@ -1,3 +1,4 @@
+import {createInfoApi} from './info-api';
 import type { Api, Application, AnnuityResult, FieldErrors, ProductCatalog, Session, CompanyProfile } from "./types";
 
 export class ApiError extends Error {
@@ -77,6 +78,7 @@ export function createApi(
     }
   }
   return {
+    info: createInfoApi(fetcher),
     companyProfile: () => request<CompanyProfile>("/company-profile"),
     submit: (id, input, key) => request<Application>(`/applications/${encodeURIComponent(id)}/submit`, {method: "POST", body: JSON.stringify(input), headers: {"Idempotency-Key": key}}),
     staffList: () => request<{items: Application[]}>("/staff/applications"),

@@ -123,15 +123,15 @@ def submit_application(application_id: uuid.UUID, payload: SubmitPayload, accoun
 @router.get('/staff/applications')
 def staff_applications(account: StaffAccount, db: Session = Depends(get_db)):
     applications = db.scalars(select(Application).join(ApplicationSubmission)
-                             .where(Application.status == 'UNDER_REVIEW')
-                             .order_by(ApplicationSubmission.submitted_at.desc(), Application.id.desc())).all()
+                             .where(Application.status.in_(['UNDER_REVIEW','NEEDS_INFO']))
+                             .order_by(Application.updated_at.desc(), Application.id.desc())).all()
     return {'items': [serialize_application(application, db, detail=False) for application in applications]}
 
 
 @router.get('/staff/applications/{application_id}')
 def staff_application(application_id: uuid.UUID, account: StaffAccount, db: Session = Depends(get_db)):
     application = db.scalar(select(Application).join(ApplicationSubmission)
-                            .where(Application.id == application_id, Application.status == 'UNDER_REVIEW'))
+                            .where(Application.id == application_id, Application.status.in_(['UNDER_REVIEW','NEEDS_INFO'])))
     if not application:
         raise ApiProblem(404, 'NOT_FOUND', 'Заявка не найдена')
     return serialize_application(application, db)
