@@ -38,7 +38,7 @@ def money(value: Decimal) -> str:
 def accepted_financial_values(application_id: uuid.UUID, db: Session) -> list[dict[str, Any]]:
     return [value for item in db.scalars(select(InfoRequest).where(
         InfoRequest.application_id == application_id, InfoRequest.financial_accepted_at.is_not(None)
-    )) for value in (item.financial_values or [])]
+    ).order_by(InfoRequest.financial_accepted_at, InfoRequest.id)) for value in (item.financial_values or [])]
 
 
 def assessment_facts(application: Application, submission: ApplicationSubmission, db: Session) -> dict[str, Any]:

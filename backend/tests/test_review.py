@@ -1,7 +1,40 @@
 """Connected MVP review: structured financial facts, score and staff decision."""
 import uuid
+import pytest
 
 from test_submissions import draft, submit
+
+
+@pytest.mark.parametrize('amount', ['NaN', 'Infinity', '10000000000000000.00'])
+def test_invalid_financial_amount_is_validation_error(amount):
+    from types import SimpleNamespace
+    from app.info_requests import FinancialValue, validate_financial_values
+    from app.problems import ApiProblem
+    value = FinancialValue(kind='debt_payment_rub', value_rub=amount, source='CLIENT_CONFIRMED')
+    with pytest.raises(ApiProblem) as failure:
+        validate_financial_values([value], SimpleNamespace(id=uuid.uuid4()), SimpleNamespace(get=lambda *_: None))
+    assert failure.value.status_code == 422
+
+
+def test_latest_accepted_correction_wins_even_when_rows_inserted_out_of_order(client):
+    from datetime import datetime, timedelta, timezone
+    from app.db import SessionLocal
+    from app.models import InfoRequest, Application, ApplicationSubmission
+    from app.review import assessment_facts
+    item = draft(client, amount_rub='300000.00', term_months=36)
+    sent = submit(client, item).json()
+    month = sent['submission']['snapshot']['company']['finance']['months'][0]['month']
+    now = datetime.now(timezone.utc)
+    app_id = uuid.UUID(item['id'])
+    with SessionLocal.begin() as db:
+        for accepted_at, amount in [(now, '500000.00'), (now-timedelta(days=1), '950000.00')]:
+            db.add(InfoRequest(application_id=app_id, question='Расходы', reason='Уточнение', document_required=False,
+                               created_by='demo-staff-1', closed_at=accepted_at, financial_accepted_at=accepted_at,
+                               financial_accepted_by='demo-staff-1', financial_values=[{'kind':'expenses_rub', 'month':month,
+                               'value_rub':amount, 'source':'CLIENT_CONFIRMED'}]))
+    with SessionLocal() as db:
+        facts = assessment_facts(db.get(Application, app_id), db.get(ApplicationSubmission, app_id), db)
+    assert facts['months'][0]['expenses_rub'] == '500000.00'
 
 
 def login(client, account):

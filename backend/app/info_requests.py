@@ -117,7 +117,8 @@ def validate_financial_values(values, application, db):
         seen.add(key)
         try:value=Decimal(item.value_rub)
         except InvalidOperation as exc:raise validation_error({'financial_values':'Укажите сумму с точностью до копеек'}) from exc
-        if value<0 or value.as_tuple().exponent < -2:raise validation_error({'financial_values':'Укажите неотрицательную сумму с точностью до копеек'})
+        if not value.is_finite() or value<0 or value>Decimal('9999999999999999.99') or value.as_tuple().exponent < -2:
+            raise validation_error({'financial_values':'Укажите неотрицательную сумму до 9999999999999999.99 с точностью до копеек'})
         result.append({'kind':item.kind,'month':item.month,'value_rub':format(value.quantize(Decimal('0.01')),'.2f'),'source':item.source})
     return result
 

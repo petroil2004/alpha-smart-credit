@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useEffect,useState} from 'react';
 import type {Api,Application,Assessment} from '../types';
 import {ApiError} from '../api';
 
@@ -6,6 +6,7 @@ const group:{[key:string]:string}={LOW:'Низкий риск',MEDIUM:'Сред�
 const recommendation:{[key:string]:string}={OFFER_REQUESTED:'Можно принять решение',RECOMMEND_DECLINE:'Рекомендован отказ',REQUEST_INFO:'Нужны уточнения'};
 export default function ReviewPanel({api,application,onUpdated}:{api:Api;application:Application;onUpdated:(value:Application)=>void}){
  const [assessment,setAssessment]=useState<Assessment|null>(application.assessment??null);const [comment,setComment]=useState('');const [busy,setBusy]=useState(false);const [error,setError]=useState<string|null>(null);
+ useEffect(()=>{setAssessment(application.assessment??null);},[application.id,application.assessment]);
  async function refresh(){setBusy(true);setError(null);try{setAssessment(await api.assessment(application.id));}catch(e){setError(e instanceof ApiError?e.message:'Не удалось выполнить оценку');}finally{setBusy(false);}}
  async function decide(decision:'APPROVE'|'DECLINE'){setBusy(true);setError(null);try{onUpdated(await api.decide(application.id,{version:application.version,decision,comment},crypto.randomUUID()));}catch(e){setError(e instanceof ApiError?e.message:'Не удалось сохранить решение');}finally{setBusy(false);}}
  if(!['UNDER_REVIEW','NEEDS_INFO'].includes(application.status))return null;
