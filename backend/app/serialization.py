@@ -3,6 +3,7 @@ from datetime import timezone
 from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from .info_serialization import serialize_info_requests
 from .models import Account, Application, ApplicationSubmission, ApplicationEvent
 
 def timestamp(value) -> str:
@@ -35,7 +36,9 @@ def serialize_application(application: Application, db: Session, *, detail: bool
     company_name = (submission.snapshot['company']['company_name'] if submission else
                     db.scalar(select(Account.company_name).where(Account.company_id == application.company_id).order_by(Account.id).limit(1)))
     result.update(company_name=company_name, submitted_at=timestamp(submission.submitted_at) if submission else None)
+    result['next_action'] = 'CLIENT' if application.status == 'NEEDS_INFO' else 'STAFF' if application.status == 'UNDER_REVIEW' else None
     if detail:
+        result['info_requests'] = serialize_info_requests(application.id, db)
         result['submission'] = {'submitted_at': timestamp(submission.submitted_at), 'submitted_by': submission.actor_id,
                                 'snapshot': submission.snapshot} if submission else None
         events = db.scalars(select(ApplicationEvent).where(ApplicationEvent.application_id == application.id)
