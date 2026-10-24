@@ -47,6 +47,10 @@ describe("draft payload", () => {
       usage_days: null,
       expected_inflow_date: null,
       expected_inflow_amount_rub: null,
+      equipment_cost_rub: null,
+      planned_payment_rub: null,
+      planned_payment_date: null,
+      expected_inflow_source: null,
     });
   });
   it("clears overdraft-only values for an ordinary credit", () => {

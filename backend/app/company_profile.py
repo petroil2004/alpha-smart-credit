@@ -38,7 +38,7 @@ def get_company_profile(account: Account, db: Session, *, as_of: datetime | None
         return money(sum(map(Decimal, values), Decimal('0')) / 6) if all(v is not None for v in values) else None
 
     details = {field: getattr(dataset, field) if dataset else None for field in
-               ('legal_form', 'tax_id', 'okved', 'registration_status', 'is_bank_client')}
+               ('legal_form', 'tax_id', 'okved', 'registry_source', 'registration_status', 'is_bank_client')}
     details['registration_date'] = dataset.registration_date.isoformat() if dataset and dataset.registration_date else None
     details['business_age_months'] = full_months(dataset.registration_date, day) if dataset and dataset.registration_date else None
     displayed = {

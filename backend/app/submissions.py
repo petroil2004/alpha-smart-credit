@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .access import ClientAccount, StaffAccount
-from .calculator import CalculationValidationError, calculate_annuity
+from .calculator import CalculationValidationError, calculate_annuity, calculate_overdraft
 from .company_profile import get_company_profile
 from .profile_period import period_for
 from .db import get_db
@@ -69,26 +69,36 @@ def submit_application(application_id: uuid.UUID, payload: SubmitPayload, accoun
         fields['confirmed'] = 'Подтвердите сведения и выбранные параметры'
     if not application.purpose or not application.purpose.strip() or len(application.purpose) > 500:
         fields['purpose'] = 'Укажите, на что нужны средства'
-    if application.product_code in {'equipment', 'overdraft'}:
-        raise ApiProblem(422, 'SUBMISSION_NOT_AVAILABLE', 'Отправка этого продукта пока недоступна. Сохраните черновик.', {'product_code': 'Сейчас отправить можно оборотный кредит'})
-    if application.product_code != 'working_capital':
-        fields['product_code'] = 'Выберите оборотный кредит'
+    if application.product_code not in {'working_capital', 'equipment', 'overdraft'}:
+        fields['product_code'] = 'Выберите продукт'
     if application.amount_rub is None:
         fields['amount_rub'] = 'Укажите сумму'
-    if application.term_months is None:
+    if application.product_code in {'working_capital', 'equipment'} and application.term_months is None:
         fields['term_months'] = 'Укажите срок'
-    for name in ('usage_days', 'expected_inflow_date', 'expected_inflow_amount_rub'):
-        if getattr(application, name) is not None:
-            fields[name] = 'Поле неприменимо к оборотному кредиту'
+    if application.product_code == 'equipment' and application.equipment_cost_rub is None:
+        fields['equipment_cost_rub'] = 'Укажите стоимость оборудования'
+    if application.product_code == 'overdraft':
+        for name in ('usage_days', 'expected_inflow_date', 'expected_inflow_amount_rub', 'planned_payment_rub', 'planned_payment_date', 'expected_inflow_source'):
+            if getattr(application, name) is None:
+                fields[name] = 'Укажите параметр овердрафта'
+    elif application.product_code in {'working_capital', 'equipment'}:
+        for name in ('usage_days', 'expected_inflow_date', 'expected_inflow_amount_rub', 'planned_payment_rub', 'planned_payment_date', 'expected_inflow_source'):
+            if getattr(application, name) is not None:
+                fields[name] = 'Поле неприменимо к обычному кредиту'
     if fields:
         raise validation_error(fields)
     try:
-        calculation = calculate_annuity(application.product_code, application.amount_rub, application.term_months)
+        if application.product_code == 'overdraft':
+            calculation = calculate_overdraft(application.amount_rub, application.planned_payment_rub, application.usage_days,
+                                               application.planned_payment_date, application.expected_inflow_date,
+                                               application.expected_inflow_amount_rub)
+        else:
+            calculation = calculate_annuity(application.product_code, application.amount_rub, application.term_months)
     except CalculationValidationError as exc:
         raise validation_error(exc.fields) from exc
     values = application_values(application)
     snapshot = {
-        'application': {field: values[field] for field in ('purpose', 'product_code', 'amount_rub', 'term_months', 'usage_days', 'expected_inflow_date', 'expected_inflow_amount_rub')},
+        'application': {field: values[field] for field in ('purpose', 'product_code', 'amount_rub', 'term_months', 'usage_days', 'expected_inflow_date', 'expected_inflow_amount_rub', 'equipment_cost_rub', 'planned_payment_rub', 'planned_payment_date', 'expected_inflow_source')},
         'company': profile, 'calculation': calculation, 'financial_period': profile['finance']['period'],
         'confirmed_at': timestamp(now), 'confirmed_by': account.id,
     }
@@ -103,6 +113,12 @@ def submit_application(application_id: uuid.UUID, payload: SubmitPayload, accoun
     application.status = 'UNDER_REVIEW'
     application.version += 1
     application.updated_at = now
+    # ``calculate_assessment`` reads the immutable submission back through the
+    # session.  Flush it first: ``Session.get`` does not itself guarantee that
+    # a newly added submission has been written before that lookup.
+    db.flush()
+    from .review import calculate_assessment
+    calculate_assessment(application, db, now)
     try:
         db.commit()
     except IntegrityError:
@@ -118,7 +134,7 @@ def submit_application(application_id: uuid.UUID, payload: SubmitPayload, accoun
 @router.get('/staff/applications')
 def staff_applications(account: StaffAccount, db: Session = Depends(get_db)):
     applications = db.scalars(select(Application).join(ApplicationSubmission)
-                             .where(Application.status.in_(['UNDER_REVIEW','NEEDS_INFO']))
+                             .where(Application.status != 'DRAFT')
                              .order_by(Application.updated_at.desc(), Application.id.desc())).all()
     return {'items': [serialize_application(application, db, detail=False) for application in applications]}
 
@@ -126,7 +142,7 @@ def staff_applications(account: StaffAccount, db: Session = Depends(get_db)):
 @router.get('/staff/applications/{application_id}')
 def staff_application(application_id: uuid.UUID, account: StaffAccount, db: Session = Depends(get_db)):
     application = db.scalar(select(Application).join(ApplicationSubmission)
-                            .where(Application.id == application_id, Application.status.in_(['UNDER_REVIEW','NEEDS_INFO'])))
+                            .where(Application.id == application_id, Application.status != 'DRAFT'))
     if not application:
         raise ApiProblem(404, 'NOT_FOUND', 'Заявка не найдена')
     return serialize_application(application, db)

@@ -31,9 +31,17 @@ def ensure_demo_profiles(prepared_on: date | None = None) -> None:
             if (account.role, account.company_id, account.company_name) != ('CLIENT', item['company_id'], item['company_name']):
                 log.warning('Demo profile skipped: existing account %s differs from its fixture', item['account_id'])
                 continue
-            if db.get(CompanyData, item['company_id']) is not None:
+            existing = db.get(CompanyData, item['company_id'])
+            if existing is not None:
+                # Explicit, additive FNS-mock enrichment: only former unknowns.
+                if existing.tax_id is None:
+                    existing.tax_id = item['tax_id']
+                if existing.okved is None:
+                    existing.okved = item['okved']
+                if existing.registry_source is None:
+                    existing.registry_source = 'FNS_MOCK'
                 continue
-            db.add(CompanyData(company_id=item['company_id'], legal_form=item['legal_form'], tax_id=None, okved=None,
+            db.add(CompanyData(company_id=item['company_id'], legal_form=item['legal_form'], tax_id=item['tax_id'], okved=item['okved'], registry_source='FNS_MOCK',
                                registration_date=shift_month(day, -36), registration_status=item['registration_status'],
                                is_bank_client=True, prepared_on=day, data_version=data['data_version'],
                                debt_payment_rub=Decimal(item['debt_payment_rub']), debt_source='BANK_DATA', debt_as_of=day))

@@ -21,7 +21,9 @@ def test_profile_contains_six_persistent_months(client):
     assert finance['average_income_rub']=='900000.00'
     assert finance['average_expenses_rub']=='600000.00'
     assert finance['debt_payment_rub']=='30000.00'
-    assert profile['details']['tax_id'] is None
+    assert profile['details']['tax_id'] == '7701000001'
+    assert profile['details']['okved'] == '47.19'
+    assert profile['details']['registry_source'] == 'FNS_MOCK'
     assert profile['details']['registration_status']=='ACTIVE'
     assert profile['source']=='BANK_DATA'
 

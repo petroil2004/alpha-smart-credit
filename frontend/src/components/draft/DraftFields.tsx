@@ -49,7 +49,7 @@ export function MoneyField({
   errors,
   onChange,
 }: EditableProps & {
-  name: "amount_rub" | "expected_inflow_amount_rub";
+  name: "amount_rub" | "expected_inflow_amount_rub" | "equipment_cost_rub" | "planned_payment_rub";
   label: string;
 }) {
   return (
@@ -136,6 +136,11 @@ export function ParameterFields(props: EditableProps) {
             Для овердрафта важно знать, когда поступят деньги для возврата.
           </p>
           <div className="field-grid">
+            <MoneyField {...props} name="planned_payment_rub" label="Планируемая оплата поставщику" />
+            <Field name="planned_payment_date" label="Дата планируемой оплаты" errors={errors}>
+              <input aria-label="Дата планируемой оплаты" type="date" value={fields.planned_payment_date}
+                onChange={event => onChange("planned_payment_date", event.target.value)} {...errorProps(errors, "planned_payment_date")} />
+            </Field>
             <Field
               name="expected_inflow_date"
               label="Дата ожидаемого поступления"
@@ -157,8 +162,14 @@ export function ParameterFields(props: EditableProps) {
               label="Сумма ожидаемого поступления"
             />
           </div>
+          <Field name="expected_inflow_source" label="Источник ожидаемого поступления" errors={errors}>
+            <select aria-label="Источник ожидаемого поступления" value={fields.expected_inflow_source} onChange={event=>onChange("expected_inflow_source", event.target.value as typeof fields.expected_inflow_source)} {...errorProps(errors,"expected_inflow_source")}>
+              <option value="">Выберите источник</option><option value="BUYER">Покупатель</option><option value="CONTRACT">Договор</option><option value="REGULAR_REVENUE">Обычная выручка</option><option value="OTHER">Другое</option>
+            </select>
+          </Field>
         </div>
       )}
+      {fields.product_code === "equipment" && <MoneyField {...props} name="equipment_cost_rub" label="Стоимость оборудования" />}
     </>
   );
 }

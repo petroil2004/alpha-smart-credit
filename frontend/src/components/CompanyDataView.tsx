@@ -27,7 +27,7 @@ export default function CompanyDataView({profile,historical=false,pending=false}
      <div><dt>Статус регистрации бизнеса</dt><dd>{details.registration_status==='ACTIVE'?'Действует':details.registration_status==='TERMINATED'?'Деятельность прекращена':unknown}</dd></div>
      <div><dt>Клиент банка</dt><dd>{details.is_bank_client===null?unknown:details.is_bank_client?'Да':'Нет'}</dd></div>
     </dl>
-    <p className="small-note">Синтетические данные банка. Это подготовленный профиль, а не результат обращения в ФНС.</p>
+    <p className="small-note">ИНН, ОКВЭД и статус — из локальной имитации ФНС; финансовые сведения синтетические. Реального обращения во внешние сервисы нет.</p>
     <p className="small-note">Дата сведений: {date(profile?.as_of_date)}. Набор подготовлен: {date(profile?.prepared_on)}.</p>
    </>:<p className="small-note">{absent}</p>}
   </details>

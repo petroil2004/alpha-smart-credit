@@ -1,5 +1,6 @@
 """Read-only Decimal calculations; no database or application decisions."""
 from decimal import Decimal, ROUND_HALF_UP, localcontext
+from datetime import date
 from typing import Any
 
 from .product_catalog import CATALOG_VERSION, get_product
@@ -42,3 +43,36 @@ def calculate_annuity(product_code: str, amount_rub: Decimal, term_months: int) 
             "monthly_payment_rub": format(payment, ".2f"), "total_payment_rub": format(total, ".2f"),
             "overpayment_rub": format(total - amount_rub, ".2f"),
         }
+
+
+def calculate_overdraft(limit_rub: Decimal, payment_rub: Decimal, usage_days: int,
+                        payment_date: date, inflow_date: date, inflow_rub: Decimal) -> dict[str, Any]:
+    """Server calculation for the one planned overdraft use in the MVP."""
+    product = get_product("overdraft")
+    assert product is not None
+    fields: dict[str, str] = {}
+    if not product.amount_min_rub <= limit_rub <= product.amount_max_rub:
+        fields["amount_rub"] = f"Укажите лимит от {product.amount_min_rub} до {product.amount_max_rub} ₽"
+    if payment_rub <= 0 or payment_rub > limit_rub:
+        fields["planned_payment_rub"] = "Планируемая оплата должна быть больше нуля и не превышать лимит"
+    if not product.usage_min_days <= usage_days <= product.usage_max_days:
+        fields["usage_days"] = f"Укажите срок использования от {product.usage_min_days} до {product.usage_max_days} дней"
+    if inflow_date < payment_date or inflow_date > payment_date.fromordinal(payment_date.toordinal() + usage_days):
+        fields["expected_inflow_date"] = "Поступление должно быть в период использования овердрафта"
+    if fields:
+        raise CalculationValidationError(fields)
+    with localcontext() as context:
+        context.prec = 50
+        interest = (payment_rub * product.annual_rate_percent / Decimal(100) * Decimal(usage_days) / Decimal(365)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        due = payment_rub + interest
+    if inflow_rub < due:
+        fields["expected_inflow_amount_rub"] = "Ожидаемое поступление должно покрыть оплату и проценты"
+        raise CalculationValidationError(fields)
+    return {
+        "catalog_version": CATALOG_VERSION, "product_code": "overdraft", "amount_rub": format(limit_rub, ".2f"),
+        "planned_payment_rub": format(payment_rub, ".2f"), "usage_days": usage_days,
+        "planned_payment_date": payment_date.isoformat(), "expected_inflow_date": inflow_date.isoformat(),
+        "expected_inflow_amount_rub": format(inflow_rub, ".2f"),
+        "annual_rate_percent": format(product.annual_rate_percent, ".2f"),
+        "interest_rub": format(interest, ".2f"), "due_rub": format(due, ".2f"),
+    }

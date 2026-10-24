@@ -40,6 +40,10 @@ EDITABLE_FIELDS = {
     "usage_days",
     "expected_inflow_date",
     "expected_inflow_amount_rub",
+    "equipment_cost_rub",
+    "planned_payment_rub",
+    "planned_payment_date",
+    "expected_inflow_source",
 }
 
 
@@ -68,6 +72,10 @@ class PatchPayload(BaseModel):
     usage_days: StrictInt | None = None
     expected_inflow_date: StrictStr | None = None
     expected_inflow_amount_rub: StrictStr | None = None
+    equipment_cost_rub: StrictStr | None = None
+    planned_payment_rub: StrictStr | None = None
+    planned_payment_date: StrictStr | None = None
+    expected_inflow_source: Literal["BUYER", "CONTRACT", "REGULAR_REVENUE", "OTHER"] | None = None
 
 
 def problem_response(problem: ApiProblem) -> JSONResponse:
@@ -91,10 +99,11 @@ def request_validation_fields(error: RequestValidationError) -> dict[str, str]:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(engine)
-    from .schema_compat import allow_deleted_creation_receipts, allow_staff_accounts
+    from .schema_compat import allow_deleted_creation_receipts, allow_staff_accounts, add_mvp_review_columns
 
     allow_deleted_creation_receipts(engine)
     allow_staff_accounts(engine)
+    add_mvp_review_columns(engine)
     from .seed import ensure_demo_accounts
 
     ensure_demo_accounts()
@@ -155,15 +164,17 @@ def validate_final_values(values: dict[str, Any]) -> None:
     fields: dict[str, str] = {}
     product = values["product_code"]
     if product is None:
-        for field in ("term_months", "usage_days", "expected_inflow_date", "expected_inflow_amount_rub"):
+        for field in ("term_months", "usage_days", "expected_inflow_date", "expected_inflow_amount_rub", "equipment_cost_rub", "planned_payment_rub", "planned_payment_date", "expected_inflow_source"):
             if values[field] is not None:
                 fields[field] = "Поле доступно после выбора подходящего продукта"
     elif product in {"working_capital", "equipment"}:
-        for field in ("usage_days", "expected_inflow_date", "expected_inflow_amount_rub"):
+        for field in ("usage_days", "expected_inflow_date", "expected_inflow_amount_rub", "planned_payment_rub", "planned_payment_date", "expected_inflow_source"):
             if values[field] is not None:
                 fields[field] = "Поле применимо только к овердрафту"
     elif product == "overdraft" and values["term_months"] is not None:
         fields["term_months"] = "Срок в месяцах неприменим к овердрафту"
+    if product != "equipment" and values["equipment_cost_rub"] is not None:
+        fields["equipment_cost_rub"] = "Поле применимо только к кредиту на оборудование"
     if fields:
         raise validation_error(fields)
 
@@ -333,12 +344,12 @@ def update_application(
             value = value.strip() or None
             if value is not None and len(value) > 500:
                 raise validation_error({"purpose": "Текст не должен быть длиннее 500 символов"})
-        elif field in {"amount_rub", "expected_inflow_amount_rub"} and value is not None:
+        elif field in {"amount_rub", "expected_inflow_amount_rub", "equipment_cost_rub", "planned_payment_rub"} and value is not None:
             value = parse_money(value, field)
         elif field in {"term_months", "usage_days"} and value is not None:
             if not 0 < value <= MAX_STORED_INTEGER:
                 raise validation_error({field: "Укажите положительное целое число не больше 2147483647"})
-        elif field == "expected_inflow_date" and value is not None:
+        elif field in {"expected_inflow_date", "planned_payment_date"} and value is not None:
             value = parse_date(value)
         values[field] = value
 
@@ -385,3 +396,6 @@ app.include_router(info_router)
 
 from .info_files import router as info_files_router
 app.include_router(info_files_router)
+
+from .review import router as review_router
+app.include_router(review_router)

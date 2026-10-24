@@ -28,7 +28,7 @@ it("keeps a changed product and dependent parameters atomic", () => {
   const item = application({ product_code: "working_capital", term_months: 12 });
   const fields = { ...fromApplication(item), product_code: "overdraft" as const, term_months: "", usage_days: "x", purpose: "Оплата" };
   expect(prepareSave(fields, item).patch).toEqual({ purpose: "Оплата" });
-  expect(prepareSave({ ...fields, usage_days: "14" }, item).patch).toEqual({ purpose: "Оплата", product_code: "overdraft", term_months: null, usage_days: 14, expected_inflow_date: null, expected_inflow_amount_rub: null });
+  expect(prepareSave({ ...fields, usage_days: "14" }, item).patch).toEqual({ purpose: "Оплата", product_code: "overdraft", term_months: null, usage_days: 14, expected_inflow_date: null, expected_inflow_amount_rub: null, equipment_cost_rub: null, planned_payment_rub: null, planned_payment_date: null, expected_inflow_source: null });
 });
 
 it("does not write a version for formatting-only or unchanged values", () => {

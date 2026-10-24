@@ -78,10 +78,10 @@ it('invalid purpose returns to details',async()=>{
   expect(await screen.findByLabelText('На что нужны средства')).toHaveAttribute('aria-invalid','true');
 });
 
-it('unsupported products still save draft',async()=>{
+it('equipment application remains available for completion and submission',async()=>{
   const h=await setup({product_code:'equipment'});
-  expect(screen.queryByRole('button',{name:'Отправить заявку'})).not.toBeInTheDocument();
-  expect(screen.getByText(/Отправка этого продукта пока недоступна/)).toBeInTheDocument();
+  expect(screen.getByRole('button',{name:'Отправить заявку'})).toBeInTheDocument();
+  expect(screen.queryByText(/Отправка этого продукта пока недоступна/)).not.toBeInTheDocument();
   await h.user.click(screen.getByRole('button',{name:'Сохранить и выйти'}));
   expect(await screen.findByRole('heading',{name:'Мои заявки'})).toBeInTheDocument();
 });

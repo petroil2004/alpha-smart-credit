@@ -26,6 +26,7 @@ import { Icon } from "./components/Icon";
 
 import InfoRequests from "./components/InfoRequests";
 import type {InfoController} from "./components/InfoRequests";
+import ReviewPanel from './components/ReviewPanel';
 
 const defaultApi = createApi();
 const asError = (error: unknown) =>
@@ -333,10 +334,14 @@ export default function App({ api = defaultApi }: { api?: Api }) {
       const next = { ...current, [key]: value };
       if (key === "product_code") {
         if (!value || value === "overdraft") next.term_months = "";
+        if (value !== "equipment") next.equipment_cost_rub = "";
         if (value !== "overdraft") {
           next.usage_days = "";
           next.expected_inflow_date = "";
           next.expected_inflow_amount_rub = "";
+          next.planned_payment_rub = "";
+          next.planned_payment_date = "";
+          next.expected_inflow_source = "";
         }
       }
       return next;
@@ -347,10 +352,14 @@ export default function App({ api = defaultApi }: { api?: Api }) {
       delete next[key];
       if (key === "product_code") {
         if (!value || value === "overdraft") delete next.term_months;
+        if (value !== "equipment") delete next.equipment_cost_rub;
         if (value !== "overdraft") {
           delete next.usage_days;
           delete next.expected_inflow_date;
           delete next.expected_inflow_amount_rub;
+          delete next.planned_payment_rub;
+          delete next.planned_payment_date;
+          delete next.expected_inflow_source;
         }
       }
       return next;
@@ -576,7 +585,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
           errorAttempt={fieldErrorAttempt} fields={fields} errors={{ ...autosave.errors, ...fieldErrors }} busy={!!busy || !!pendingSubmit || receiptBlocked}
           saveStatus={autosave.status} onChange={change} onFinish={finish} onNavigate={() => void autosave.flush()} onReauthenticate={reauthenticate}
           onSubmitApplication={submitApplication} onSessionChanged={clearProfile}/>
-          : <><SubmittedApplication application={selected} staff={!session.company}/><InfoRequests key={session.user.id+selected.id} api={api} session={session} application={selected} onUpdated={value=>{upsert(value);setSelected(value);}} onSessionChanged={clearProfile} register={registerInfo}/></>
+          : <><SubmittedApplication application={selected} staff={!session.company}/>{!session.company&&<ReviewPanel api={api} application={selected} onUpdated={value=>{upsert(value);setSelected(value);}}/>}<InfoRequests key={session.user.id+selected.id} api={api} session={session} application={selected} onUpdated={value=>{upsert(value);setSelected(value);}} onSessionChanged={clearProfile} register={registerInfo}/></>
           : session.company ? <ApplicationsList items={items} busy={!!busy} onOpen={open} onDelete={removeDraft} onCreate={create} />
           : <StaffApplications items={items} busy={!!busy} onOpen={open} onRefresh={refreshList}/>}
         <footer className="page-footer"><span>Альфа Бизнес · Кредитный кабинет</span><span>Демонстрационный проект · Все данные синтетические</span></footer>

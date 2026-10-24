@@ -43,7 +43,7 @@ export interface StaffSession {
 export type Session = ClientSession | StaffSession;
 export interface CompanyDetails {
   legal_form:string|null; tax_id:string|null; okved:string|null; registration_date:string|null;
-  business_age_months:number|null; registration_status:string|null; is_bank_client:boolean|null;
+  registry_source?:"FNS_MOCK"|null; business_age_months:number|null; registration_status:string|null; is_bank_client:boolean|null;
 }
 export interface CompanyFinance {
   period:{start_date:string;end_date:string};
@@ -80,6 +80,10 @@ export interface DraftPayload {
   usage_days: number | null;
   expected_inflow_date: string | null;
   expected_inflow_amount_rub: string | null;
+  equipment_cost_rub: string | null;
+  planned_payment_rub: string | null;
+  planned_payment_date: string | null;
+  expected_inflow_source: "BUYER" | "CONTRACT" | "REGULAR_REVENUE" | "OTHER" | null;
 }
 
 export interface Application extends DraftPayload {
@@ -92,6 +96,7 @@ export interface Application extends DraftPayload {
   history?: ApplicationEvent[];
   info_requests?: InfoRequest[];
   next_action?: "CLIENT"|"STAFF"|null;
+  assessment?: Assessment | null;
   version: number;
   created_at: string;
   updated_at: string;
@@ -105,6 +110,16 @@ export interface DraftFields {
   usage_days: string;
   expected_inflow_date: string;
   expected_inflow_amount_rub: string;
+  equipment_cost_rub: string;
+  planned_payment_rub: string;
+  planned_payment_date: string;
+  expected_inflow_source: "" | "BUYER" | "CONTRACT" | "REGULAR_REVENUE" | "OTHER";
+}
+
+export interface Assessment {
+  model_version: string; score: number | null; group: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
+  recommendation: "REQUEST_INFO" | "RECOMMEND_DECLINE" | "OFFER_REQUESTED";
+  reasons: string[]; missing: string[]; formal_checks: string[]; calculated_at: string;
 }
 
 export type FieldErrors = Partial<Record<keyof DraftFields, string>>;
@@ -115,6 +130,8 @@ export interface Api {
   submit(id: string, input: SubmitInput, key: string): Promise<Application>;
   staffList(): Promise<{items: Application[]}>;
   staffGet(id: string): Promise<Application>;
+  assessment(id: string): Promise<Assessment>;
+  decide(id: string, body: {version:number;decision:"APPROVE"|"DECLINE";comment:string}, key:string): Promise<Application>;
   products(): Promise<ProductCatalog>;
   calculateAnnuity(input: AnnuityRequest): Promise<AnnuityResult>;
   me(): Promise<Session>;
@@ -137,10 +154,12 @@ export interface InfoMessage {id:number; text:string; actor_id:string; actor_rol
 export interface InfoRequest {
   id:string; question:string; reason:string; document_required:boolean; revision:number; reply_text:string;
   source:'SELF_REPORTED'; created_at:string; created_by:string; reply_by:string|null; closed_at:string|null; closed_by:string|null;
+  financial_required?:boolean; financial_values?:FinancialValue[]|null; financial_accepted_at?:string|null;
   messages:InfoMessage[]; attachments:InfoAttachment[];
 }
-export interface InfoCreate {version:number; question:string; reason:string; document_required:boolean;}
-export interface InfoSubmit {version:number; revision:number;}
+export interface FinancialValue {kind:"income_rub"|"expenses_rub"|"debt_payment_rub";month:string|null;value_rub:string;source:"CLIENT_DOCUMENT"|"CLIENT_CONFIRMED";}
+export interface InfoCreate {version:number; question:string; reason:string; document_required:boolean; financial_required?:boolean;}
+export interface InfoSubmit {version:number; revision:number; financial_values?:FinancialValue[];}
 export interface InfoApi {
   create(id:string,body:InfoCreate,key:string):Promise<Application>;
   save(id:string,rid:string,revision:number,text:string):Promise<Application>;
@@ -148,5 +167,6 @@ export interface InfoApi {
   message(id:string,rid:string,staff:boolean,text:string,key:string):Promise<Application>;
   upload(id:string,rid:string,fid:string,revision:number,file:File):Promise<Application>;
   detach(id:string,rid:string,fid:string,revision:number):Promise<Application>;
+  acceptFinancial(id:string,rid:string,key:string):Promise<Application>;
   download(id:string,rid:string,fid:string,staff:boolean):Promise<Blob>;
 }

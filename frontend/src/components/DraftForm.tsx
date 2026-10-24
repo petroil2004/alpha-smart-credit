@@ -85,7 +85,7 @@ export default function DraftForm(props: Props) {
   const reauthenticate = () => props.onReauthenticate(()=>{calculator.retryCatalog();setProfileAttempt(n=>n+1);setConfirmedStamp(null);});
   const confirmationStamp=JSON.stringify([fields,profile?.profile_version,calculator.catalog?.catalog_version,props.resetVersion]);
   useEffect(()=>{setConfirmedStamp(null);},[confirmationStamp]);
-  const calculationReady=calculator.status==='ready' && !!calculator.result;
+  const calculationReady=fields.product_code==='overdraft' || (calculator.status==='ready' && !!calculator.result);
   const confirmed=confirmedStamp===confirmationStamp;
   const companyBlock=<section className="company-summary" aria-label="Сведения компании"><h3>Компания</h3>
     <p>{profile?.company_name ?? props.companyName}</p><p className="small-note">Демонстрационные данные · {application.company_id}</p>
@@ -163,7 +163,7 @@ export default function DraftForm(props: Props) {
                 {companyBlock}
                 {fields.product_code && fields.product_code !== "overdraft"
                   ? <LoanCalculator fields={fields} onChange={props.onChange} errors={errors} state={calculator} onReauthenticate={reauthenticate}/>
-                  : <><MoneyField {...props} name="amount_rub" label="Сумма финансирования" /><ParameterFields {...props} />{fields.product_code === "overdraft" && <p className="small-note">Калькулятор овердрафта пока недоступен.</p>}</>}
+                  : <><MoneyField {...props} name="amount_rub" label="Сумма финансирования" /><ParameterFields {...props} />{fields.product_code === "overdraft" && <p className="small-note">Это лимит овердрафта. Сервер проверит срок, покрытие поступлением и рассчитает проценты при отправке. Это не решение об одобрении.</p>}</>}
                 <PurposeField {...props} />
                 {!fields.product_code && (
                   <button
@@ -179,7 +179,7 @@ export default function DraftForm(props: Props) {
             {step === "review" && (
               <>{companyBlock}<DraftReview fields={fields} onEdit={goTo} busy={busy} />
               {fields.product_code && <LoanCalculationSummary state={calculator} onReauthenticate={reauthenticate}/>}
-              {fields.product_code==='working_capital' ? <label className="submission-confirmation"><input type="checkbox" checked={confirmed} disabled={busy || !profile || !calculator.catalog || !calculationReady} onChange={e=>setConfirmedStamp(e.target.checked?confirmationStamp:null)}/><span>Подтверждаю актуальность указанных сведений и выбранные параметры заявки</span></label> : <p className="small-note">Отправка этого продукта пока недоступна. Можно сохранить черновик и вернуться позже.</p>}
+              {fields.product_code ? <label className="submission-confirmation"><input type="checkbox" checked={confirmed} disabled={busy || !profile || !calculator.catalog || !calculationReady} onChange={e=>setConfirmedStamp(e.target.checked?confirmationStamp:null)}/><span>Подтверждаю актуальность указанных сведений и выбранные параметры заявки</span></label> : null}
               </>
             )}
           </fieldset>
@@ -203,7 +203,7 @@ export default function DraftForm(props: Props) {
               {busy ? "Сохраняем…" : "Сохранить и выйти"}
               {!busy && <Icon name="check" size={18} />}
             </button>}
-            {last && fields.product_code==='working_capital' && <button className="button primary" type="button" disabled={busy || !confirmed || !profile || !calculator.catalog || !calculationReady} onClick={()=>{
+            {last && fields.product_code && <button className="button primary" type="button" disabled={busy || !confirmed || !profile || !calculator.catalog || !calculationReady} onClick={()=>{
               if(profile && calculator.catalog && confirmed && calculationReady)props.onSubmitApplication({profile_version:profile.profile_version,catalog_version:calculator.catalog.catalog_version});
             }}>{busy ? 'Отправляем…' : 'Отправить заявку'}</button>}
             {!last && (

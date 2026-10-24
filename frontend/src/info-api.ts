@@ -23,6 +23,7 @@ export function createInfoApi(fetcher:typeof fetch):InfoApi {
   message:(id,rid,staff,text,key)=>request<Application>(path(id,rid,staff)+'/messages',json('POST',{text},key)),
   upload:(id,rid,fid,revision,file)=>request<Application>(path(id,rid)+'/attachments/'+encodeURIComponent(fid)+'?'+new URLSearchParams({filename:file.name,revision:String(revision)}),{method:'PUT',body:file,headers:{'Content-Type':file.type || (file.name.toLowerCase().endsWith('.pdf')?'application/pdf':'text/plain')}}),
   detach:(id,rid,fid,revision)=>request<Application>(path(id,rid)+'/attachments/'+encodeURIComponent(fid)+'/detach',json('POST',{revision})),
+  acceptFinancial:(id,rid,key)=>request<Application>(path(id,rid,true)+'/accept-financial',json('POST',{},key)),
   download:(id,rid,fid,staff)=>request<Blob>(path(id,rid,staff)+'/attachments/'+encodeURIComponent(fid),{},true),
  };
 }
