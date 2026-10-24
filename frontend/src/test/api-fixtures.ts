@@ -128,7 +128,7 @@ export function contractServer(
     if (path.endsWith('/submit') && method === 'POST') {
       const key=new Headers(init?.headers).get('Idempotency-Key')!;
       const existing=submissions.get(key);
-      if(existing) return JSON.stringify(existing.body)===JSON.stringify(body) ? json(existing.item) : error(409,'IDEMPOTENCY_CONFLICT','Ключ уже использован');
+      if(existing) return JSON.stringify(existing.body)===JSON.stringify(body) ? json(store.get(existing.item.id) ?? existing.item) : error(409,'IDEMPOTENCY_CONFLICT','Ключ уже использован');
       if(item.status!=='DRAFT') return error(409,'APPLICATION_NOT_DRAFT','Уже отправлено');
       if(body.version!==item.version) return error(409,'VERSION_CONFLICT','Версия изменилась');
       if(!item.purpose?.trim()) return json({error:{code:'VALIDATION_ERROR',message:'Проверьте поля',fields:{purpose:'Укажите, на что нужны средства'}}},422);

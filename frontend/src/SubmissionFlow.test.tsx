@@ -171,3 +171,10 @@ it('explicit server state check recovers a corrupt local retry receipt',async()=
  await h.user.click(checkbox());await h.user.click(send());
  expect(await screen.findByRole('heading',{name:'Заявка на рассмотрении'})).toBeInTheDocument();
 });
+
+it('initial submission replay accepts a current NEEDS_INFO state',async()=>{
+ const h=await setup();h.server.failNextSubmitAfterCommit();await waitFor(()=>expect(checkbox()).not.toBeDisabled());await h.user.click(checkbox());await h.user.click(send());
+ const retry=await screen.findByRole('button',{name:'Проверить отправку'});
+ const submitted=h.server.store.get(h.item.id)!;h.server.store.set(h.item.id,{...submitted,status:'NEEDS_INFO',info_requests:[]});
+ await h.user.click(retry);expect(await screen.findByRole('heading',{name:'Нужны дополнительные сведения'})).toBeInTheDocument();expect(screen.queryByRole('button',{name:'Проверить отправку'})).not.toBeInTheDocument();
+});

@@ -2,16 +2,16 @@ import type {Application} from '../types';
 import {formatMoneyRub} from '../draft';
 import {products} from '../products';
 export function statusLabel(status: string) {
-  return status === 'DRAFT' ? 'Черновик' : status === 'UNDER_REVIEW' ? 'На рассмотрении' : status === 'SUBMITTED' ? 'Отправлена' : 'Заявка';
+  return status === 'DRAFT' ? 'Черновик' : status === 'NEEDS_INFO' ? 'Нужны сведения' : status === 'UNDER_REVIEW' ? 'На рассмотрении' : status === 'SUBMITTED' ? 'Отправлена' : 'Заявка';
 }
 const date = (value: string) => new Intl.DateTimeFormat('ru-RU',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Moscow'}).format(new Date(value));
-export default function SubmittedApplication({application}:{application:Application}) {
+export default function SubmittedApplication({application,staff=false}:{application:Application;staff?:boolean}) {
   const snapshot=application.submission?.snapshot;
   const values=snapshot?.application ?? application;
   const calc=snapshot?.calculation;
   return <section className="form-card submitted-card" aria-label="Отправленная заявка">
-    <h1>{application.status==='UNDER_REVIEW' ? 'Заявка на рассмотрении' : 'Отправленная заявка'}</h1>
-    <p>Дополнительные действия пока не требуются. Если понадобятся сведения, мы сообщим здесь.</p>
+    <h1>{application.status==='NEEDS_INFO'?'Нужны дополнительные сведения':application.status==='UNDER_REVIEW' ? 'Заявка на рассмотрении' : 'Отправленная заявка'}</h1>
+    <p>{application.status==='NEEDS_INFO'?(staff?'Ждём ответ клиента на запрос ниже.':'Ответьте на запрос банка ниже и отправьте сведения на рассмотрение.'):staff?'Изучите заявку. При необходимости запросите сведения ниже.':'Дополнительные действия пока не требуются. Если понадобятся сведения, мы сообщим здесь.'}</p>
     <dl className="submitted-details">
       <div><dt>Компания</dt><dd>{snapshot?.company.company_name ?? application.company_name}</dd></div>
       <div><dt>Статус</dt><dd>{statusLabel(application.status)}</dd></div>
@@ -28,6 +28,6 @@ export default function SubmittedApplication({application}:{application:Applicat
     <p className="small-note">Параметры зафиксированы при отправке. Расчёт не означает одобрения. Все данные и условия демонстрационные.</p>
     {snapshot && <p className="small-note">Сведения компании — синтетические данные банка. Подтверждение клиента не заменяет банковскую проверку.</p>}
     <h2>История заявки</h2>
-    <ol className="submission-history">{application.history?.map(event=><li key={event.id}><strong>{event.to_status==='SUBMITTED' ? 'Клиент отправил заявку' : event.to_status==='UNDER_REVIEW' ? 'Система зарегистрировала заявку на рассмотрение' : statusLabel(event.to_status)}</strong><span>{date(event.occurred_at)}</span></li>)}</ol>
+    <ol className="submission-history">{application.history?.map(event=><li key={event.id}><strong>{({INFO_REQUESTED:'Сотрудник запросил сведения',INFO_REPLY_SAVED:'Клиент сохранил черновик ответа',INFO_REPLY_SUBMITTED:'Клиент отправил ответ на рассмотрение',INFO_MESSAGE:'Добавлено сообщение по запросу',INFO_FILE_ATTACHED:'Клиент прикрепил документ',INFO_FILE_DETACHED:'Клиент открепил документ'} as Record<string,string>)[event.reason_code]??(event.to_status==='SUBMITTED' ? 'Клиент отправил заявку' : event.to_status==='UNDER_REVIEW' ? 'Система зарегистрировала заявку на рассмотрение' : statusLabel(event.to_status))}</strong><span>{date(event.occurred_at)}</span></li>)}</ol>
   </section>;
 }
