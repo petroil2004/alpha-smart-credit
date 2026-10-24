@@ -38,8 +38,8 @@ DTO сохраняет company_id/company_name/source/profile_version и доб�
 Files: submissions.py, tests/test_profile_snapshots.py, main.py по необходимости.
 Interfaces: submission берёт now один раз до profile/version проверки, передаёт as_of=now в get_company_profile(account,db), использует тот же profile.finance.period для financial_period. Старый ключ ищется до нового профиля как прежде. Внешний SubmitInput не меняется.
 
-- [ ] RED test_new_snapshot_freezes_finances_and_old_replay: сначала отправить, изменить профиль/месяц, повтор/GET не меняет company/finance/период. Старые snapshot без details/finance сохранить побайтно при startup/GET.
-- [ ] Переделать вызовы общего profile/period; атомарная единая проекция для версии/снимка. Дата на сервере фиксируется один раз. Tests profile_conflict_after_finance_source_or_null_change; month_rollover_conflict; incomplete_finances_still_submit; legacy_snapshot_not_augmented; concurrency/update yields consistent DTO without mixing. Expected targeted/full backend PASS. Коммит feat(submission).
+- [x] RED test_month_rollover_requires_new_confirmation: смена месяца между GET/POST даёт409, повтор с новым профилем фиксирует один период; test_new_snapshot_freezes_finances_and_replays_old_version: изменение профиля не меняет GET/повтор старой отправки. Старые snapshot без details/finance сохранить побайтно при startup/GET.
+- [x] Переделать вызовы общего profile/period; атомарная единая проекция для версии/снимка. Дата на сервере фиксируется один раз. Tests profile_conflict_after_finance_source_or_null_change; month_rollover_conflict; incomplete_finances_still_submit; legacy_snapshot_not_augmented; concurrency/update yields consistent DTO without mixing. Expected targeted/full backend PASS. Коммит feat(submission).
 
 ### Task 3: Просмотр профиля и финансов в интерфейсе
 

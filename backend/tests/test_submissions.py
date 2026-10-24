@@ -192,6 +192,8 @@ def test_financial_period_crosses_year(client, monkeypatch, now, start, end):
     item = draft(client)
     import app.submissions as module
     monkeypatch.setattr(module, 'utc_now', lambda: datetime.fromisoformat(now))
+    import app.company_profile as profile_module
+    monkeypatch.setattr(profile_module, 'utc_now', lambda: datetime.fromisoformat(now))
     result = submit(client, item).json()
     assert result['submission']['snapshot']['financial_period'] == {'start_date': start, 'end_date': end}
 

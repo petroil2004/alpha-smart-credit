@@ -1,8 +1,6 @@
 """Atomic registration for review, immutable submitted facts, staff read API."""
 import uuid
-from datetime import timedelta
 from typing import Annotated
-from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Header
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr
@@ -13,6 +11,7 @@ from sqlalchemy.orm import Session
 from .access import ClientAccount, StaffAccount
 from .calculator import CalculationValidationError, calculate_annuity
 from .company_profile import get_company_profile
+from .profile_period import period_for
 from .db import get_db
 from .models import Application, ApplicationSubmission, ApplicationEvent, utc_now
 from .problems import ApiProblem, validation_error
@@ -31,11 +30,7 @@ class SubmitPayload(BaseModel):
 
 
 def financial_period(now) -> dict[str, str]:
-    first = now.astimezone(ZoneInfo('Europe/Moscow')).date().replace(day=1)
-    last = first - timedelta(days=1)
-    month = first.year * 12 + first.month - 1 - 6
-    start = first.replace(year=month // 12, month=month % 12 + 1)
-    return {'start_date': start.isoformat(), 'end_date': last.isoformat()}
+    return period_for(now)
 
 
 def replay(receipt, application, actor_id, body, db):
@@ -63,7 +58,8 @@ def submit_application(application_id: uuid.UUID, payload: SubmitPayload, accoun
         raise ApiProblem(409, 'APPLICATION_NOT_DRAFT', 'Заявка уже отправлена. Обновите карточку.')
     if application.version != payload.version:
         raise ApiProblem(409, 'VERSION_CONFLICT', 'Заявка изменена. Загрузите сохранённую версию.')
-    profile = get_company_profile(account, db)
+    now = utc_now()
+    profile = get_company_profile(account, db, as_of=now)
     if payload.profile_version != profile['profile_version']:
         raise ApiProblem(409, 'PROFILE_VERSION_CONFLICT', 'Сведения компании изменились. Обновите и подтвердите их заново.')
     if payload.catalog_version != get_catalog()['catalog_version']:
@@ -90,11 +86,10 @@ def submit_application(application_id: uuid.UUID, payload: SubmitPayload, accoun
         calculation = calculate_annuity(application.product_code, application.amount_rub, application.term_months)
     except CalculationValidationError as exc:
         raise validation_error(exc.fields) from exc
-    now = utc_now()
     values = application_values(application)
     snapshot = {
         'application': {field: values[field] for field in ('purpose', 'product_code', 'amount_rub', 'term_months', 'usage_days', 'expected_inflow_date', 'expected_inflow_amount_rub')},
-        'company': profile, 'calculation': calculation, 'financial_period': financial_period(now),
+        'company': profile, 'calculation': calculation, 'financial_period': profile['finance']['period'],
         'confirmed_at': timestamp(now), 'confirmed_by': account.id,
     }
     db.add(ApplicationSubmission(application_id=application.id, actor_id=account.id, idempotency_key=key,
