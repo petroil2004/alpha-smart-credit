@@ -14,7 +14,6 @@ import {
 import type { EditableProps } from "./draft/DraftFields";
 import DraftReview from "./draft/DraftReview";
 import AssistantPreview from "./draft/AssistantPreview";
-import CompanyDataView from "./CompanyDataView";
 import {sameSession} from "../session";
 import {validateCompanyProfile} from "../company-profile";
 import { Icon } from "./Icon";
@@ -87,12 +86,7 @@ export default function DraftForm(props: Props) {
   useEffect(()=>{setConfirmedStamp(null);},[confirmationStamp]);
   const calculationReady=fields.product_code==='overdraft' || (calculator.status==='ready' && !!calculator.result);
   const confirmed=confirmedStamp===confirmationStamp;
-  const companyBlock=<section className="company-summary" aria-label="Сведения компании"><h3>Компания</h3>
-    <p>{profile?.company_name ?? props.companyName}</p><p className="small-note">Демонстрационные данные · {application.company_id}</p>
-    <CompanyDataView profile={profile??undefined} pending={!profile&&!profileError}/>
-    {profile && <button type="button" className="text-button" disabled={busy} onClick={()=>{setProfile(null);setConfirmedStamp(null);setProfileAttempt(n=>n+1);}}>Обновить сведения компании</button>}
-    {profileError && <p role="alert">{profileError} <button type="button" className="text-button" onClick={()=>setProfileAttempt(n=>n+1)}>Повторить загрузку сведений</button></p>}
-  </section>;
+  const profileNotice=profileError?<p role="alert">{profileError} <button type="button" className="text-button" onClick={()=>setProfileAttempt(n=>n+1)}>Повторить загрузку сведений</button></p>:null;
 
   useEffect(() => {
     if (lastErrorAttempt.current === errorAttempt) return;
@@ -160,7 +154,6 @@ export default function DraftForm(props: Props) {
             </>}
             {step === "details" && (
               <>
-                {companyBlock}
                 {fields.product_code && fields.product_code !== "overdraft"
                   ? <LoanCalculator fields={fields} onChange={props.onChange} errors={errors} state={calculator} onReauthenticate={reauthenticate}/>
                   : <><MoneyField {...props} name="amount_rub" label="Сумма финансирования" /><ParameterFields {...props} />{fields.product_code === "overdraft" && <p className="small-note">Это лимит овердрафта. Сервер проверит срок, покрытие поступлением и рассчитает проценты при отправке. Это не решение об одобрении.</p>}</>}
@@ -177,7 +170,7 @@ export default function DraftForm(props: Props) {
               </>
             )}
             {step === "review" && (
-              <>{companyBlock}<DraftReview fields={fields} onEdit={goTo} busy={busy} />
+              <>{profileNotice}<DraftReview fields={fields} onEdit={goTo} busy={busy} />
               {fields.product_code && <LoanCalculationSummary state={calculator} onReauthenticate={reauthenticate}/>}
               {fields.product_code ? <label className="submission-confirmation"><input type="checkbox" checked={confirmed} disabled={busy || !profile || !calculator.catalog || !calculationReady} onChange={e=>setConfirmedStamp(e.target.checked?confirmationStamp:null)}/><span>Подтверждаю актуальность указанных сведений и выбранные параметры заявки</span></label> : null}
               </>

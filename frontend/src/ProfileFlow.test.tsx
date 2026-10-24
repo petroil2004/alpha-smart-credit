@@ -1,4 +1,4 @@
-import {act,fireEvent,render,screen,waitFor,within} from '@testing-library/react';
+import {act,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {beforeEach,it,expect,vi} from 'vitest';
 import App from './App';
 import {createApi} from './api';
@@ -17,16 +17,27 @@ async function openParameters(api:ReturnType<typeof createApi>){
  render(<App api={api}/>);fireEvent.click(await screen.findByRole('button',{name:/Открыть заявку/}));
  expect(screen.queryByText('Финансовые данные за шесть месяцев')).not.toBeInTheDocument();
  fireEvent.click(await screen.findByRole('button',{name:'Перейти к шагу «Параметры»'}));
- await screen.findByRole('button',{name:'Обновить сведения компании'});
+ await screen.findByRole('button',{name:'Перейти к шагу «Проверка»'});
 }
-it('shows the same read-only company data on parameters and review, without adding a wizard step',async()=>{
- const h=setup();await openParameters(h.api);fireEvent.click(screen.getByText('Финансовые данные за шесть месяцев',{exact:true}));expect(screen.getByText('Апрель 2026')).toBeVisible();
- fireEvent.click(await screen.findByRole('button',{name:'Перейти к шагу «Проверка»'}));expect(screen.getByText('Финансовые данные за шесть месяцев')).toBeInTheDocument();expect(screen.getAllByRole('button',{name:/Перейти к шагу/})).toHaveLength(3);
+it('keeps company data on the separate profile page and out of both draft steps',async()=>{
+ const h=setup();await openParameters(h.api);
+ expect(screen.queryByText('Финансовые данные за шесть месяцев')).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'Перейти к шагу «Проверка»'}));
+ expect(screen.queryByText('Финансовые данные за шесть месяцев')).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:/Профиль компании:/}));
+ await screen.findByRole('button',{name:'Обновить сведения компании'});
+ fireEvent.click(await screen.findByText('Финансовые данные за шесть месяцев',{exact:true}));expect(await screen.findByText('Апрель 2026')).toBeVisible();
+ fireEvent.click(screen.getByRole('button',{name:'На главную'}));
+ expect(await screen.findByRole('heading',{name:'Мои заявки'})).toBeInTheDocument();
 });
-it('refreshing displayed finance version resets confirmation and uses new data',async()=>{
- let p=companyProfile();const h=setup(()=>p);await openParameters(h.api);fireEvent.click(await screen.findByRole('button',{name:'Перейти к шагу «Проверка»'}));const checkbox=await screen.findByRole('checkbox',{name:/Подтверждаю актуальность/});await waitFor(()=>expect(checkbox).toBeEnabled());fireEvent.click(checkbox);expect(checkbox).toBeChecked();
- p={...p,profile_version:'company-v2:changed',finance:{...p.finance!,average_expenses_rub:'650000.00'}};
- fireEvent.click(screen.getByRole('button',{name:'Обновить сведения компании'}));await screen.findByRole('button',{name:'Обновить сведения компании'});expect(checkbox).not.toBeChecked();expect(screen.getByRole('button',{name:'Отправить заявку'})).toBeDisabled();
+it('returning from an updated company profile requires confirming the draft again',async()=>{
+ let p=companyProfile();const h=setup(()=>p);await openParameters(h.api);
+ fireEvent.click(screen.getByRole('button',{name:'Перейти к шагу «Проверка»'}));const checkbox=await screen.findByRole('checkbox',{name:/Подтверждаю актуальность/});await waitFor(()=>expect(checkbox).toBeEnabled());fireEvent.click(checkbox);
+ fireEvent.click(screen.getByRole('button',{name:/Профиль компании:/}));await screen.findByRole('button',{name:'Обновить сведения компании'});
+ p={...p,profile_version:'company-v2:changed'};fireEvent.click(screen.getByRole('button',{name:'Обновить сведения компании'}));
+ await screen.findByRole('button',{name:'Обновить сведения компании'});fireEvent.click(screen.getByRole('button',{name:'На главную'}));
+ fireEvent.click(await screen.findByRole('button',{name:/Открыть заявку/}));fireEvent.click(await screen.findByRole('button',{name:'Перейти к шагу «Проверка»'}));
+ const next=await screen.findByRole('checkbox',{name:/Подтверждаю актуальность/});expect(next).not.toBeChecked();expect(screen.getByRole('button',{name:'Отправить заявку'})).toBeDisabled();
 });
 it('a malformed financial response blocks confirmation and can be recovered',async()=>{
  let p=companyProfile();p.finance!.months.pop();const h=setup(()=>p);render(<App api={h.api}/>);fireEvent.click(await screen.findByRole('button',{name:/Открыть заявку/}));fireEvent.click(await screen.findByRole('button',{name:'Перейти к шагу «Проверка»'}));
@@ -59,5 +70,13 @@ it('keeps all six predefined client choices and signs into each without register
 it('opens a legacy submitted application without requesting today’s profile',async()=>{
  const item=application({status:'UNDER_REVIEW'});const server=contractServer({loggedIn:true,applications:[item]});
  const api={...createApi(server.fetcher),companyProfile:vi.fn(async()=>companyProfile())};render(<App api={api}/>);fireEvent.click(await screen.findByRole('button',{name:/Открыть заявку/}));await screen.findByRole('heading',{name:'Заявка на рассмотрении'});
- fireEvent.click(screen.getByText('Финансовые данные за шесть месяцев',{exact:true}));expect(within(screen.getByText('Финансовые данные за шесть месяцев',{exact:true}).closest('details')!).getByText('Не зафиксировано при отправке')).toBeVisible();expect(api.companyProfile).not.toHaveBeenCalled();
+ expect(screen.queryByText('Финансовые данные за шесть месяцев')).not.toBeInTheDocument();expect(api.companyProfile).not.toHaveBeenCalled();
+});
+
+it.each([['working_capital','Оборотный кредит'],['equipment','Кредит на оборудование'],['overdraft','Овердрафт']])('creates a draft with the clicked product %s',async(code,title)=>{
+ const server=contractServer({loggedIn:true});render(<App api={createApi(server.fetcher)}/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Оформить: '+title}));
+ await screen.findByRole('button',{name:'Перейти к шагу «Параметры»'});
+ expect([...server.store.values()][0].product_code).toBe(code);
+ expect(window.location.hash).toMatch(/^#draft\//);
 });

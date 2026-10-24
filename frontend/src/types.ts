@@ -120,6 +120,7 @@ export interface Assessment {
   model_version: string; score: number | null; group: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
   recommendation: "REQUEST_INFO" | "RECOMMEND_DECLINE" | "OFFER_REQUESTED";
   reasons: string[]; missing: string[]; formal_checks: string[]; calculated_at: string;
+  criteria?: {label:string;input:string;factor:string;weight:number;points:number}[];
 }
 
 export type FieldErrors = Partial<Record<keyof DraftFields, string>>;

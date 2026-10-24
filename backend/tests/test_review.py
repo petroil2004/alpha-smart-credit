@@ -1,6 +1,7 @@
 """Connected MVP review: structured financial facts, score and staff decision."""
 import uuid
 import pytest
+from decimal import Decimal
 
 from test_submissions import draft, submit
 
@@ -45,6 +46,8 @@ def test_staff_sees_server_score_and_confirms_decision(client):
     item = draft(client, amount_rub='300000.00', term_months=36)
     sent = submit(client, item).json()
     assessment = sent['assessment']
+    assert sum(row['points'] for row in assessment['criteria']) == assessment['score']
+    assert all(Decimal(row['factor']) * row['weight'] == row['points'] for row in assessment['criteria'])
     assert assessment['score'] == 100
     assert assessment['group'] == 'LOW'
     assert assessment['recommendation'] == 'OFFER_REQUESTED'

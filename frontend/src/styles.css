@@ -150,7 +150,7 @@ input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: #b4251
 .purpose-description textarea { background: #f5f6f8; border-color: transparent; }
 .overdraft-fields .small-note, .parameter-empty { margin: 14px 0 24px; line-height: 1.5; color: var(--muted); }
 .wizard-navigation { display: flex; align-items: center; gap: 20px; margin-top: 30px; }
-.wizard-navigation > .secondary { background: transparent; padding-left: 0; }
+.wizard-navigation > .secondary { background: transparent; padding: 14px 26px; }
 .wizard-next { margin-left: auto; }
 .save-indicator { margin-top: 15px; color: var(--muted); font-size: 12px; text-align: right; line-height: 1.5; }
 .has-changes { color: #8c4d26; }
@@ -405,3 +405,16 @@ input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: #b4251
  .company-finance-table .value-source { grid-column: 2; }
 }
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+/* Navigation and product entry points keep the established cabinet design. */
+.brand-home { border: 0; padding: 0; background: transparent; color: inherit; text-align: left; }
+.brand-home:hover:not(:disabled), .company-profile-link:hover:not(:disabled) { opacity: .85; }
+button.direction-card { border: 0; color: inherit; text-align: left; width: 100%; }
+button.direction-card:hover:not(:disabled) { box-shadow: inset 0 0 0 2px #20202035; }
+.company-profile-page > h1 { margin-bottom: 12px; }
+.company-profile-page > p { margin-bottom: 16px; }
+.company-profile-page > .button { margin-top: 24px; }
+.score-criteria { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+.score-criteria th, .score-criteria td { text-align: left; padding: 12px 8px; border-bottom: 1px solid var(--border); }
+.score-criteria td:last-child, .score-criteria th:last-child { text-align: right; }
+.score-table-scroll { overflow-x: auto; }

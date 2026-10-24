@@ -17,7 +17,7 @@ export default function SubmittedApplication({application,staff=false}:{applicat
     {decision?.comment&&<p className="decision-comment"><strong>Причина решения: </strong>{decision.comment}</p>}
     {application.status==='APPROVED'&&<h2>Одобренные условия</h2>}
     <dl className="submitted-details">
-      <div><dt>Компания</dt><dd>{snapshot?.company.company_name ?? application.company_name}</dd></div>
+      {staff&&<div><dt>Компания</dt><dd>{snapshot?.company.company_name ?? application.company_name}</dd></div>}
       <div><dt>Статус</dt><dd>{statusLabel(application.status)}</dd></div>
       {application.submitted_at && <div><dt>Отправлена</dt><dd>{date(application.submitted_at)}</dd></div>}
       <div><dt>Продукт</dt><dd>{products.find(p=>p.code===values.product_code)?.title ?? 'Не указан'}</dd></div>
@@ -30,10 +30,10 @@ export default function SubmittedApplication({application,staff=false}:{applicat
       {calc.overpayment_rub&&<div><dt>Переплата</dt><dd>{formatMoneyRub(calc.overpayment_rub)}</dd></div>}</>}
     </dl>
     <p className="small-note">{application.status==='APPROVED'?'Сотрудник одобрил указанные условия. Это демонстрация без подписания договора и выдачи денег.':'Параметры зафиксированы при отправке. Расчёт не означает одобрения.'} Все данные и условия демонстрационные.</p>
-    {snapshot && <p className="small-note">Сведения компании — синтетические данные банка. Подтверждение клиента не заменяет банковскую проверку.</p>}
-    <CompanyDataView profile={snapshot?.company} historical/>
+    {staff && snapshot && <p className="small-note">Сведения компании — синтетические данные банка. Подтверждение клиента не заменяет банковскую проверку.</p>}
+    {staff&&<CompanyDataView profile={snapshot?.company} historical/>}
     <h2>История заявки</h2>
     <ol className="submission-history">{application.history?.map(event=><li key={event.id}><strong>{({INFO_REQUESTED:'Сотрудник запросил сведения',INFO_REPLY_SAVED:'Клиент сохранил черновик ответа',INFO_REPLY_SUBMITTED:'Клиент отправил ответ на рассмотрение',INFO_MESSAGE:'Добавлено сообщение по запросу',INFO_FILE_ATTACHED:'Клиент прикрепил документ',INFO_FILE_DETACHED:'Клиент открепил документ'} as Record<string,string>)[event.reason_code]??(event.to_status==='SUBMITTED' ? 'Клиент отправил заявку' : event.to_status==='UNDER_REVIEW' ? 'Система зарегистрировала заявку на рассмотрение' : statusLabel(event.to_status))}</strong><span>{date(event.occurred_at)}</span></li>)}</ol>
-    {application.assessment&&<section className="assessment-summary"><h2>Результат проверки</h2><p>{application.assessment.score===null?'Не рассчитан: '+application.assessment.missing.join(', '):`Балл: ${application.assessment.score}/100 · ${application.assessment.group==='LOW'?'низкий':application.assessment.group==='MEDIUM'?'средний':'высокий'} риск`}</p><ul>{application.assessment.reasons.map(reason=><li key={reason}>{reason}</li>)}</ul></section>}
+    {staff&&application.assessment&&<section className="assessment-summary"><h2>Результат проверки</h2><p>{application.assessment.score===null?'Не рассчитан: '+application.assessment.missing.join(', '):`Балл: ${application.assessment.score}/100 · ${application.assessment.group==='LOW'?'низкий':application.assessment.group==='MEDIUM'?'средний':'высокий'} риск`}</p><ul>{application.assessment.reasons.map(reason=><li key={reason}>{reason}</li>)}</ul></section>}
   </section>;
 }

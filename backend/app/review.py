@@ -56,7 +56,7 @@ def assessment_facts(application: Application, submission: ApplicationSubmission
     return {'months': months, 'debt_payment_rub': debt}
 
 
-def score(facts: dict[str, Any], details: dict[str, Any]) -> tuple[int | None, str, list[str], list[str]]:
+def score(facts: dict[str, Any], details: dict[str, Any]) -> tuple[int | None, str, list[str], list[str], list[dict[str, Any]]]:
     months, debt = facts['months'], facts['debt_payment_rub']
     missing: list[str] = []
     if len(months) != 6:
@@ -70,29 +70,30 @@ def score(facts: dict[str, Any], details: dict[str, Any]) -> tuple[int | None, s
     if details.get('business_age_months') is None:
         missing.append('возраст бизнеса')
     if missing:
-        return None, 'UNKNOWN', [], missing
+        return None, 'UNKNOWN', [], missing, []
     income = [Decimal(row['income_rub']) for row in months]
     expenses = [Decimal(row['expenses_rub']) for row in months]
     average_income = sum(income) / 6
     average_expenses = sum(expenses) / 6
     flow = average_income - average_expenses
     debt_value = Decimal(debt)
-    reasons: list[str] = []
     age = details['business_age_months']
-    age_points = 25 if age >= 36 else 18 if age >= 18 else 10
-    reasons.append(f'Возраст бизнеса {age} мес.: +{age_points}')
     volatility = (max(income) - min(income)) / average_income if average_income else Decimal(1)
-    stability_points = 25 if volatility <= Decimal('0.20') else 15 if volatility <= Decimal('0.35') else 5
-    reasons.append(f'Стабильность поступлений: +{stability_points}')
     margin = flow / average_income if average_income else Decimal(0)
-    margin_points = 25 if margin >= Decimal('0.30') else 15 if margin >= Decimal('0.15') else 5
-    reasons.append(f'Операционный поток: +{margin_points}')
     debt_ratio = debt_value / flow if flow > 0 else Decimal('999')
-    debt_points = 25 if debt_ratio <= Decimal('0.10') else 15 if debt_ratio <= Decimal('0.30') else 5
-    reasons.append(f'Действующая долговая нагрузка: +{debt_points}')
-    total = age_points + stability_points + margin_points + debt_points
+    # Same temporary scorecard as before, now with explicit factors and weights.
+    inputs = [
+        ('Возраст бизнеса', f'{age} мес.', '1' if age >= 36 else '0.72' if age >= 18 else '0.40'),
+        ('Стабильность поступлений', f'Разброс {money(volatility * 100)}%', '1' if volatility <= Decimal('0.20') else '0.60' if volatility <= Decimal('0.35') else '0.20'),
+        ('Операционный поток', f'Доля потока {money(margin * 100)}%', '1' if margin >= Decimal('0.30') else '0.60' if margin >= Decimal('0.15') else '0.20'),
+        ('Действующая долговая нагрузка', f'{money(debt_ratio * 100)}% потока' if flow > 0 else 'Нет положительного потока', '1' if debt_ratio <= Decimal('0.10') else '0.60' if debt_ratio <= Decimal('0.30') else '0.20'),
+    ]
+    criteria = [{'label': label, 'input': value, 'factor': factor, 'weight': 25,
+                 'points': int(Decimal(factor) * 25)} for label, value, factor in inputs]
+    reasons = [f"{row['label']}: {row['input']} → {row['factor']} × {row['weight']} = {row['points']}" for row in criteria]
+    total = sum(row['points'] for row in criteria)
     group = 'LOW' if total >= 80 else 'MEDIUM' if total >= 50 else 'HIGH'
-    return total, group, reasons, []
+    return total, group, reasons, [], criteria
 
 
 def calculate_assessment(application: Application, db: Session, now: datetime | None = None) -> dict[str, Any]:
@@ -102,7 +103,7 @@ def calculate_assessment(application: Application, db: Session, now: datetime | 
     snapshot = submission.snapshot
     details = snapshot['company'].get('details') or {}
     facts = assessment_facts(application, submission, db)
-    score_value, group, reasons, missing = score(facts, details)
+    score_value, group, reasons, missing, criteria = score(facts, details)
     formal: list[str] = []
     decline: list[str] = []
     if details.get('registry_source') != 'FNS_MOCK' or not details.get('tax_id') or not details.get('okved'):
@@ -113,6 +114,11 @@ def calculate_assessment(application: Application, db: Session, now: datetime | 
         decline.append('Компания не подтверждена как действующий клиент банка')
     if (details.get('business_age_months') or 0) < 9:
         decline.append('Возраст бизнеса меньше 9 полных месяцев')
+    formal.extend([
+        'Имитация ФНС: ' + ('сведения получены' if details.get('registry_source') == 'FNS_MOCK' and details.get('tax_id') and details.get('okved') else 'нет полных сведений'),
+        'Регистрация бизнеса: ' + ('действует' if details.get('registration_status') == 'ACTIVE' else 'не подтверждена как действующая'),
+        'Клиент банка: ' + ('да' if details.get('is_bank_client') is True else 'не подтверждён'),
+    ])
     app = snapshot['application']
     try:
         if app['product_code'] in {'working_capital', 'equipment'}:
@@ -151,7 +157,7 @@ def calculate_assessment(application: Application, db: Session, now: datetime | 
         recommendation = 'OFFER_REQUESTED'
         if group == 'MEDIUM': reasons.append('Средняя группа риска: сотрудник должен указать причину ручного решения')
     result = {'model_version': SCORECARD_VERSION, 'score': score_value, 'group': group,
-              'recommendation': recommendation, 'reasons': reasons, 'missing': missing, 'formal_checks': formal,
+              'recommendation': recommendation, 'reasons': reasons, 'missing': missing, 'formal_checks': formal, 'criteria': criteria,
               'calculated_at': (now or utc_now()).isoformat().replace('+00:00', 'Z')}
     stored = db.get(ApplicationAssessment, application.id)
     if stored is None:

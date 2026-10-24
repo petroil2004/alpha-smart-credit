@@ -1,4 +1,4 @@
-import type { Application } from "../types";
+import type { Application,ProductCode } from "../types";
 import { products } from "../products";
 import { statusLabel } from "./SubmittedApplication";
 import { Icon } from "./Icon";
@@ -15,12 +15,14 @@ export default function ApplicationsList({
   onOpen,
   onCreate,
   onDelete,
+  onChooseProduct,
 }: {
   items: Application[];
   busy: boolean;
   onOpen: (id: string) => void;
   onCreate: () => void;
   onDelete: (id: string) => void;
+  onChooseProduct:(product:ProductCode)=>void;
 }) {
   return (
     <>
@@ -83,11 +85,11 @@ export default function ApplicationsList({
         </div>
         <div className="direction-grid">
           {products.map((product) => (
-            <article className={`direction-card ${product.tone}`} key={product.code}>
+            <button type="button" className={`direction-card ${product.tone}`} key={product.code} disabled={busy} onClick={()=>onChooseProduct(product.code)} aria-label={`Оформить: ${product.title}`}>
               <img src={product.image} alt="" width="120" height="120" loading="lazy" />
               <h3>{product.title}</h3>
               <p>{product.description}</p>
-            </article>
+            </button>
           ))}
         </div>
       </section>
