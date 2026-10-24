@@ -20,11 +20,28 @@ services:
       SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-credit_cabinet_session}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
       SESSION_TTL_SECONDS: ${SESSION_TTL_SECONDS:-604800}
+      ASSISTANT_ENABLED: ${ASSISTANT_ENABLED:-false}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b}
+      OLLAMA_TIMEOUT_SECONDS: ${OLLAMA_TIMEOUT_SECONDS:-90}
     depends_on:
       db:
         condition: service_healthy
     ports:
       - "127.0.0.1:8000:8000"
 
+  ollama:
+    image: ollama/ollama:latest
+    profiles: [assistant]
+    environment:
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+    volumes:
+      - ollama_models:/root/.ollama
+    mem_limit: 3g
+    cpus: 2
+    # Deliberately no published ports. Only backend reaches this service.
+
 volumes:
   postgres_data:
+  ollama_models:

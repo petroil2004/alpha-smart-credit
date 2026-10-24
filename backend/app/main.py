@@ -399,3 +399,6 @@ app.include_router(info_files_router)
 
 from .review import router as review_router
 app.include_router(review_router)
+
+from .assistant import router as assistant_router
+app.include_router(assistant_router)
