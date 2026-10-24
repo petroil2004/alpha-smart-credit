@@ -90,7 +90,7 @@ export default function InfoRequestPanel(props:Props){
   </div>
   <div className="info-chat"><h4>Переписка по запросу</h4><p className="small-note">Сообщения не отправляют ответ на рассмотрение.</p>
    <ol className="info-messages">{request.messages.map(m=><li key={m.id}><strong>{m.actor_role==='STAFF'?'Сотрудник банка':'Клиент'}</strong><time dateTime={m.created_at}>{date(m.created_at)}</time><p>{m.text}</p></li>)}</ol>
-   {active&&<><label className="field"><span>Сообщение по запросу</span><textarea maxLength={1000} value={message} disabled={chat.busy||!!chat.pending} onChange={e=>setMessage(e.target.value)}/></label>
+   {(active||chat.pending)&&<><label className="field"><span>Сообщение по запросу</span><textarea maxLength={1000} value={message} disabled={!active||chat.busy||!!chat.pending} onChange={e=>setMessage(e.target.value)}/></label>
     {chat.pending&&<p role="status">Исход сообщения не подтверждён. Повтор отправит тот же текст.</p>}
     <button className="button secondary" type="button" disabled={chat.busy||(!chat.pending&&!message.trim())||chat.error?.code==='INVALID_INFO_RECEIPT'} onClick={()=>void sendMessage()}>{chat.busy?'Отправляем…':chat.pending?'Проверить сообщение':'Отправить сообщение'}</button></>}
   </div>
@@ -100,5 +100,5 @@ export default function InfoRequestPanel(props:Props){
   </div></div>}
   {!staff&&(active||submit.pending)&&<div className="info-actions"><button type="button" className="button primary" disabled={submit.busy||submit.error?.code==='INVALID_INFO_RECEIPT'||(!submit.pending&&!queue.text.trim())} onClick={()=>void sendReply()}>{submit.busy?'Отправляем…':submit.pending?'Проверить отправку ответа':'Отправить ответ'}</button><p className="small-note">Только эта кнопка завершит запрос и вернёт заявку сотруднику.</p></div>}
  </>;
- return active||submit.pending?<section className="form-card info-card"><h3>{submit.pending&&!active?'Проверьте отправку ответа':staff?'Ждём ответ клиента':'Банк запросил сведения'}</h3>{content}</section>:<details className="form-card info-card"><summary>Завершённый запрос · {date(request.closed_at??request.created_at)}</summary>{content}</details>;
+ return active||submit.pending||chat.pending?<section className="form-card info-card"><h3>{!active?(submit.pending?'Проверьте отправку ответа':'Проверьте отправку сообщения'):staff?'Ждём ответ клиента':'Банк запросил сведения'}</h3>{content}</section>:<details className="form-card info-card"><summary>Завершённый запрос · {date(request.closed_at??request.created_at)}</summary>{content}</details>;
 }

@@ -148,3 +148,12 @@ it('restores an acknowledged upload after a lost response and reload',async()=>{
  const view=render(<InfoRequests api={api} session={client} application={s.item} {...props}/>);fireEvent.change(screen.getByLabelText('Документ PDF или TXT'),{target:{files:[new File(['abc'],'test.txt',{type:'text/plain'})]}});fireEvent.click(screen.getByRole('button',{name:'Загрузить документ'}));await screen.findByRole('alert');view.unmount();
  render(<InfoRequests api={api} session={client} application={s.item} {...props}/>);await screen.findByRole('button',{name:'test.txt'});expect(screen.queryByText(/ещё не подтверждена/)).not.toBeInTheDocument();expect(s.item.info_requests![0].attachments).toHaveLength(1);
 });
+
+it.each([client,staff])('keeps a visible message retry after closure for $user.role',async role=>{
+ const s=server(role);s.open();let lose=true;const api=createApi((async(input:RequestInfo|URL,init?:RequestInit)=>{const response=await s.fetcher(input,init);if(String(input).endsWith('/messages')&&lose){lose=false;throw Error('lost');}return response;}) as typeof fetch);
+ const first=render(<InfoRequests api={api} session={role} application={s.item} {...props}/>);
+ fireEvent.change(screen.getByLabelText('Сообщение по запросу'),{target:{value:'Вопрос с потерянным подтверждением'}});fireEvent.click(screen.getByRole('button',{name:'Отправить сообщение'}));await screen.findByRole('button',{name:'Проверить сообщение'});first.unmount();
+ s.item.status='UNDER_REVIEW';s.item.info_requests![0].closed_at='2026-10-24T02:00:00Z';const register=vi.fn();render(<InfoRequests api={api} session={role} application={s.item} {...props} register={register}/>);
+ const retry=screen.getByRole('button',{name:'Проверить сообщение'});expect(retry).toBeVisible();expect(screen.queryByRole('button',{name:'Отправить сообщение'})).not.toBeInTheDocument();fireEvent.click(retry);
+ await waitFor(()=>expect(screen.queryByRole('button',{name:'Проверить сообщение'})).not.toBeInTheDocument());expect(s.item.info_requests![0].messages).toHaveLength(1);await waitFor(()=>expect(register.mock.calls.at(-1)?.[0]?.dirty).toBe(false));
+});

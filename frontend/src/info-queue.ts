@@ -1,4 +1,5 @@
-import type {Application} from './types';
+import type {Application,InfoRequest} from './types';
+import {ApiError} from './api';
 
 // Conversations may finish alongside a save. Keep newer revisions and every message.
 export function mergeInfoApplication(old:Application,next:Application):Application {
@@ -15,6 +16,8 @@ export function mergeInfoApplication(old:Application,next:Application):Applicati
 type Job=(application:Application)=>Promise<Application>;
 export class InfoQueue {
  private current:Application;
+ // Reading a conversation is not consent to rebase unsaved edits over another tab.
+ private base:InfoRequest;
  private jobs:Job[]=[];
  private running:Promise<boolean>|null=null;
  private timer:ReturnType<typeof setTimeout>|undefined;
@@ -23,12 +26,19 @@ export class InfoQueue {
  private disposed=false;
  text:string;
  constructor(application:Application,private rid:string,private save:(application:Application,text:string)=>Promise<Application>,private guard:()=>Promise<void>,private publish:(application:Application)=>void,private changed:()=>void,private failed:(error:unknown)=>void=()=>{}){
-  this.current=application;this.text=this.request().reply_text;
+  this.current=application;this.base=this.request();this.text=this.base.reply_text;
  }
  private request(){return this.current.info_requests!.find(r=>r.id===this.rid)!;}
  get(){return this.current;}
- get dirty(){return this.text!==this.request().reply_text||this.jobs.length>0||this.running!==null;}
- accept(application:Application){const wasClean=this.text===this.request().reply_text;this.current=mergeInfoApplication(this.current,application);if(wasClean)this.text=this.request().reply_text;}
+ get dirty(){return this.text!==this.base.reply_text||this.jobs.length>0||this.running!==null;}
+ accept(application:Application){
+  const wasClean=!this.dirty;
+  this.current=mergeInfoApplication(this.current,application);
+  if(wasClean){this.base=this.request();this.text=this.base.reply_text;}
+ }
+ private forWrite():Application {
+  return {...this.current,info_requests:this.current.info_requests!.map(r=>r.id===this.rid?{...r,revision:this.base.revision}:r)};
+ }
  setText(text:string){this.text=text;this.changed();clearTimeout(this.timer);this.timer=setTimeout(()=>{this.requested=true;void this.pump();},1500);}
  enqueue(job:Job){this.jobs.push(job);this.changed();void this.pump();}
  private pump():Promise<boolean>{
@@ -39,14 +49,23 @@ export class InfoQueue {
    try{
     while(!this.disposed){
      const value=this.text;
-     const shouldSave=this.requested&&value!==this.request().reply_text;
+     const shouldSave=this.requested&&value!==this.base.reply_text;
      const job=shouldSave?((a:Application)=>this.save(a,value)):this.jobs[0];
      if(!job)break;
      await this.guard();if(this.disposed)return false;
-     const result=await job(this.current);
+     const result=await job(this.forWrite());
      await this.guard();if(this.disposed)return false;
+     const confirmed=result.info_requests!.find(r=>r.id===this.rid)!;
+     const cleanText=this.text===this.base.reply_text;
      this.current=mergeInfoApplication(this.current,result);
      if(!shouldSave)this.jobs.shift();
+     // A replayed upload can return a later state containing somebody else's edit.
+     // Confirm the file, but retain the edit base and stop before overwriting that reply.
+     if(!shouldSave&&!cleanText&&confirmed.revision>this.base.revision+1){
+      throw new ApiError(409,'VERSION_CONFLICT','Ответ изменён в другом окне. Обновите карточку, сохранив нужный текст.');
+     }
+     this.base=confirmed;
+     if(!shouldSave&&cleanText)this.text=this.base.reply_text;
      this.publish(this.current);this.changed();
     }
     return !this.disposed;
