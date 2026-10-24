@@ -1,6 +1,7 @@
 import { vi } from "vitest";
 import type { Application, Session, ClientSession, SubmitInput } from "../types";
 import {demoAccounts} from "../demo-accounts";
+import {companyProfile} from "./company-fixtures";
 import { annuityResult, catalog } from "./calculator-fixtures";
 
 export const session: ClientSession = {
@@ -81,7 +82,7 @@ export function contractServer(
       return item?.status === 'UNDER_REVIEW' ? json(item) : error(404,'NOT_FOUND','Заявка не найдена');
     }
     if (!current.company) return error(403,'FORBIDDEN','Только клиент');
-    if (path === '/company-profile') return json({company_id:current.company.id,company_name:current.company.name,profile_version:'profile-v1',source:'BANK_DATA'});
+    if (path === '/company-profile') return json({...companyProfile(),company_id:current.company.id,company_name:current.company.name,profile_version:'profile-v1'});
     if (path === "/products" && method === "GET") return json(catalog);
     if (path === "/calculations/annuity" && method === "POST")
       return json(annuityResult({ product_code: body.product_code, amount_rub: body.amount_rub, term_months: body.term_months }));

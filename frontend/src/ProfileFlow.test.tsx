@@ -32,6 +32,18 @@ it('a malformed financial response blocks confirmation and can be recovered',asy
  let p=companyProfile();p.finance!.months.pop();const h=setup(()=>p);render(<App api={h.api}/>);fireEvent.click(await screen.findByRole('button',{name:/Открыть заявку/}));fireEvent.click(await screen.findByRole('button',{name:'Перейти к шагу «Проверка»'}));
  expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось загрузить сведения');expect(screen.getByRole('checkbox',{name:/Подтверждаю актуальность/})).toBeDisabled();p=companyProfile();fireEvent.click(screen.getByRole('button',{name:'Повторить загрузку сведений'}));await waitFor(()=>expect(screen.getByRole('checkbox',{name:/Подтверждаю актуальность/})).toBeEnabled());
 });
+it.each(['string bank flag','missing bank flag','reversed period','partial expenses with average','missing live details'])('blocks confirmation for damaged live data: %s',async damage=>{
+ const p=companyProfile();
+ if(damage==='string bank flag')Object.assign(p.details!,{is_bank_client:'false'});
+ if(damage==='missing bank flag')Reflect.deleteProperty(p.details!,'is_bank_client');
+ if(damage==='reversed period')p.finance!.period.end_date='2025-01-01';
+ if(damage==='partial expenses with average')p.finance!.months[0].expenses_rub=null;
+ if(damage==='missing live details')delete p.details;
+ const h=setup(()=>p);render(<App api={h.api}/>);fireEvent.click(await screen.findByRole('button',{name:/Открыть заявку/}));fireEvent.click(await screen.findByRole('button',{name:'Перейти к шагу «Проверка»'}));
+ expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось загрузить сведения');
+ expect(screen.getByRole('checkbox',{name:/Подтверждаю актуальность/})).toBeDisabled();
+ expect(screen.getByRole('button',{name:'Отправить заявку'})).toBeDisabled();
+});
 it('rejects an independent role change while a company response is delayed',async()=>{
  const h=setup();let finish!:(p:CompanyProfile)=>void;const delayed=new Promise<CompanyProfile>(resolve=>finish=resolve);const api={...h.api,companyProfile:vi.fn(()=>delayed)};render(<App api={api}/>);fireEvent.click(await screen.findByRole('button',{name:/Открыть заявку/}));
  await waitFor(()=>expect(api.companyProfile).toHaveBeenCalled());await act(async()=>{await h.api.login('demo-staff-1');finish(companyProfile());});await screen.findByRole('button',{name:'Войти в кабинет'});expect(screen.queryByText('Финансовые данные за шесть месяцев')).not.toBeInTheDocument();
