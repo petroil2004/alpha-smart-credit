@@ -150,7 +150,7 @@ export default function DraftForm(props: Props) {
             </div>
             {step === "product" && <>
               <ProductFields {...props} catalog={calculator.catalog} />
-              <AssistantPreview open={assistantOpen} onToggle={() => setAssistantOpen(value => !value)} />
+              <AssistantPreview open={assistantOpen} onToggle={() => setAssistantOpen(value => !value)} api={props.api} session={props.session} applicationId={application.id} onSelect={code=>props.onChange('product_code',code)} onSessionChanged={props.onSessionChanged}/>
             </>}
             {step === "details" && (
               <>
