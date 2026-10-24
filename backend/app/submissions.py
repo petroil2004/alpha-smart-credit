@@ -63,7 +63,7 @@ def submit_application(application_id: uuid.UUID, payload: SubmitPayload, accoun
         raise ApiProblem(409, 'APPLICATION_NOT_DRAFT', 'Заявка уже отправлена. Обновите карточку.')
     if application.version != payload.version:
         raise ApiProblem(409, 'VERSION_CONFLICT', 'Заявка изменена. Загрузите сохранённую версию.')
-    profile = get_company_profile(account)
+    profile = get_company_profile(account, db)
     if payload.profile_version != profile['profile_version']:
         raise ApiProblem(409, 'PROFILE_VERSION_CONFLICT', 'Сведения компании изменились. Обновите и подтвердите их заново.')
     if payload.catalog_version != get_catalog()['catalog_version']:

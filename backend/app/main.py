@@ -373,8 +373,8 @@ def delete_application(
 
 
 @app.get(f"{API_PREFIX}/company-profile")
-def company_profile(account: ClientAccount):
-    return get_company_profile(account)
+def company_profile(account: ClientAccount, db: Session = Depends(get_db)):
+    return get_company_profile(account, db)
 
 
 from .submissions import router as submissions_router

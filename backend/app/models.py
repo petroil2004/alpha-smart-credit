@@ -139,3 +139,31 @@ class InfoAttachment(Base):
     content: Mapped[bytes] = mapped_column(LargeBinary, nullable=False, deferred=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
     detached_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class CompanyData(Base):
+    __tablename__ = 'company_data'
+
+    company_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    legal_form: Mapped[str | None] = mapped_column(String(16))
+    tax_id: Mapped[str | None] = mapped_column(String(12))
+    okved: Mapped[str | None] = mapped_column(String(16))
+    registration_date: Mapped[date | None] = mapped_column(Date)
+    registration_status: Mapped[str | None] = mapped_column(String(32))
+    is_bank_client: Mapped[bool | None] = mapped_column(Boolean)
+    prepared_on: Mapped[date] = mapped_column(Date, nullable=False)
+    data_version: Mapped[str] = mapped_column(String(100), nullable=False)
+    debt_payment_rub: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
+    debt_source: Mapped[str | None] = mapped_column(String(32))
+    debt_as_of: Mapped[date | None] = mapped_column(Date)
+
+
+class CompanyMonth(Base):
+    __tablename__ = 'company_months'
+
+    company_id: Mapped[str] = mapped_column(ForeignKey('company_data.company_id'), primary_key=True)
+    month: Mapped[date] = mapped_column(Date, primary_key=True)
+    income_rub: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
+    expenses_rub: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
+    income_source: Mapped[str | None] = mapped_column(String(32))
+    expenses_source: Mapped[str | None] = mapped_column(String(32))
