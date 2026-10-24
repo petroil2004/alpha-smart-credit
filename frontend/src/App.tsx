@@ -17,7 +17,8 @@ import { useDraftAutosave } from "./hooks/useDraftAutosave";
 import DraftForm from "./components/DraftForm";
 import ApplicationsList from "./components/ApplicationsList";
 import DeleteDraftDialog from "./components/DeleteDraftDialog";
-import SubmittedApplication, {statusLabel} from "./components/SubmittedApplication";
+import SubmittedApplication from "./components/SubmittedApplication";
+import StatusBadge from './components/StatusBadge';
 import StaffApplications from "./components/StaffApplications";
 import {demoAccounts} from "./demo-accounts";
 import {sameSession} from "./session";
@@ -585,7 +586,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
         </div><img className="hero-art" src="/images/credit/hero.png" alt="" width="460" height="460" fetchPriority="high" />
       </section>}
       <main className={`main-content ${selected ? "application-content" : "home-content"}`}>
-        {(selected||profilePage) && <div className="draft-page-header"><button className="back-button" aria-label="Все заявки" onClick={showList} disabled={!!busy}>← Все заявки</button>{selected&&<span className="draft-subtitle"><span className="draft-badge">{statusLabel(selected.status)}</span> № {selected.id.slice(-6)}</span>}</div>}
+        {(selected||profilePage) && <div className="draft-page-header"><button className="back-button" aria-label="Все заявки" onClick={showList} disabled={!!busy}>← Все заявки</button>{selected&&<span className="draft-subtitle"><StatusBadge status={selected.status}/> № {selected.id.slice(-6)}</span>}</div>}
         {errorBox}
         {notice && <div className="notice success-notice" role="status"><Icon name="check" size={18} /><p>{notice}</p></div>}
         {selected && session.company && selected.status==='DRAFT' && (pendingSubmit || receiptBlocked) && <div className="notice" role="status"><div><p>Исход предыдущей отправки нужно проверить. Параметры этой попытки сохранены; повтор не создаст вторую заявку.</p>

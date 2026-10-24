@@ -56,7 +56,11 @@ img { max-width: 100%; }
 .row-icon svg { width: 30px; height: 30px; }
 .row-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
 .row-topline { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 12px; }
-.draft-badge { background: #e5e7ec; color: #555b67; padding: 5px 12px; border-radius: 30px; font-size: 12px; white-space: nowrap; }
+.draft-badge { display: inline-block; background: transparent; color: #555b67; padding: 5px 12px; border-radius: 30px; font-size: 12px; white-space: nowrap; }
+.draft-badge[data-status="APPROVED"] { background: #def5e5; color: #17653b; }
+.draft-badge[data-status="UNDER_REVIEW"], .draft-badge[data-status="SUBMITTED"] { background: #fff1ba; color: #725600; }
+.draft-badge[data-status="NEEDS_INFO"] { background: #ffe3cb; color: #994300; }
+.draft-badge[data-status="DECLINED"] { background: #ffe0e0; color: #a51f2c; }
 .row-title { font-size: 19px; font-weight: 700; }
 .row-purpose { color: #626979; font-size: 14px; overflow-wrap: anywhere; }
 .row-amount { margin-left: auto; display: flex; flex-direction: column; gap: 10px; min-width: 130px; }

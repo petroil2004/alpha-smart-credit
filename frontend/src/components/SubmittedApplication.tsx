@@ -2,9 +2,8 @@ import type {Application} from '../types';
 import {formatMoneyRub} from '../draft';
 import CompanyDataView from './CompanyDataView';
 import {products} from '../products';
-export function statusLabel(status: string) {
-  return status === 'DRAFT' ? 'Черновик' : status === 'NEEDS_INFO' ? 'Нужны сведения' : status === 'UNDER_REVIEW' ? 'На рассмотрении' : status === 'APPROVED' ? 'Одобрена' : status === 'DECLINED' ? 'Отказ' : status === 'SUBMITTED' ? 'Отправлена' : 'Заявка';
-}
+import StatusBadge,{statusLabel} from './StatusBadge';
+export {statusLabel} from './StatusBadge';
 const date = (value: string) => new Intl.DateTimeFormat('ru-RU',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Moscow'}).format(new Date(value));
 export default function SubmittedApplication({application,staff=false}:{application:Application;staff?:boolean}) {
   const snapshot=application.submission?.snapshot;
@@ -18,7 +17,7 @@ export default function SubmittedApplication({application,staff=false}:{applicat
     {application.status==='APPROVED'&&<h2>Одобренные условия</h2>}
     <dl className="submitted-details">
       {staff&&<div><dt>Компания</dt><dd>{snapshot?.company.company_name ?? application.company_name}</dd></div>}
-      <div><dt>Статус</dt><dd>{statusLabel(application.status)}</dd></div>
+      <div><dt>Статус</dt><dd><StatusBadge status={application.status}/></dd></div>
       {application.submitted_at && <div><dt>Отправлена</dt><dd>{date(application.submitted_at)}</dd></div>}
       <div><dt>Продукт</dt><dd>{products.find(p=>p.code===values.product_code)?.title ?? 'Не указан'}</dd></div>
       <div><dt>Цель</dt><dd>{values.purpose ?? 'Не указана'}</dd></div>
