@@ -83,6 +83,8 @@ export function createApi(
     submit: (id, input, key) => request<Application>(`/applications/${encodeURIComponent(id)}/submit`, {method: "POST", body: JSON.stringify(input), headers: {"Idempotency-Key": key}}),
     staffList: () => request<{items: Application[]}>("/staff/applications"),
     staffGet: (id) => request<Application>(`/staff/applications/${encodeURIComponent(id)}`),
+    assessment: (id) => request<import("./types").Assessment>(`/staff/applications/${encodeURIComponent(id)}/assessment`, {method:"POST"}),
+    decide: (id, body, key) => request<Application>(`/staff/applications/${encodeURIComponent(id)}/decision`, {method:"POST",body:JSON.stringify(body),headers:{"Idempotency-Key":key}}),
     products: () => request<ProductCatalog>("/products"),
     calculateAnnuity: (input) => request<AnnuityResult>("/calculations/annuity", {method: "POST", body: JSON.stringify(input)}),
     me: () => request<Session>("/me"),

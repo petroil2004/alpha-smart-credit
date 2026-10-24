@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import type { Api, Application, CompanyProfile } from "../types";
+import type { Api, Application, CompanyProfile, ClientSession } from "../types";
 import { useLoanCalculator } from "../hooks/useLoanCalculator";
 import LoanCalculator, { LoanCalculationSummary } from "./draft/LoanCalculator";
 import { draftSteps } from "../draft-steps";
@@ -14,6 +14,8 @@ import {
 import type { EditableProps } from "./draft/DraftFields";
 import DraftReview from "./draft/DraftReview";
 import AssistantPreview from "./draft/AssistantPreview";
+import {sameSession} from "../session";
+import {validateCompanyProfile} from "../company-profile";
 import { Icon } from "./Icon";
 import type { SaveState } from "../autosave";
 
@@ -21,6 +23,7 @@ interface Props extends EditableProps {
   api: Api;
   application: Application;
   companyName: string;
+  session: ClientSession;
   errorAttempt: number;
   busy: boolean;
   saveStatus: SaveState["status"];
@@ -49,14 +52,19 @@ export default function DraftForm(props: Props) {
   useEffect(()=>{
     let active=true;
     setProfile(null);setProfileError(null);
-    props.api.companyProfile().then(value=>{
+    (async()=>{
+      const before=await props.api.me();
       if(!active)return;
-      if(value.company_id!==application.company_id){props.onSessionChanged();return;}
-      if(!value.profile_version || !value.company_name || value.source!=='BANK_DATA')throw Error();
+      if(!sameSession(before,props.session)){props.onSessionChanged();return;}
+      const value=await props.api.companyProfile();
+      const after=await props.api.me();
+      if(!active)return;
+      if(!sameSession(after,props.session)||value.company_id!==application.company_id){props.onSessionChanged();return;}
+      validateCompanyProfile(value);
       setProfile(value);
-    }).catch(()=>{if(active)setProfileError('Не удалось загрузить сведения компании. Повторите загрузку.');});
+    })().catch(()=>{if(active)setProfileError('Не удалось загрузить сведения компании. Повторите загрузку.');});
     return()=>{active=false;};
-  },[props.api,application.id,profileAttempt,props.resetVersion]);
+  },[props.api,application.id,profileAttempt,props.resetVersion,props.session.user.id,props.session.company.id]);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [step, setStep] = useState<DraftStep>("product");
   const lastErrorAttempt = useRef(errorAttempt);
@@ -76,12 +84,9 @@ export default function DraftForm(props: Props) {
   const reauthenticate = () => props.onReauthenticate(()=>{calculator.retryCatalog();setProfileAttempt(n=>n+1);setConfirmedStamp(null);});
   const confirmationStamp=JSON.stringify([fields,profile?.profile_version,calculator.catalog?.catalog_version,props.resetVersion]);
   useEffect(()=>{setConfirmedStamp(null);},[confirmationStamp]);
-  const calculationReady=calculator.status==='ready' && !!calculator.result;
+  const calculationReady=fields.product_code==='overdraft' || (calculator.status==='ready' && !!calculator.result);
   const confirmed=confirmedStamp===confirmationStamp;
-  const companyBlock=<section className="company-summary" aria-label="Сведения компании"><h3>Компания</h3>
-    <p>{profile?.company_name ?? props.companyName}</p><p className="small-note">Демонстрационные данные · {application.company_id}</p>
-    {profileError && <p role="alert">{profileError} <button type="button" className="text-button" onClick={()=>setProfileAttempt(n=>n+1)}>Повторить загрузку сведений</button></p>}
-  </section>;
+  const profileNotice=profileError?<p role="alert">{profileError} <button type="button" className="text-button" onClick={()=>setProfileAttempt(n=>n+1)}>Повторить загрузку сведений</button></p>:null;
 
   useEffect(() => {
     if (lastErrorAttempt.current === errorAttempt) return;
@@ -149,10 +154,9 @@ export default function DraftForm(props: Props) {
             </>}
             {step === "details" && (
               <>
-                {companyBlock}
                 {fields.product_code && fields.product_code !== "overdraft"
                   ? <LoanCalculator fields={fields} onChange={props.onChange} errors={errors} state={calculator} onReauthenticate={reauthenticate}/>
-                  : <><MoneyField {...props} name="amount_rub" label="Сумма финансирования" /><ParameterFields {...props} />{fields.product_code === "overdraft" && <p className="small-note">Калькулятор овердрафта пока недоступен.</p>}</>}
+                  : <><MoneyField {...props} name="amount_rub" label="Сумма финансирования" /><ParameterFields {...props} />{fields.product_code === "overdraft" && <p className="small-note">Это лимит овердрафта. Сервер проверит срок, покрытие поступлением и рассчитает проценты при отправке. Это не решение об одобрении.</p>}</>}
                 <PurposeField {...props} />
                 {!fields.product_code && (
                   <button
@@ -166,9 +170,9 @@ export default function DraftForm(props: Props) {
               </>
             )}
             {step === "review" && (
-              <>{companyBlock}<DraftReview fields={fields} onEdit={goTo} busy={busy} />
+              <>{profileNotice}<DraftReview fields={fields} onEdit={goTo} busy={busy} />
               {fields.product_code && <LoanCalculationSummary state={calculator} onReauthenticate={reauthenticate}/>}
-              {fields.product_code==='working_capital' ? <label className="submission-confirmation"><input type="checkbox" checked={confirmed} disabled={busy || !profile || !calculator.catalog || !calculationReady} onChange={e=>setConfirmedStamp(e.target.checked?confirmationStamp:null)}/><span>Подтверждаю актуальность указанных сведений и выбранные параметры заявки</span></label> : <p className="small-note">Отправка этого продукта пока недоступна. Можно сохранить черновик и вернуться позже.</p>}
+              {fields.product_code ? <label className="submission-confirmation"><input type="checkbox" checked={confirmed} disabled={busy || !profile || !calculator.catalog || !calculationReady} onChange={e=>setConfirmedStamp(e.target.checked?confirmationStamp:null)}/><span>Подтверждаю актуальность указанных сведений и выбранные параметры заявки</span></label> : null}
               </>
             )}
           </fieldset>
@@ -192,7 +196,7 @@ export default function DraftForm(props: Props) {
               {busy ? "Сохраняем…" : "Сохранить и выйти"}
               {!busy && <Icon name="check" size={18} />}
             </button>}
-            {last && fields.product_code==='working_capital' && <button className="button primary" type="button" disabled={busy || !confirmed || !profile || !calculator.catalog || !calculationReady} onClick={()=>{
+            {last && fields.product_code && <button className="button primary" type="button" disabled={busy || !confirmed || !profile || !calculator.catalog || !calculationReady} onClick={()=>{
               if(profile && calculator.catalog && confirmed && calculationReady)props.onSubmitApplication({profile_version:profile.profile_version,catalog_version:calculator.catalog.catalog_version});
             }}>{busy ? 'Отправляем…' : 'Отправить заявку'}</button>}
             {!last && (

@@ -23,6 +23,10 @@ def application_values(application: Application) -> dict[str, Any]:
         "usage_days": application.usage_days,
         "expected_inflow_date": application.expected_inflow_date.isoformat() if application.expected_inflow_date else None,
         "expected_inflow_amount_rub": money(application.expected_inflow_amount_rub),
+        "equipment_cost_rub": money(application.equipment_cost_rub),
+        "planned_payment_rub": money(application.planned_payment_rub),
+        "planned_payment_date": application.planned_payment_date.isoformat() if application.planned_payment_date else None,
+        "expected_inflow_source": application.expected_inflow_source,
         "version": application.version,
         "created_at": timestamp(application.created_at),
         "updated_at": timestamp(application.updated_at),
@@ -46,4 +50,10 @@ def serialize_application(application: Application, db: Session, *, detail: bool
         result['history'] = [{key: getattr(event, key) for key in
                              ('id', 'actor_id', 'actor_role', 'from_status', 'to_status', 'reason_code', 'comment', 'catalog_version', 'offer_version', 'check_version')}
                             | {'occurred_at': timestamp(event.occurred_at)} for event in events]
+        # A draft has no assessment.  Keeping the key absent for drafts also
+        # preserves the compact draft/list projection used by existing clients.
+        if submission:
+            from .models import ApplicationAssessment
+            assessment = db.get(ApplicationAssessment, application.id)
+            result['assessment'] = assessment.result if assessment else None
     return result

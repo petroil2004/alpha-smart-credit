@@ -78,7 +78,7 @@ it("does not send deletion after a different company signs in", async () => {
 
 it("shows deletion only for drafts, not future submitted applications", () => {
   const sent = {...application(), status:"SUBMITTED"} as unknown as Application;
-  render(<ApplicationsList items={[sent]} busy={false} onOpen={()=>{}} onCreate={()=>{}} onDelete={()=>{}} />);
+  render(<ApplicationsList items={[sent]} busy={false} onOpen={()=>{}} onCreate={()=>{}} onDelete={()=>{}} onChooseProduct={()=>{}} />);
   expect(screen.queryByRole("button", {name:/Удалить черновик/})).not.toBeInTheDocument();
 });
 

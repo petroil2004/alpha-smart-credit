@@ -27,7 +27,7 @@ def test_company_profile_is_own_and_version_changes_with_displayed_data(client):
     profile = client.get('/api/v1/company-profile').json()
     assert profile['company_id'] == 'demo-company-1'
     assert profile['source'] == 'BANK_DATA'
-    assert set(profile) == {'company_id', 'company_name', 'profile_version', 'source'}
+    assert set(profile) == {'company_id', 'company_name', 'profile_version', 'source', 'details', 'finance', 'prepared_on', 'data_version', 'as_of_date'}
     with engine.begin() as db:
         db.execute(text("UPDATE accounts SET company_name='Другое название' WHERE id='demo-client-1'"))
     assert client.get('/api/v1/company-profile').json()['profile_version'] != profile['profile_version']

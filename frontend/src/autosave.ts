@@ -2,7 +2,7 @@ import { ApiError } from "./api";
 import { fromApplication, prepareDraftPayload } from "./draft";
 import type { Api, Application, DraftFields, DraftPayload, FieldErrors } from "./types";
 
-const productFields = ["product_code", "term_months", "usage_days", "expected_inflow_date", "expected_inflow_amount_rub"] as const;
+const productFields = ["product_code", "term_months", "usage_days", "expected_inflow_date", "expected_inflow_amount_rub", "equipment_cost_rub", "planned_payment_rub", "planned_payment_date", "expected_inflow_source"] as const;
 
 function isApplication(value: unknown): value is Application {
   if (!value || typeof value !== "object") return false;
@@ -16,7 +16,7 @@ function isApplication(value: unknown): value is Application {
     nullableString(item.purpose) &&
     (item.product_code === null || item.product_code === "working_capital" || item.product_code === "equipment" || item.product_code === "overdraft") &&
     nullableString(item.amount_rub) && nullableInteger(item.term_months) && nullableInteger(item.usage_days) &&
-    nullableString(item.expected_inflow_date) && nullableString(item.expected_inflow_amount_rub) &&
+    nullableString(item.expected_inflow_date) && nullableString(item.expected_inflow_amount_rub) && nullableString(item.equipment_cost_rub) && nullableString(item.planned_payment_rub) && nullableString(item.planned_payment_date) && nullableString(item.expected_inflow_source) &&
     timestamp(item.created_at) && timestamp(item.updated_at);
 }
 

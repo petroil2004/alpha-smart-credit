@@ -47,6 +47,10 @@ class Application(Base):
     usage_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     expected_inflow_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     expected_inflow_amount_rub: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
+    equipment_cost_rub: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
+    planned_payment_rub: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
+    planned_payment_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    expected_inflow_source: Mapped[str | None] = mapped_column(String(32), nullable=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
@@ -107,6 +111,10 @@ class InfoRequest(Base):
     reply_by: Mapped[str | None] = mapped_column(ForeignKey('accounts.id'), nullable=True)
     closed_by: Mapped[str | None] = mapped_column(ForeignKey('accounts.id'), nullable=True)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    financial_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    financial_values: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    financial_accepted_by: Mapped[str | None] = mapped_column(ForeignKey('accounts.id'), nullable=True)
+    financial_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class InfoMessage(Base):
@@ -139,3 +147,42 @@ class InfoAttachment(Base):
     content: Mapped[bytes] = mapped_column(LargeBinary, nullable=False, deferred=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
     detached_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class CompanyData(Base):
+    __tablename__ = 'company_data'
+
+    company_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    legal_form: Mapped[str | None] = mapped_column(String(16))
+    tax_id: Mapped[str | None] = mapped_column(String(12))
+    okved: Mapped[str | None] = mapped_column(String(16))
+    registry_source: Mapped[str | None] = mapped_column(String(32))
+    registration_date: Mapped[date | None] = mapped_column(Date)
+    registration_status: Mapped[str | None] = mapped_column(String(32))
+    is_bank_client: Mapped[bool | None] = mapped_column(Boolean)
+    prepared_on: Mapped[date] = mapped_column(Date, nullable=False)
+    data_version: Mapped[str] = mapped_column(String(100), nullable=False)
+    debt_payment_rub: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
+    debt_source: Mapped[str | None] = mapped_column(String(32))
+    debt_as_of: Mapped[date | None] = mapped_column(Date)
+
+
+class CompanyMonth(Base):
+    __tablename__ = 'company_months'
+
+    company_id: Mapped[str] = mapped_column(ForeignKey('company_data.company_id'), primary_key=True)
+    month: Mapped[date] = mapped_column(Date, primary_key=True)
+    income_rub: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
+    expenses_rub: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
+    income_source: Mapped[str | None] = mapped_column(String(32))
+    expenses_source: Mapped[str | None] = mapped_column(String(32))
+
+
+class ApplicationAssessment(Base):
+    """Latest server-side assessment of submitted facts, never a client decision."""
+    __tablename__ = 'application_assessments'
+
+    application_id: Mapped[uuid.UUID] = mapped_column(ForeignKey('applications.id'), primary_key=True)
+    financial_facts: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    result: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    calculated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)

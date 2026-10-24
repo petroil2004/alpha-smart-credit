@@ -1,0 +1,167 @@
+{
+  "data_version": "demo-profiles-v1",
+  "companies": [
+    {
+      "scenario": "T1",
+      "account_id": "demo-client-1",
+      "company_id": "demo-company-1",
+      "company_name": "ООО «Демо Торг»",
+      "legal_form": "OOO",
+      "tax_id": "7701000001",
+      "okved": "47.19",
+      "registration_status": "ACTIVE",
+      "debt_payment_rub": "30000.00",
+      "income": [
+        "810000.00",
+        "900000.00",
+        "990000.00",
+        "855000.00",
+        "945000.00",
+        "900000.00"
+      ],
+      "expenses": [
+        "540000.00",
+        "600000.00",
+        "660000.00",
+        "570000.00",
+        "630000.00",
+        "600000.00"
+      ]
+    },
+    {
+      "scenario": "T2",
+      "account_id": "demo-client-2",
+      "company_id": "demo-company-2",
+      "company_name": "ООО «Демо Мастерская»",
+      "legal_form": "OOO",
+      "tax_id": "7701000002",
+      "okved": "25.99",
+      "registration_status": "ACTIVE",
+      "debt_payment_rub": "50000.00",
+      "income": [
+        "1350000.00",
+        "1500000.00",
+        "1650000.00",
+        "1425000.00",
+        "1575000.00",
+        "1500000.00"
+      ],
+      "expenses": [
+        "900000.00",
+        "1000000.00",
+        "1100000.00",
+        "950000.00",
+        "1050000.00",
+        "1000000.00"
+      ]
+    },
+    {
+      "scenario": "T3",
+      "account_id": "demo-client-3",
+      "company_id": "demo-company-3",
+      "company_name": "ООО «Демо Рост»",
+      "legal_form": "OOO",
+      "tax_id": "7701000003",
+      "okved": "46.90",
+      "registration_status": "ACTIVE",
+      "debt_payment_rub": "50000.00",
+      "income": [
+        "720000.00",
+        "800000.00",
+        "880000.00",
+        "760000.00",
+        "840000.00",
+        "800000.00"
+      ],
+      "expenses": [
+        "585000.00",
+        "650000.00",
+        "715000.00",
+        "617500.00",
+        "682500.00",
+        "650000.00"
+      ]
+    },
+    {
+      "scenario": "T4",
+      "account_id": "demo-client-4",
+      "company_id": "demo-company-4",
+      "company_name": "ИП «Демо Сервис»",
+      "legal_form": "IP",
+      "tax_id": "770100000004",
+      "okved": "62.01",
+      "registration_status": "ACTIVE",
+      "debt_payment_rub": "30000.00",
+      "income": [
+        "810000.00",
+        "900000.00",
+        "990000.00",
+        "855000.00",
+        "945000.00",
+        "900000.00"
+      ],
+      "expenses": [
+        "540000.00",
+        "600000.00",
+        "660000.00",
+        null,
+        "630000.00",
+        "600000.00"
+      ]
+    },
+    {
+      "scenario": "T5",
+      "account_id": "demo-client-5",
+      "company_id": "demo-company-5",
+      "company_name": "ООО «Демо Архив»",
+      "legal_form": "OOO",
+      "tax_id": "7701000005",
+      "okved": "52.10",
+      "registration_status": "TERMINATED",
+      "debt_payment_rub": "30000.00",
+      "income": [
+        "810000.00",
+        "900000.00",
+        "990000.00",
+        "855000.00",
+        "945000.00",
+        "900000.00"
+      ],
+      "expenses": [
+        "540000.00",
+        "600000.00",
+        "660000.00",
+        "570000.00",
+        "630000.00",
+        "600000.00"
+      ]
+    },
+    {
+      "scenario": "T6",
+      "account_id": "demo-client-6",
+      "company_id": "demo-company-6",
+      "company_name": "ООО «Демо Поставка»",
+      "legal_form": "OOO",
+      "tax_id": "7701000006",
+      "okved": "46.71",
+      "registration_status": "ACTIVE",
+      "debt_payment_rub": "50000.00",
+      "income": [
+        "3600000.00",
+        "4000000.00",
+        "4400000.00",
+        "3800000.00",
+        "4200000.00",
+        "4000000.00"
+      ],
+      "expenses": [
+        "2700000.00",
+        "3000000.00",
+        "3300000.00",
+        "2850000.00",
+        "3150000.00",
+        "3000000.00"
+      ]
+    }
+  ]
+}

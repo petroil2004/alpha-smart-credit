@@ -66,12 +66,19 @@ def test_submit_accepts_boundaries_and_kopecks_without_financial_data(client, ch
     assert submit(client, item).status_code == 200
 
 
-@pytest.mark.parametrize('product', ['equipment', 'overdraft'])
-def test_submit_rejects_unavailable_products(client, product):
-    item = draft(client, product_code=product, term_months=12 if product == 'equipment' else None)
-    response = submit(client, item)
-    assert response.status_code == 422
-    assert response.json()['error']['code'] == 'SUBMISSION_NOT_AVAILABLE'
+def test_submit_equipment_and_overdraft_with_product_facts(client):
+    equipment = draft(client, product_code='equipment', amount_rub='500000.00', term_months=12, equipment_cost_rub='600000.00')
+    equipment_result = submit(client, equipment)
+    assert equipment_result.status_code == 200, equipment_result.text
+    assert equipment_result.json()['submission']['snapshot']['application']['equipment_cost_rub'] == '600000.00'
+
+    overdraft = draft(client, product_code='overdraft', amount_rub='100000.00', term_months=None, usage_days=14,
+                      planned_payment_rub='90000.00', planned_payment_date='2026-10-24',
+                      expected_inflow_date='2026-11-01', expected_inflow_amount_rub='100000.00', expected_inflow_source='BUYER')
+    overdraft_result = submit(client, overdraft)
+    assert overdraft_result.status_code == 200, overdraft_result.text
+    calculation = overdraft_result.json()['submission']['snapshot']['calculation']
+    assert calculation['interest_rub'] == '897.53' and calculation['due_rub'] == '90897.53'
 
 
 @pytest.mark.parametrize('field,code', [('version', 'VERSION_CONFLICT'), ('profile_version', 'PROFILE_VERSION_CONFLICT'), ('catalog_version', 'CATALOG_VERSION_CONFLICT')])
@@ -192,6 +199,8 @@ def test_financial_period_crosses_year(client, monkeypatch, now, start, end):
     item = draft(client)
     import app.submissions as module
     monkeypatch.setattr(module, 'utc_now', lambda: datetime.fromisoformat(now))
+    import app.company_profile as profile_module
+    monkeypatch.setattr(profile_module, 'utc_now', lambda: datetime.fromisoformat(now))
     result = submit(client, item).json()
     assert result['submission']['snapshot']['financial_period'] == {'start_date': start, 'end_date': end}
 

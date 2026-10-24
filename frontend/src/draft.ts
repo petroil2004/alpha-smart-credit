@@ -21,6 +21,10 @@ export function emptyDraft(): DraftFields {
     usage_days: "",
     expected_inflow_date: "",
     expected_inflow_amount_rub: "",
+    equipment_cost_rub: "",
+    planned_payment_rub: "",
+    planned_payment_date: "",
+    expected_inflow_source: "",
   };
 }
 
@@ -33,6 +37,10 @@ export function fromApplication(application: Application): DraftFields {
     usage_days: application.usage_days?.toString() ?? "",
     expected_inflow_date: application.expected_inflow_date ?? "",
     expected_inflow_amount_rub: application.expected_inflow_amount_rub ?? "",
+    equipment_cost_rub: application.equipment_cost_rub ?? "",
+    planned_payment_rub: application.planned_payment_rub ?? "",
+    planned_payment_date: application.planned_payment_date ?? "",
+    expected_inflow_source: application.expected_inflow_source ?? "",
   };
 }
 
@@ -60,7 +68,7 @@ export function formatMoneyRub(value: string | null): string {
 
 export function prepareDraftPayload(fields: DraftFields): { payload: DraftPayload; errors: FieldErrors } {
   const errors: FieldErrors = {};
-  const money = (key: "amount_rub" | "expected_inflow_amount_rub") => {
+  const money = (key: "amount_rub" | "expected_inflow_amount_rub" | "equipment_cost_rub" | "planned_payment_rub") => {
     try {
       return normalizeMoney(fields[key]);
     } catch (error) {
@@ -101,6 +109,10 @@ export function prepareDraftPayload(fields: DraftFields): { payload: DraftPayloa
     expected_inflow_amount_rub: overdraft
       ? money("expected_inflow_amount_rub")
       : null,
+    equipment_cost_rub: fields.product_code === "equipment" ? money("equipment_cost_rub") : null,
+    planned_payment_rub: overdraft ? money("planned_payment_rub") : null,
+    planned_payment_date: overdraft ? fields.planned_payment_date.trim() || null : null,
+    expected_inflow_source: overdraft ? fields.expected_inflow_source || null : null,
   };
   return { payload, errors };
 }

@@ -79,6 +79,9 @@ export default function DraftReview({
             <Row label="Срок">Не указано</Row>
           ) : overdraft ? (
             <>
+              <Row label="Лимит">{formatMoneyRub(fields.amount_rub)}</Row>
+              <Row label="Планируемая оплата">{formatMoneyRub(fields.planned_payment_rub)}</Row>
+              <Row label="Дата оплаты">{fields.planned_payment_date || "Не указано"}</Row>
               <Row label="Пользование, дней">
                 {fields.usage_days.trim() || "Не указано"}
               </Row>
@@ -88,11 +91,11 @@ export default function DraftReview({
               <Row label="Ожидаемая сумма поступления">
               {formatMoneyRub(fields.expected_inflow_amount_rub)}
               </Row>
+              <Row label="Источник поступления">{fields.expected_inflow_source ? {BUYER:"Покупатель",CONTRACT:"Договор",REGULAR_REVENUE:"Обычная выручка",OTHER:"Другое"}[fields.expected_inflow_source] : "Не указан"}</Row>
             </>
           ) : (
-            <Row label="Срок, месяцев">
-              {fields.term_months.trim() || "Не указано"}
-            </Row>
+            <><Row label="Срок, месяцев">{fields.term_months.trim() || "Не указано"}</Row>
+            {fields.product_code === "equipment" && <Row label="Стоимость оборудования">{formatMoneyRub(fields.equipment_cost_rub)}</Row>}</>
           )}
         </dl>
       </div>

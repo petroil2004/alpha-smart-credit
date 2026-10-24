@@ -18,3 +18,21 @@ def allow_staff_accounts(engine: Engine) -> None:
         for column in columns:
             if column['name'] in {'company_id', 'company_name'} and not column['nullable']:
                 connection.execute(text(f"ALTER TABLE accounts ALTER COLUMN {column['name']} DROP NOT NULL"))
+
+
+def add_mvp_review_columns(engine: Engine) -> None:
+    """Additive upgrade for installations created before the connected MVP flow."""
+    statements = (
+        "ALTER TABLE applications ADD COLUMN IF NOT EXISTS equipment_cost_rub NUMERIC(18, 2)",
+        "ALTER TABLE applications ADD COLUMN IF NOT EXISTS planned_payment_rub NUMERIC(18, 2)",
+        "ALTER TABLE applications ADD COLUMN IF NOT EXISTS planned_payment_date DATE",
+        "ALTER TABLE applications ADD COLUMN IF NOT EXISTS expected_inflow_source VARCHAR(32)",
+        "ALTER TABLE info_requests ADD COLUMN IF NOT EXISTS financial_required BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE info_requests ADD COLUMN IF NOT EXISTS financial_values JSONB",
+        "ALTER TABLE info_requests ADD COLUMN IF NOT EXISTS financial_accepted_by VARCHAR(64)",
+        "ALTER TABLE info_requests ADD COLUMN IF NOT EXISTS financial_accepted_at TIMESTAMP WITH TIME ZONE",
+        "ALTER TABLE company_data ADD COLUMN IF NOT EXISTS registry_source VARCHAR(32)",
+    )
+    with engine.begin() as connection:
+        for statement in statements:
+            connection.execute(text(statement))

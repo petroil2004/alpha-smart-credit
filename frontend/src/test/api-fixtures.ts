@@ -1,5 +1,7 @@
 import { vi } from "vitest";
 import type { Application, Session, ClientSession, SubmitInput } from "../types";
+import {demoAccounts} from "../demo-accounts";
+import {companyProfile} from "./company-fixtures";
 import { annuityResult, catalog } from "./calculator-fixtures";
 
 export const session: ClientSession = {
@@ -19,6 +21,10 @@ export function application(overrides: Partial<Application> = {}): Application {
     usage_days: null,
     expected_inflow_date: null,
     expected_inflow_amount_rub: null,
+    equipment_cost_rub: null,
+    planned_payment_rub: null,
+    planned_payment_date: null,
+    expected_inflow_source: null,
     version: 1,
     created_at: "2026-10-21T17:00:00Z",
     updated_at: "2026-10-21T17:00:00Z",
@@ -57,23 +63,14 @@ export function contractServer(
     const method = init?.method ?? "GET";
     const body = init?.body ? JSON.parse(String(init.body)) : {};
     if (path === "/auth/demo-login" && method === "POST") {
-      if (!["demo-client-1", "demo-client-2", "demo-staff-1"].includes(body.account_id))
+      if (!demoAccounts.some(a=>a.id===body.account_id))
         return error(422, "VALIDATION_ERROR", "Неизвестный профиль");
       if (body.account_id === "demo-staff-1") {
         current = {user:{id:'demo-staff-1',name:'Демо-сотрудник',role:'STAFF'},company:null};
         return json(current);
       }
-      current =
-        body.account_id === "demo-client-1"
-          ? structuredClone(session)
-          : {
-              user: {
-                id: "demo-client-2",
-                name: "Демо-клиент 2",
-                role: "CLIENT",
-              },
-              company: { id: "demo-company-2", name: "ООО «Демо Мастерская»" },
-            };
+      const number=String(body.account_id).split('-').at(-1)!;
+      current={user:{id:body.account_id,name:'Демо-клиент '+number,role:'CLIENT'},company:{id:'demo-company-'+number,name:demoAccounts.find(a=>a.id===body.account_id)!.name}};
       return json(current);
     }
     if (path === "/auth/logout" && method === "POST") {
@@ -89,7 +86,7 @@ export function contractServer(
       return item?.status === 'UNDER_REVIEW' ? json(item) : error(404,'NOT_FOUND','Заявка не найдена');
     }
     if (!current.company) return error(403,'FORBIDDEN','Только клиент');
-    if (path === '/company-profile') return json({company_id:current.company.id,company_name:current.company.name,profile_version:'profile-v1',source:'BANK_DATA'});
+    if (path === '/company-profile') return json({...companyProfile(),company_id:current.company.id,company_name:current.company.name,profile_version:'profile-v1'});
     if (path === "/products" && method === "GET") return json(catalog);
     if (path === "/calculations/annuity" && method === "POST")
       return json(annuityResult({ product_code: body.product_code, amount_rub: body.amount_rub, term_months: body.term_months }));

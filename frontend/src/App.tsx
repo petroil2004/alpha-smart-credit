@@ -5,6 +5,7 @@ import type {
   DraftFields,
   FieldErrors,
   Session,
+  ProductCode,
 } from "./types";
 import { ApiError, createApi } from "./api";
 import {
@@ -16,8 +17,10 @@ import { useDraftAutosave } from "./hooks/useDraftAutosave";
 import DraftForm from "./components/DraftForm";
 import ApplicationsList from "./components/ApplicationsList";
 import DeleteDraftDialog from "./components/DeleteDraftDialog";
-import SubmittedApplication, {statusLabel} from "./components/SubmittedApplication";
+import SubmittedApplication from "./components/SubmittedApplication";
+import StatusBadge from './components/StatusBadge';
 import StaffApplications from "./components/StaffApplications";
+import {demoAccounts} from "./demo-accounts";
 import {sameSession} from "./session";
 import {readAttempt,saveAttempt,clearAttempt} from "./submission";
 import type {SubmissionAttempt} from "./submission";
@@ -25,6 +28,8 @@ import { Icon } from "./components/Icon";
 
 import InfoRequests from "./components/InfoRequests";
 import type {InfoController} from "./components/InfoRequests";
+import ReviewPanel from './components/ReviewPanel';
+import CompanyProfilePage from './components/CompanyProfilePage';
 
 const defaultApi = createApi();
 const asError = (error: unknown) =>
@@ -65,6 +70,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
   const [items, setItems] = useState<Application[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<Application | null>(null);
   const [selected, setSelected] = useState<Application | null>(null);
+  const [profilePage,setProfilePage]=useState(()=>window.location.hash==='#company-profile');
   const [fields, setFields] = useState<DraftFields>(emptyDraft);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [fieldErrorAttempt, setFieldErrorAttempt] = useState(0);
@@ -78,6 +84,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
   const registerInfo=useCallback((controller:InfoController|null)=>{infoController.current=controller;setInfoDirty(controller?.dirty??false);},[]);
 
   const clearProfile = () => {
+    setProfilePage(false);
     infoController.current=null;setInfoDirty(false);
     sessionRef.current=null;
     setSession(null);
@@ -118,6 +125,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
   const adopt = (application: Application, expected = sessionRef.current) => {
     if(!expected) return;
     if(expected.company) requireCompany(application.company_id,expected.company.id);
+    setProfilePage(false);
     setSelected(application);
     setFields(fromApplication(application));
     setFieldErrors({});
@@ -253,6 +261,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
       }
     });
   const closeApplication = () => {
+    setProfilePage(false);
     setPendingSubmit(null);
     setReceiptBlocked(false);
     setSelected(null);
@@ -270,6 +279,10 @@ export default function App({ api = defaultApi }: { api?: Api }) {
   };
   const logout = () => leave("logout", async () => { await api.logout(); clearProfile(); });
   const showList = () => leave("leave", closeApplication);
+  const showCompanyProfile=()=>leave('profile',async()=>{
+    await verifySession();closeApplication();setProfilePage(true);
+    window.history.replaceState(null,'',`${window.location.pathname}${window.location.search}#company-profile`);
+  });
   const open = (id: string) => {
     if (busy || !allowDiscard()) return;
     void run("open", async () => {
@@ -280,7 +293,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
       adopt(application,current);
     });
   };
-  const create = () => {
+  const create = (product?:ProductCode) => {
     if (busy || !allowDiscard()) return;
     void run("create", async () => {
       await verifySession();
@@ -291,6 +304,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
         if (issue instanceof ApiError && issue.code === "APPLICATION_DELETED") createKey.current = null;
         throw issue;
       }
+      if(product)application=await api.update(application.id,{version:application.version,product_code:product});
       await verifySession();
       createKey.current = null;
       upsert(application);
@@ -332,10 +346,14 @@ export default function App({ api = defaultApi }: { api?: Api }) {
       const next = { ...current, [key]: value };
       if (key === "product_code") {
         if (!value || value === "overdraft") next.term_months = "";
+        if (value !== "equipment") next.equipment_cost_rub = "";
         if (value !== "overdraft") {
           next.usage_days = "";
           next.expected_inflow_date = "";
           next.expected_inflow_amount_rub = "";
+          next.planned_payment_rub = "";
+          next.planned_payment_date = "";
+          next.expected_inflow_source = "";
         }
       }
       return next;
@@ -346,10 +364,14 @@ export default function App({ api = defaultApi }: { api?: Api }) {
       delete next[key];
       if (key === "product_code") {
         if (!value || value === "overdraft") delete next.term_months;
+        if (value !== "equipment") delete next.equipment_cost_rub;
         if (value !== "overdraft") {
           delete next.usage_days;
           delete next.expected_inflow_date;
           delete next.expected_inflow_amount_rub;
+          delete next.planned_payment_rub;
+          delete next.planned_payment_date;
+          delete next.expected_inflow_source;
         }
       }
       return next;
@@ -458,7 +480,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
           </button>
         )}
         {createKey.current && !selected && (
-          <button className="text-button" disabled={!!busy} onClick={create}>
+          <button className="text-button" disabled={!!busy} onClick={()=>create()}>
             Повторить создание
           </button>
         )}
@@ -528,9 +550,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
                 disabled={!!busy}
                 onChange={(event) => setAccount(event.target.value)}
               >
-                <option value="demo-client-1">ООО «Демо Торг»</option>
-                <option value="demo-client-2">ООО «Демо Мастерская»</option>
-                <option value="demo-staff-1">Сотрудник банка</option>
+                {demoAccounts.map(account=><option key={account.id} value={account.id}>{account.name}</option>)}
               </select>
             </label>
             <button
@@ -556,29 +576,29 @@ export default function App({ api = defaultApi }: { api?: Api }) {
       {deleteTarget && <DeleteDraftDialog application={deleteTarget} busy={busy === "delete"} error={error?.message ?? null}
         onCancel={() => { if (!lock.current) setDeleteTarget(null); }} onConfirm={confirmRemoveDraft} />}
       <header className="cabinet-header">
-        <div className="brand"><span className="brand-mark" aria-hidden="true">А</span><span>{session.company ? "Кредитный кабинет" : "Кабинет сотрудника"}</span></div>
-        <nav aria-label="Основная навигация"><button className="header-link" onClick={showList} disabled={!!busy} aria-current={!selected ? "page" : undefined}>{session.company ? "Мои заявки" : "Поступившие заявки"}</button></nav>
-        <div className="account"><span>{session.company?.name ?? session.user.name}</span><button className="icon-button" aria-label="Сменить профиль" title="Сменить профиль" disabled={!!busy} onClick={logout}><Icon name="logout" size={18} /></button></div>
+        <button type="button" className="brand brand-home" onClick={showList} disabled={!!busy} aria-label="На главную"><span className="brand-mark" aria-hidden="true">А</span><span>{session.company ? "Кредитный кабинет" : "Кабинет сотрудника"}</span></button>
+        <nav aria-label="Основная навигация"><button className="header-link" onClick={showList} disabled={!!busy} aria-current={!selected&&!profilePage ? "page" : undefined}>{session.company ? "Мои заявки" : "Поступившие заявки"}</button></nav>
+        <div className="account">{session.company?<button type="button" className="header-link company-profile-link" onClick={showCompanyProfile} disabled={!!busy} aria-label={`Профиль компании: ${session.company.name}`} aria-current={profilePage?'page':undefined}>{session.company.name}</button>:<span>{session.user.name}</span>}<button className="icon-button" aria-label="Сменить профиль" title="Сменить профиль" disabled={!!busy} onClick={logout}><Icon name="logout" size={18} /></button></div>
       </header>
-      {!selected && session.company && <section className="cabinet-hero" aria-labelledby="welcome-title">
+      {!selected && !profilePage && session.company && <section className="cabinet-hero" aria-labelledby="welcome-title">
         <div><h1 id="welcome-title">Новая возможность<br />для вашего бизнеса</h1><p>Выберите финансирование и следите за заявками<br className="desktop-break" /> в одном кабинете</p>
-          <button className="button primary new-application" onClick={create} disabled={!!busy}>{busy === "create" ? "Создаём…" : "Новая заявка"}</button>
+          <button className="button primary new-application" onClick={()=>create()} disabled={!!busy}>{busy === "create" ? "Создаём…" : "Новая заявка"}</button>
         </div><img className="hero-art" src="/images/credit/hero.png" alt="" width="460" height="460" fetchPriority="high" />
       </section>}
       <main className={`main-content ${selected ? "application-content" : "home-content"}`}>
-        {selected && <div className="draft-page-header"><button className="back-button" aria-label="Все заявки" onClick={showList} disabled={!!busy}>← Все заявки</button><span className="draft-subtitle"><span className="draft-badge">{statusLabel(selected.status)}</span> № {selected.id.slice(-6)}</span></div>}
+        {(selected||profilePage) && <div className="draft-page-header"><button className="back-button" aria-label="Все заявки" onClick={showList} disabled={!!busy}>← Все заявки</button>{selected&&<span className="draft-subtitle"><StatusBadge status={selected.status}/> № {selected.id.slice(-6)}</span>}</div>}
         {errorBox}
         {notice && <div className="notice success-notice" role="status"><Icon name="check" size={18} /><p>{notice}</p></div>}
         {selected && session.company && selected.status==='DRAFT' && (pendingSubmit || receiptBlocked) && <div className="notice" role="status"><div><p>Исход предыдущей отправки нужно проверить. Параметры этой попытки сохранены; повтор не создаст вторую заявку.</p>
           {pendingSubmit && <button className="button secondary" type="button" disabled={!!busy} onClick={()=>submitApplication()}>Проверить отправку</button>}
           {receiptBlocked && <button className="button secondary" disabled={!!busy} onClick={reloadSelected}>Обновить карточку</button>}
         </div></div>}
-        {selected ? session.company && selected.status==='DRAFT' ? <DraftForm api={api} key={selected.id} resetVersion={purposeReset} application={selected} companyName={session.company.name}
+        {profilePage&&session.company?<CompanyProfilePage api={api} session={session as import('./types').ClientSession} onSessionChanged={clearProfile}/>:selected ? session.company && selected.status==='DRAFT' ? <DraftForm api={api} key={selected.id} resetVersion={purposeReset} application={selected} companyName={session.company.name} session={session as import("./types").ClientSession}
           errorAttempt={fieldErrorAttempt} fields={fields} errors={{ ...autosave.errors, ...fieldErrors }} busy={!!busy || !!pendingSubmit || receiptBlocked}
           saveStatus={autosave.status} onChange={change} onFinish={finish} onNavigate={() => void autosave.flush()} onReauthenticate={reauthenticate}
           onSubmitApplication={submitApplication} onSessionChanged={clearProfile}/>
-          : <><SubmittedApplication application={selected} staff={!session.company}/><InfoRequests key={session.user.id+selected.id} api={api} session={session} application={selected} onUpdated={value=>{upsert(value);setSelected(value);}} onSessionChanged={clearProfile} register={registerInfo}/></>
-          : session.company ? <ApplicationsList items={items} busy={!!busy} onOpen={open} onDelete={removeDraft} onCreate={create} />
+          : <><SubmittedApplication application={selected} staff={!session.company}/>{!session.company&&<ReviewPanel api={api} application={selected} onUpdated={value=>{upsert(value);setSelected(value);}}/>}<InfoRequests key={session.user.id+selected.id} api={api} session={session} application={selected} onUpdated={value=>{upsert(value);setSelected(value);}} onSessionChanged={clearProfile} register={registerInfo}/></>
+          : session.company ? <ApplicationsList items={items} busy={!!busy} onOpen={open} onDelete={removeDraft} onCreate={()=>create()} onChooseProduct={create} />
           : <StaffApplications items={items} busy={!!busy} onOpen={open} onRefresh={refreshList}/>}
         <footer className="page-footer"><span>Альфа Бизнес · Кредитный кабинет</span><span>Демонстрационный проект · Все данные синтетические</span></footer>
       </main>

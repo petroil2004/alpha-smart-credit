@@ -1,6 +1,6 @@
-import type { Application } from "../types";
+import type { Application,ProductCode } from "../types";
 import { products } from "../products";
-import { statusLabel } from "./SubmittedApplication";
+import StatusBadge from './StatusBadge';
 import { Icon } from "./Icon";
 
 function amountText(value: string | null) {
@@ -15,12 +15,14 @@ export default function ApplicationsList({
   onOpen,
   onCreate,
   onDelete,
+  onChooseProduct,
 }: {
   items: Application[];
   busy: boolean;
   onOpen: (id: string) => void;
   onCreate: () => void;
   onDelete: (id: string) => void;
+  onChooseProduct:(product:ProductCode)=>void;
 }) {
   return (
     <>
@@ -60,7 +62,7 @@ export default function ApplicationsList({
                 <button className="application-open" disabled={busy} onClick={() => onOpen(item.id)} aria-label={`Открыть заявку ${item.id.slice(-6)}`} aria-describedby={`application-details-${item.id} application-amount-${item.id}`}>
                   <span className="row-icon"><Icon name="document" /></span>
                   <span className="row-main" id={`application-details-${item.id}`}>
-                    <span className="row-topline">№ {item.id.slice(-6)} <span className="draft-badge">{statusLabel(item.status)}</span></span>
+                    <span className="row-topline">№ {item.id.slice(-6)} <StatusBadge status={item.status}/></span>
                     <span className="row-title">{products.find(product => product.code === item.product_code)?.title || "Новая заявка"}</span>
                     <span className="row-purpose">{item.purpose || "Расскажите о задаче вашего бизнеса"}</span>
                   </span>
@@ -83,11 +85,11 @@ export default function ApplicationsList({
         </div>
         <div className="direction-grid">
           {products.map((product) => (
-            <article className={`direction-card ${product.tone}`} key={product.code}>
+            <button type="button" className={`direction-card ${product.tone}`} key={product.code} disabled={busy} onClick={()=>onChooseProduct(product.code)} aria-label={`Оформить: ${product.title}`}>
               <img src={product.image} alt="" width="120" height="120" loading="lazy" />
               <h3>{product.title}</h3>
               <p>{product.description}</p>
-            </article>
+            </button>
           ))}
         </div>
       </section>
