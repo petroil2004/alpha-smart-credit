@@ -4,6 +4,7 @@ from .db import SessionLocal
 from .models import Account
 
 DEMO_ACCOUNTS = (
+    {"id": "demo-staff-1", "name": "Демо-сотрудник", "role": "STAFF", "company_id": None, "company_name": None},
     {
         "id": "demo-client-1",
         "name": "Демо-клиент 1",

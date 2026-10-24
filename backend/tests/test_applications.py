@@ -78,7 +78,7 @@ def test_create_edit_and_list_a_draft(client: TestClient):
     assert saved["purpose"] == "Пополнение оборотных средств"
     assert saved["amount_rub"] == "1234.50"
     assert saved["version"] == 2
-    assert client.get("/api/v1/applications").json()["items"] == [saved]
+    assert client.get("/api/v1/applications").json()["items"] == [{key: value for key, value in saved.items() if key not in {"submission", "history"}}]
 
 
 def test_companies_are_isolated_and_foreign_draft_returns_404():

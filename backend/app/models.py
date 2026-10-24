@@ -6,6 +6,7 @@ from decimal import Decimal
 
 from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.dialects.postgresql import JSONB
 
 from .db import Base
 
@@ -20,8 +21,8 @@ class Account(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     role: Mapped[str] = mapped_column(String(32), nullable=False, default="CLIENT")
-    company_id: Mapped[str] = mapped_column(String(64), nullable=False)
-    company_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    company_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    company_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
 
 class UserSession(Base):
@@ -60,3 +61,32 @@ class ApplicationCreation(Base):
     idempotency_key: Mapped[str] = mapped_column(String(36), nullable=False)
     application_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("applications.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+
+class ApplicationSubmission(Base):
+    __tablename__ = 'application_submissions'
+    __table_args__ = (UniqueConstraint('actor_id', 'idempotency_key', name='uq_submission_actor_key'),)
+
+    application_id: Mapped[uuid.UUID] = mapped_column(ForeignKey('applications.id'), primary_key=True)
+    actor_id: Mapped[str] = mapped_column(ForeignKey('accounts.id'), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(36), nullable=False)
+    request_payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False)
+
+
+class ApplicationEvent(Base):
+    __tablename__ = 'application_events'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    application_id: Mapped[uuid.UUID] = mapped_column(ForeignKey('applications.id'), nullable=False, index=True)
+    actor_id: Mapped[str | None] = mapped_column(ForeignKey('accounts.id'), nullable=True)
+    actor_role: Mapped[str] = mapped_column(String(32), nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    from_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    to_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    reason_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    catalog_version: Mapped[str] = mapped_column(String(100), nullable=False)
+    offer_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    check_version: Mapped[int | None] = mapped_column(Integer, nullable=True)

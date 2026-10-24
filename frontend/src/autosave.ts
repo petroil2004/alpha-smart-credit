@@ -54,6 +54,7 @@ export class DraftAutosave {
     private onSaved: (application: Application) => void,
     private onState: (state: SaveState) => void,
     private onScopeChanged: () => void = () => {},
+    private expectedUserId?: string,
   ) {
     this.fields = fromApplication(saved);
   }
@@ -103,11 +104,16 @@ export class DraftAutosave {
       try {
         const current = await this.api.me();
         if (!this.active) return false;
-        if (current.company.id !== this.saved.company_id) {
+        if (current.user.role !== "CLIENT" || current.company?.id !== this.saved.company_id || (this.expectedUserId && current.user.id !== this.expectedUserId)) {
           throw new ApiError(401, "SESSION_CHANGED", "Профиль изменился. Войдите в кабинет заново.");
         }
         const result = await this.api.update(this.saved.id, { ...p.patch, version: this.saved.version });
         if (!this.active) return false;
+        const after = await this.api.me();
+        if (!this.active) return false;
+        if (after.user.role !== "CLIENT" || after.company?.id !== this.saved.company_id || after.user.id !== current.user.id) {
+          throw new ApiError(401, "SESSION_CHANGED", "Профиль изменился. Войдите в кабинет заново.");
+        }
         if (!isApplication(result)) {
           throw new ApiError(502, "INVALID_SAVE_RESPONSE", "Сервер не подтвердил сохранение изменений. Повторите попытку.");
         }
@@ -130,6 +136,8 @@ export class DraftAutosave {
     }
     return false;
   }
+
+  getSaved() { return this.saved; }
 
   dispose() {
     this.active = false;

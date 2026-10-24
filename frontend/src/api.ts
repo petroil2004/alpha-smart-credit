@@ -1,4 +1,4 @@
-import type { Api, Application, AnnuityResult, FieldErrors, ProductCatalog, Session } from "./types";
+import type { Api, Application, AnnuityResult, FieldErrors, ProductCatalog, Session, CompanyProfile } from "./types";
 
 export class ApiError extends Error {
   constructor(
@@ -77,6 +77,10 @@ export function createApi(
     }
   }
   return {
+    companyProfile: () => request<CompanyProfile>("/company-profile"),
+    submit: (id, input, key) => request<Application>(`/applications/${encodeURIComponent(id)}/submit`, {method: "POST", body: JSON.stringify(input), headers: {"Idempotency-Key": key}}),
+    staffList: () => request<{items: Application[]}>("/staff/applications"),
+    staffGet: (id) => request<Application>(`/staff/applications/${encodeURIComponent(id)}`),
     products: () => request<ProductCatalog>("/products"),
     calculateAnnuity: (input) => request<AnnuityResult>("/calculations/annuity", {method: "POST", body: JSON.stringify(input)}),
     me: () => request<Session>("/me"),

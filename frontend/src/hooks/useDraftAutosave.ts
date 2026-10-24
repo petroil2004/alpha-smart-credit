@@ -10,6 +10,7 @@ export function useDraftAutosave(options: {
   application: Application | null;
   fields: DraftFields;
   reset: number;
+  userId?: string;
   onSaved: (application: Application) => void;
   onScopeChanged: () => void;
 }) {
@@ -22,26 +23,29 @@ export function useDraftAutosave(options: {
   const company = application?.company_id;
 
   useEffect(() => {
-    if (!application) { controller.current = null; setState(initial); return; }
+    if (!application || application.status !== "DRAFT") { controller.current = null; setState(initial); return; }
     const current = () => latest.current.application?.id === id && latest.current.reset === reset && latest.current.api === api;
     const instance = new DraftAutosave(api, application,
       value => { if (current()) latest.current.onSaved(value); },
       value => { if (current()) setState(value); },
       () => { if (current()) latest.current.onScopeChanged(); },
+      options.userId,
     );
     controller.current = instance;
     setState(initial);
     instance.update(latest.current.fields);
     return () => { instance.dispose(); if (controller.current === instance) controller.current = null; };
-  }, [api, id, company, reset]);
+  }, [api, id, company, reset, application?.status, options.userId]);
 
   useEffect(() => { controller.current?.update(fields); }, [fields]);
 
-  const p = application ? prepareSave(fields, application) : { patch: {}, errors: {} };
-  const dirty = !!application && (Object.keys(p.patch).length > 0 || Object.keys(p.errors).length > 0);
+  const editable = application?.status === "DRAFT";
+  const p = application && editable ? prepareSave(fields, application) : { patch: {}, errors: {} };
+  const dirty = !!application && editable && (Object.keys(p.patch).length > 0 || Object.keys(p.errors).length > 0);
   const status: SaveState["status"] = state.error ? "error" : state.status === "saving" ? "saving" : dirty ? state.status === "invalid" ? "invalid" : "pending" : "saved";
   return {
     ...state, status, dirty,
+    getSaved: () => controller.current?.getSaved() ?? latest.current.application,
     getState: () => controller.current?.state ?? initial,
     flush: () => {
       controller.current?.update(latest.current.fields);

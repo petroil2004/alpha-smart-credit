@@ -118,7 +118,7 @@ img { max-width: 100%; }
 .assistant-status { display: inline-block; font-weight: 700; margin-bottom: 8px; color: #202020; }
 .field { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; min-width: 0; }
 .field > span:first-child { font-size: 16px; font-weight: 600; }
-input:not([type="radio"]):not([type="range"]), textarea, select { width: 100%; min-width: 0; border: 1px solid #e6e7eb; border-radius: 13px; color: #202020; background: #fff; padding: 17px; }
+input:not([type="radio"]):not([type="range"]):not([type="checkbox"]), textarea, select { width: 100%; min-width: 0; border: 1px solid #e6e7eb; border-radius: 13px; color: #202020; background: #fff; padding: 17px; }
 input::placeholder, textarea::placeholder { color: #8b8f99; }
 textarea { resize: vertical; min-height: 104px; line-height: 1.5; }
 input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: #b4251b !important; }
@@ -315,3 +315,29 @@ input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: #b4251
   .login-card h2 { font-size: 29px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; } }
+
+/* Submitted facts and staff queue share the approved cabinet typography. */
+.company-summary { padding: 18px 0; border-bottom: 1px solid var(--line, #e7e7e7); margin-bottom: 20px; }
+.company-summary h3 { margin: 0 0 8px; }
+.company-summary p { margin: 6px 0; }
+.submission-confirmation { display: flex; align-items: flex-start; gap: 12px; margin: 26px 0 12px; line-height: 1.5; cursor: pointer; }
+.submission-confirmation input[type="checkbox"] { flex: 0 0 20px; width: 20px; height: 20px; margin: 2px 0 0; padding: 0; accent-color: #ef3124; }
+.submission-confirmation > span { flex: 1; min-width: 0; }
+.submitted-card { max-width: 960px; margin: 0 auto; }
+.submitted-card h1 { font-size: clamp(24px, 3vw, 34px); margin-top: 0; }
+.submitted-details { margin: 24px 0; }
+.submitted-details > div { display: grid; grid-template-columns: minmax(140px, 1fr) 2fr; gap: 20px; padding: 15px 0; border-bottom: 1px solid #ededed; }
+.submitted-details dt { color: #686868; }
+.submitted-details dd { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.submission-history { padding-left: 22px; }
+.submission-history li { padding: 10px 0; }
+.submission-history span { display: block; color: #686868; font-size: 13px; margin-top: 5px; }
+.staff-queue { padding-top: 25px; }
+.staff-queue h1 { font-size: 28px; }
+.staff-application-open { padding: 24px; }
+@media (max-width: 600px) {
+  .submitted-details > div { grid-template-columns: 1fr; gap: 8px; }
+  .wizard-navigation { flex-wrap: wrap; }
+  .staff-application-open { padding: 16px; }
+  .staff-queue .list-heading { align-items: flex-start; gap: 14px; flex-direction: column; }
+}

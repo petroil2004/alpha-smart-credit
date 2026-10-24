@@ -31,9 +31,33 @@ export interface AnnuityResult extends AnnuityRequest {
   overpayment_rub: string;
 }
 
-export interface Session {
+export interface ClientSession {
   user: { id: string; name: string; role: "CLIENT" };
   company: { id: string; name: string };
+}
+
+export interface StaffSession {
+  user: { id: string; name: string; role: "STAFF" };
+  company: null;
+}
+export type Session = ClientSession | StaffSession;
+export interface CompanyProfile {
+  company_id: string; company_name: string; profile_version: string; source: "BANK_DATA";
+}
+export interface SubmitInput {
+  version: number; profile_version: string; catalog_version: string; confirmed: true;
+}
+export interface SubmissionSnapshot {
+  application: DraftPayload;
+  company: CompanyProfile;
+  calculation: AnnuityResult;
+  financial_period: {start_date: string; end_date: string};
+  confirmed_at: string; confirmed_by: string;
+}
+export interface ApplicationEvent {
+  id: number; actor_id: string | null; actor_role: string; occurred_at: string;
+  from_status: string; to_status: string; reason_code: string; comment: string | null;
+  catalog_version: string; offer_version: number | null; check_version: number | null;
 }
 
 export interface DraftPayload {
@@ -49,7 +73,11 @@ export interface DraftPayload {
 export interface Application extends DraftPayload {
   id: string;
   company_id: string;
-  status: "DRAFT";
+  status: "DRAFT" | "UNDER_REVIEW" | (string & {});
+  company_name?: string;
+  submitted_at?: string | null;
+  submission?: {submitted_at: string; submitted_by: string; snapshot: SubmissionSnapshot} | null;
+  history?: ApplicationEvent[];
   version: number;
   created_at: string;
   updated_at: string;
@@ -68,6 +96,10 @@ export interface DraftFields {
 export type FieldErrors = Partial<Record<keyof DraftFields, string>>;
 
 export interface Api {
+  companyProfile(): Promise<CompanyProfile>;
+  submit(id: string, input: SubmitInput, key: string): Promise<Application>;
+  staffList(): Promise<{items: Application[]}>;
+  staffGet(id: string): Promise<Application>;
   products(): Promise<ProductCatalog>;
   calculateAnnuity(input: AnnuityRequest): Promise<AnnuityResult>;
   me(): Promise<Session>;

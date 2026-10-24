@@ -16,6 +16,11 @@ import { useDraftAutosave } from "./hooks/useDraftAutosave";
 import DraftForm from "./components/DraftForm";
 import ApplicationsList from "./components/ApplicationsList";
 import DeleteDraftDialog from "./components/DeleteDraftDialog";
+import SubmittedApplication, {statusLabel} from "./components/SubmittedApplication";
+import StaffApplications from "./components/StaffApplications";
+import {sameSession} from "./session";
+import {readAttempt,saveAttempt,clearAttempt} from "./submission";
+import type {SubmissionAttempt} from "./submission";
 import { Icon } from "./components/Icon";
 
 const defaultApi = createApi();
@@ -46,6 +51,10 @@ function setUrl(id?: string) {
 
 export default function App({ api = defaultApi }: { api?: Api }) {
   const [session, setSession] = useState<Session | null>(null);
+  const sessionRef=useRef<Session|null>(null);
+  const acceptSession=(value:Session)=>{sessionRef.current=value;setSession(value);};
+  const [pendingSubmit,setPendingSubmit]=useState<SubmissionAttempt|null>(null);
+  const [receiptBlocked,setReceiptBlocked]=useState(false);
   const [booting, setBooting] = useState(true);
   const [attempt, setAttempt] = useState(0);
   const [busy, setBusy] = useState("");
@@ -63,7 +72,10 @@ export default function App({ api = defaultApi }: { api?: Api }) {
   const createKey = useRef<string | null>(null);
 
   const clearProfile = () => {
+    sessionRef.current=null;
     setSession(null);
+    setPendingSubmit(null);
+    setReceiptBlocked(false);
     setDeleteTarget(null);
     setItems([]);
     setSelected(null);
@@ -75,7 +87,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
   };
   const requireCompany = (
     companyId: string,
-    expected = session?.company.id,
+    expected = sessionRef.current?.company?.id,
   ) => {
     if (!expected || companyId !== expected) {
       clearProfile();
@@ -86,19 +98,35 @@ export default function App({ api = defaultApi }: { api?: Api }) {
       );
     }
   };
-  const verifySession = async () => {
+  const verifySession = async (expected=sessionRef.current) => {
     const current = await api.me();
-    requireCompany(current.company.id);
+    if (!expected || !sameSession(current,expected)) {
+      clearProfile();
+      throw new ApiError(401,"SESSION_CHANGED","Профиль изменился в другом окне. Войдите в кабинет заново.");
+    }
+    return current;
   };
-  const adopt = (application: Application, companyId = session?.company.id) => {
-    requireCompany(application.company_id, companyId);
+  const listFor=(current:Session)=>current.company ? api.list() : api.staffList();
+  const getFor=(id:string,current:Session)=>current.company ? api.get(id) : api.staffGet(id);
+  const adopt = (application: Application, expected = sessionRef.current) => {
+    if(!expected) return;
+    if(expected.company) requireCompany(application.company_id,expected.company.id);
     setSelected(application);
     setFields(fromApplication(application));
     setFieldErrors({});
+    setReceiptBlocked(false);
+    setPendingSubmit(null);
+    if(expected.company) {
+      if(application.status!=='DRAFT') clearAttempt(expected.user.id,application.id);
+      else {
+        try{setPendingSubmit(readAttempt(expected.user.id,application.id));}
+        catch(issue){setReceiptBlocked(true);setError(asError(issue));}
+      }
+    }
     setUrl(application.id);
   };
   const upsert = (application: Application) => {
-    requireCompany(application.company_id);
+    if(sessionRef.current?.company)requireCompany(application.company_id);
     setItems((current) =>
       [
         application,
@@ -107,7 +135,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
     );
   };
   const autosave = useDraftAutosave({
-    api, application: selected, fields, reset: purposeReset,
+    api, application: session?.company ? selected : null, fields, reset: purposeReset, userId:session?.user.id,
     onSaved: (application) => { upsert(application); setSelected(application); },
     onScopeChanged: clearProfile,
   });
@@ -120,19 +148,19 @@ export default function App({ api = defaultApi }: { api?: Api }) {
     (async () => {
       try {
         const current = await api.me();
-        const list = await api.list();
+        const list = await listFor(current);
+        await verifySession(current);
         if (!active) return;
-        list.items.forEach((item) =>
-          requireCompany(item.company_id, current.company.id),
-        );
-        setSession(current);
+        if(current.company) list.items.forEach((item) => requireCompany(item.company_id,current.company!.id));
+        acceptSession(current);
         setItems(list.items);
         setAccount(current.user.id);
         const id = selectedFromUrl();
         if (id) {
           try {
-            const application = await api.get(id);
-            if (active) adopt(application, current.company.id);
+            const application = await getFor(id,current);
+            await verifySession(current);
+            if (active) adopt(application,current);
           } catch (issue) {
             if (active) {
               setUrl();
@@ -142,7 +170,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
         }
       } catch (issue) {
         if (active) {
-          setSession(null);
+          clearProfile();
           if (!(issue instanceof ApiError && issue.code === "UNAUTHENTICATED"))
             setError(asError(issue));
         }
@@ -196,11 +224,10 @@ export default function App({ api = defaultApi }: { api?: Api }) {
   const login = () =>
     run("login", async () => {
       const current = await api.login(account);
-      const list = await api.list();
-      list.items.forEach((item) =>
-        requireCompany(item.company_id, current.company.id),
-      );
-      setSession(current);
+      const list = await listFor(current);
+      await verifySession(current);
+      if(current.company)list.items.forEach(item=>requireCompany(item.company_id,current.company!.id));
+      acceptSession(current);
       setItems(list.items);
       setSelected(null);
       setFields(emptyDraft());
@@ -209,7 +236,9 @@ export default function App({ api = defaultApi }: { api?: Api }) {
       const id = selectedFromUrl();
       if (id) {
         try {
-          adopt(await api.get(id), current.company.id);
+          const application=await getFor(id,current);
+          await verifySession(current);
+          adopt(application,current);
         } catch (issue) {
           setUrl();
           setError(asError(issue));
@@ -217,6 +246,8 @@ export default function App({ api = defaultApi }: { api?: Api }) {
       }
     });
   const closeApplication = () => {
+    setPendingSubmit(null);
+    setReceiptBlocked(false);
     setSelected(null);
     setFields(emptyDraft());
     setFieldErrors({});
@@ -236,7 +267,10 @@ export default function App({ api = defaultApi }: { api?: Api }) {
     if (busy || !allowDiscard()) return;
     void run("open", async () => {
       await verifySession();
-      adopt(await api.get(id));
+      const current=sessionRef.current!;
+      const application=await getFor(id,current);
+      await verifySession(current);
+      adopt(application,current);
     });
   };
   const create = () => {
@@ -250,6 +284,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
         if (issue instanceof ApiError && issue.code === "APPLICATION_DELETED") createKey.current = null;
         throw issue;
       }
+      await verifySession();
       createKey.current = null;
       upsert(application);
       adopt(application);
@@ -257,8 +292,10 @@ export default function App({ api = defaultApi }: { api?: Api }) {
   };
   const refreshList = () => void run("refresh-list", async () => {
     await verifySession();
-    const list = await api.list();
-    list.items.forEach(item => requireCompany(item.company_id));
+    const current=sessionRef.current!;
+    const list = await listFor(current);
+    await verifySession(current);
+    if(current.company)list.items.forEach(item => requireCompany(item.company_id));
     setItems(list.items);
   });
   const removeDraft = (id: string) => {
@@ -325,7 +362,11 @@ export default function App({ api = defaultApi }: { api?: Api }) {
     if (selected && allowDiscard())
       void run("reload", async () => {
         await verifySession();
-        const application = await api.get(selected.id);
+        const application = await getFor(selected.id,sessionRef.current!);
+        await verifySession();
+        // Recovery is explicit and follows an authoritative, authorised server read.
+        // A new submission still needs fresh confirmation; no POST is retried here.
+        if(receiptBlocked && sessionRef.current?.company)clearAttempt(sessionRef.current.user.id,application.id);
         upsert(application);
         adopt(application);
         setPurposeReset((value) => value + 1);
@@ -335,12 +376,50 @@ export default function App({ api = defaultApi }: { api?: Api }) {
     if (session)
       void run("reauth", async () => {
         const current = await api.login(session.user.id);
-        requireCompany(current.company.id);
-        setSession(current);
+        if(!sessionRef.current || !sameSession(current,sessionRef.current)){clearProfile();throw new ApiError(401,"SESSION_CHANGED","Профиль изменился. Войдите заново.");}
+        acceptSession(current);
         setNotice("Вход подтверждён.");
         void autosave.retry();
         after?.();
       });
+  };
+
+  const submitApplication = (versions?: {profile_version:string;catalog_version:string}) => {
+    if(!selected || !session?.company || receiptBlocked) return;
+    const id=selected.id;
+    const expected=session;
+    void run("submit",async()=>{
+      await verifySession(expected);
+      let operation=pendingSubmit;
+      if(!operation){
+        if(!versions)return;
+        if(!await autosave.flush()){
+          setFieldErrors(autosave.getState().errors);setFieldErrorAttempt(n=>n+1);return;
+        }
+        const saved=autosave.getSaved();
+        if(!saved || saved.id!==id || saved.status!=='DRAFT')return;
+        operation={key:crypto.randomUUID(),body:{...versions,version:saved.version,confirmed:true}};
+        saveAttempt(expected.user.id,id,operation);
+        setPendingSubmit(operation);
+      }
+      try{
+        const result=await api.submit(id,operation.body,operation.key);
+        await verifySession(expected);
+        if(result.id!==id || result.company_id!==expected.company!.id || result.status!=='UNDER_REVIEW' || !result.submission || !Array.isArray(result.history)){
+          throw new ApiError(502,"INVALID_SUBMIT_RESPONSE","Сервер не подтвердил отправку. Проверьте её повтором.");
+        }
+        clearAttempt(expected.user.id,id);setPendingSubmit(null);
+        upsert(result);adopt(result,expected);
+      }catch(issue){
+        const problem=asError(issue);
+        // Only definite rejections resolve the unknown outcome. Transport/5xx keep the exact receipt.
+        if(problem.status>=400 && problem.status<500 && problem.code!=='UNAUTHENTICATED'){
+          clearAttempt(expected.user.id,id);setPendingSubmit(null);
+          if(problem.status===409)setPurposeReset(n=>n+1);
+        }
+        throw issue;
+      }
+    });
   };
 
   const problem = error ?? autosave.error;
@@ -444,6 +523,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
               >
                 <option value="demo-client-1">ООО «Демо Торг»</option>
                 <option value="demo-client-2">ООО «Демо Мастерская»</option>
+                <option value="demo-staff-1">Сотрудник банка</option>
               </select>
             </label>
             <button
@@ -469,23 +549,30 @@ export default function App({ api = defaultApi }: { api?: Api }) {
       {deleteTarget && <DeleteDraftDialog application={deleteTarget} busy={busy === "delete"} error={error?.message ?? null}
         onCancel={() => { if (!lock.current) setDeleteTarget(null); }} onConfirm={confirmRemoveDraft} />}
       <header className="cabinet-header">
-        <div className="brand"><span className="brand-mark" aria-hidden="true">А</span><span>Кредитный кабинет</span></div>
-        <nav aria-label="Основная навигация"><button className="header-link" onClick={showList} disabled={!!busy} aria-current={!selected ? "page" : undefined}>Мои заявки</button></nav>
-        <div className="account"><span>{session.company.name}</span><button className="icon-button" aria-label="Сменить профиль" title="Сменить профиль" disabled={!!busy} onClick={logout}><Icon name="logout" size={18} /></button></div>
+        <div className="brand"><span className="brand-mark" aria-hidden="true">А</span><span>{session.company ? "Кредитный кабинет" : "Кабинет сотрудника"}</span></div>
+        <nav aria-label="Основная навигация"><button className="header-link" onClick={showList} disabled={!!busy} aria-current={!selected ? "page" : undefined}>{session.company ? "Мои заявки" : "Поступившие заявки"}</button></nav>
+        <div className="account"><span>{session.company?.name ?? session.user.name}</span><button className="icon-button" aria-label="Сменить профиль" title="Сменить профиль" disabled={!!busy} onClick={logout}><Icon name="logout" size={18} /></button></div>
       </header>
-      {!selected && <section className="cabinet-hero" aria-labelledby="welcome-title">
+      {!selected && session.company && <section className="cabinet-hero" aria-labelledby="welcome-title">
         <div><h1 id="welcome-title">Новая возможность<br />для вашего бизнеса</h1><p>Выберите финансирование и следите за заявками<br className="desktop-break" /> в одном кабинете</p>
           <button className="button primary new-application" onClick={create} disabled={!!busy}>{busy === "create" ? "Создаём…" : "Новая заявка"}</button>
         </div><img className="hero-art" src="/images/credit/hero.png" alt="" width="460" height="460" fetchPriority="high" />
       </section>}
       <main className={`main-content ${selected ? "application-content" : "home-content"}`}>
-        {selected && <div className="draft-page-header"><button className="back-button" aria-label="Все заявки" onClick={showList} disabled={!!busy}>← Все заявки</button><span className="draft-subtitle"><span className="draft-badge">Черновик</span> № {selected.id.slice(-6)}</span></div>}
+        {selected && <div className="draft-page-header"><button className="back-button" aria-label="Все заявки" onClick={showList} disabled={!!busy}>← Все заявки</button><span className="draft-subtitle"><span className="draft-badge">{statusLabel(selected.status)}</span> № {selected.id.slice(-6)}</span></div>}
         {errorBox}
         {notice && <div className="notice success-notice" role="status"><Icon name="check" size={18} /><p>{notice}</p></div>}
-        {selected ? <DraftForm api={api} key={selected.id} application={selected} companyName={session.company.name}
-          errorAttempt={fieldErrorAttempt} fields={fields} errors={{ ...autosave.errors, ...fieldErrors }} busy={!!busy}
-          saveStatus={autosave.status} onChange={change} onFinish={finish} onNavigate={() => void autosave.flush()} onReauthenticate={reauthenticate} />
-          : <ApplicationsList items={items} busy={!!busy} onOpen={open} onDelete={removeDraft} onCreate={create} />}
+        {selected && session.company && selected.status==='DRAFT' && (pendingSubmit || receiptBlocked) && <div className="notice" role="status"><div><p>Исход предыдущей отправки нужно проверить. Параметры этой попытки сохранены; повтор не создаст вторую заявку.</p>
+          {pendingSubmit && <button className="button secondary" type="button" disabled={!!busy} onClick={()=>submitApplication()}>Проверить отправку</button>}
+          {receiptBlocked && <button className="button secondary" disabled={!!busy} onClick={reloadSelected}>Обновить карточку</button>}
+        </div></div>}
+        {selected ? session.company && selected.status==='DRAFT' ? <DraftForm api={api} key={selected.id} resetVersion={purposeReset} application={selected} companyName={session.company.name}
+          errorAttempt={fieldErrorAttempt} fields={fields} errors={{ ...autosave.errors, ...fieldErrors }} busy={!!busy || !!pendingSubmit || receiptBlocked}
+          saveStatus={autosave.status} onChange={change} onFinish={finish} onNavigate={() => void autosave.flush()} onReauthenticate={reauthenticate}
+          onSubmitApplication={submitApplication} onSessionChanged={clearProfile}/>
+          : <SubmittedApplication application={selected}/>
+          : session.company ? <ApplicationsList items={items} busy={!!busy} onOpen={open} onDelete={removeDraft} onCreate={create} />
+          : <StaffApplications items={items} busy={!!busy} onOpen={open} onRefresh={refreshList}/>}
         <footer className="page-footer"><span>Альфа Бизнес · Кредитный кабинет</span><span>Демонстрационный проект · Все данные синтетические</span></footer>
       </main>
     </div>
