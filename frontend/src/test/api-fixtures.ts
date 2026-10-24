@@ -1,5 +1,6 @@
 import { vi } from "vitest";
 import type { Application, Session, ClientSession, SubmitInput } from "../types";
+import {demoAccounts} from "../demo-accounts";
 import { annuityResult, catalog } from "./calculator-fixtures";
 
 export const session: ClientSession = {
@@ -57,23 +58,14 @@ export function contractServer(
     const method = init?.method ?? "GET";
     const body = init?.body ? JSON.parse(String(init.body)) : {};
     if (path === "/auth/demo-login" && method === "POST") {
-      if (!["demo-client-1", "demo-client-2", "demo-staff-1"].includes(body.account_id))
+      if (!demoAccounts.some(a=>a.id===body.account_id))
         return error(422, "VALIDATION_ERROR", "Неизвестный профиль");
       if (body.account_id === "demo-staff-1") {
         current = {user:{id:'demo-staff-1',name:'Демо-сотрудник',role:'STAFF'},company:null};
         return json(current);
       }
-      current =
-        body.account_id === "demo-client-1"
-          ? structuredClone(session)
-          : {
-              user: {
-                id: "demo-client-2",
-                name: "Демо-клиент 2",
-                role: "CLIENT",
-              },
-              company: { id: "demo-company-2", name: "ООО «Демо Мастерская»" },
-            };
+      const number=String(body.account_id).split('-').at(-1)!;
+      current={user:{id:body.account_id,name:'Демо-клиент '+number,role:'CLIENT'},company:{id:'demo-company-'+number,name:demoAccounts.find(a=>a.id===body.account_id)!.name}};
       return json(current);
     }
     if (path === "/auth/logout" && method === "POST") {

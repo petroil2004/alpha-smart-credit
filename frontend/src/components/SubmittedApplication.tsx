@@ -1,5 +1,6 @@
 import type {Application} from '../types';
 import {formatMoneyRub} from '../draft';
+import CompanyDataView from './CompanyDataView';
 import {products} from '../products';
 export function statusLabel(status: string) {
   return status === 'DRAFT' ? 'Черновик' : status === 'NEEDS_INFO' ? 'Нужны сведения' : status === 'UNDER_REVIEW' ? 'На рассмотрении' : status === 'SUBMITTED' ? 'Отправлена' : 'Заявка';
@@ -27,6 +28,7 @@ export default function SubmittedApplication({application,staff=false}:{applicat
     </dl>
     <p className="small-note">Параметры зафиксированы при отправке. Расчёт не означает одобрения. Все данные и условия демонстрационные.</p>
     {snapshot && <p className="small-note">Сведения компании — синтетические данные банка. Подтверждение клиента не заменяет банковскую проверку.</p>}
+    <CompanyDataView profile={snapshot?.company} historical/>
     <h2>История заявки</h2>
     <ol className="submission-history">{application.history?.map(event=><li key={event.id}><strong>{({INFO_REQUESTED:'Сотрудник запросил сведения',INFO_REPLY_SAVED:'Клиент сохранил черновик ответа',INFO_REPLY_SUBMITTED:'Клиент отправил ответ на рассмотрение',INFO_MESSAGE:'Добавлено сообщение по запросу',INFO_FILE_ATTACHED:'Клиент прикрепил документ',INFO_FILE_DETACHED:'Клиент открепил документ'} as Record<string,string>)[event.reason_code]??(event.to_status==='SUBMITTED' ? 'Клиент отправил заявку' : event.to_status==='UNDER_REVIEW' ? 'Система зарегистрировала заявку на рассмотрение' : statusLabel(event.to_status))}</strong><span>{date(event.occurred_at)}</span></li>)}</ol>
   </section>;

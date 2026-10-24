@@ -41,7 +41,19 @@ export interface StaffSession {
   company: null;
 }
 export type Session = ClientSession | StaffSession;
+export interface CompanyDetails {
+  legal_form:string|null; tax_id:string|null; okved:string|null; registration_date:string|null;
+  business_age_months:number|null; registration_status:string|null; is_bank_client:boolean|null;
+}
+export interface CompanyFinance {
+  period:{start_date:string;end_date:string};
+  months:{month:string;income_rub:string|null;expenses_rub:string|null;income_source:string|null;expenses_source:string|null}[];
+  debt_payment_rub:string|null; debt_source:string|null; debt_as_of:string|null;
+  average_income_rub:string|null; average_expenses_rub:string|null;
+}
 export interface CompanyProfile {
+  details?:CompanyDetails; finance?:CompanyFinance;
+  prepared_on?:string|null; as_of_date?:string; data_version?:string|null;
   company_id: string; company_name: string; profile_version: string; source: "BANK_DATA";
 }
 export interface SubmitInput {

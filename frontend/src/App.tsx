@@ -18,6 +18,7 @@ import ApplicationsList from "./components/ApplicationsList";
 import DeleteDraftDialog from "./components/DeleteDraftDialog";
 import SubmittedApplication, {statusLabel} from "./components/SubmittedApplication";
 import StaffApplications from "./components/StaffApplications";
+import {demoAccounts} from "./demo-accounts";
 import {sameSession} from "./session";
 import {readAttempt,saveAttempt,clearAttempt} from "./submission";
 import type {SubmissionAttempt} from "./submission";
@@ -528,9 +529,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
                 disabled={!!busy}
                 onChange={(event) => setAccount(event.target.value)}
               >
-                <option value="demo-client-1">ООО «Демо Торг»</option>
-                <option value="demo-client-2">ООО «Демо Мастерская»</option>
-                <option value="demo-staff-1">Сотрудник банка</option>
+                {demoAccounts.map(account=><option key={account.id} value={account.id}>{account.name}</option>)}
               </select>
             </label>
             <button
@@ -573,7 +572,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
           {pendingSubmit && <button className="button secondary" type="button" disabled={!!busy} onClick={()=>submitApplication()}>Проверить отправку</button>}
           {receiptBlocked && <button className="button secondary" disabled={!!busy} onClick={reloadSelected}>Обновить карточку</button>}
         </div></div>}
-        {selected ? session.company && selected.status==='DRAFT' ? <DraftForm api={api} key={selected.id} resetVersion={purposeReset} application={selected} companyName={session.company.name}
+        {selected ? session.company && selected.status==='DRAFT' ? <DraftForm api={api} key={selected.id} resetVersion={purposeReset} application={selected} companyName={session.company.name} session={session as import("./types").ClientSession}
           errorAttempt={fieldErrorAttempt} fields={fields} errors={{ ...autosave.errors, ...fieldErrors }} busy={!!busy || !!pendingSubmit || receiptBlocked}
           saveStatus={autosave.status} onChange={change} onFinish={finish} onNavigate={() => void autosave.flush()} onReauthenticate={reauthenticate}
           onSubmitApplication={submitApplication} onSessionChanged={clearProfile}/>

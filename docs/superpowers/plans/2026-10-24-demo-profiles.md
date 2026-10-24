@@ -46,9 +46,9 @@ Interfaces: submission берёт now один раз до profile/version пр�
 Files: types.ts, App.tsx, components/CompanyDataView.tsx, DraftForm.tsx, SubmittedApplication.tsx, styles.css; test/company-fixtures.ts, CompanyDataView.test.tsx, ProfileFlow.test.tsx, api-fixtures.ts.
 Interfaces: CompanyProfile расширяется optional details/finance/etc для старых снимков/fixtures. CompanyDataView({profile?:CompanyProfile, historical?:boolean, pending?:boolean}) — только чтение, details и6 строк по серверу без пересчёта средних. DraftForm использует существующий companyProfile/retry/confirmationStamp; SubmittedApplication только snapshot.company. Добавить6 вариантов demo-login, без нового auth API.
 
-- [ ] RED tests readable_profile_and_finances, partial_expenses_null_vs_zero, legacy_snapshot_missing_no_live_fetch, six_profiles_login, refresh_version_resets_confirmation; задержанный профиль после смены user/role не вызывает отображения/подтверждения. Expected отсутствующий компонент/поля.
-- [ ] Добавить раскрываемый профиль/финансы на параметрах/проверке и в отправленной карточке, прежний дизайн. Не показывать блок на продукте. Источники/даты/пропуски/неполный ряд с ясными подписями; историческое «Не зафиксировано при отправке». Обновление профиля доступно явно, сбрасывает подтверждение. Сессия проверяется до/после получения профиля; stale/disposed ответы игнорировать.
-- [ ] Frontend tests + build PASS, без изменения исходных трёх шагов/калькулятора/уточнений. Коммит feat(ui).
+- [x] RED tests readable_profile_and_finances, partial_expenses_null_vs_zero, legacy_snapshot_missing_no_live_fetch, six_profiles_login, refresh_version_resets_confirmation; задержанный профиль после смены user/role не вызывает отображения/подтверждения. Expected отсутствующий компонент/поля.
+- [x] Добавить раскрываемый профиль/финансы на параметрах/проверке и в отправленной карточке, прежний дизайн. Не показывать блок на продукте. Источники/даты/пропуски/неполный ряд с ясными подписями; историческое «Не зафиксировано при отправке». Обновление профиля доступно явно, сбрасывает подтверждение. Сессия проверяется до/после получения профиля; stale/disposed ответы игнорировать.
+- [x] Frontend tests + build PASS, без изменения исходных трёх шагов/калькулятора/уточнений. Коммит feat(ui).
 
 ### Task 4: Реальная база, документация и итоговая рецензия
 

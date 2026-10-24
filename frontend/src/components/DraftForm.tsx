@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import type { Api, Application, CompanyProfile } from "../types";
+import type { Api, Application, CompanyProfile, ClientSession } from "../types";
 import { useLoanCalculator } from "../hooks/useLoanCalculator";
 import LoanCalculator, { LoanCalculationSummary } from "./draft/LoanCalculator";
 import { draftSteps } from "../draft-steps";
@@ -14,6 +14,9 @@ import {
 import type { EditableProps } from "./draft/DraftFields";
 import DraftReview from "./draft/DraftReview";
 import AssistantPreview from "./draft/AssistantPreview";
+import CompanyDataView from "./CompanyDataView";
+import {sameSession} from "../session";
+import {validateCompanyProfile} from "../company-profile";
 import { Icon } from "./Icon";
 import type { SaveState } from "../autosave";
 
@@ -21,6 +24,7 @@ interface Props extends EditableProps {
   api: Api;
   application: Application;
   companyName: string;
+  session: ClientSession;
   errorAttempt: number;
   busy: boolean;
   saveStatus: SaveState["status"];
@@ -49,14 +53,19 @@ export default function DraftForm(props: Props) {
   useEffect(()=>{
     let active=true;
     setProfile(null);setProfileError(null);
-    props.api.companyProfile().then(value=>{
+    (async()=>{
+      const before=await props.api.me();
       if(!active)return;
-      if(value.company_id!==application.company_id){props.onSessionChanged();return;}
-      if(!value.profile_version || !value.company_name || value.source!=='BANK_DATA')throw Error();
+      if(!sameSession(before,props.session)){props.onSessionChanged();return;}
+      const value=await props.api.companyProfile();
+      const after=await props.api.me();
+      if(!active)return;
+      if(!sameSession(after,props.session)||value.company_id!==application.company_id){props.onSessionChanged();return;}
+      validateCompanyProfile(value);
       setProfile(value);
-    }).catch(()=>{if(active)setProfileError('Не удалось загрузить сведения компании. Повторите загрузку.');});
+    })().catch(()=>{if(active)setProfileError('Не удалось загрузить сведения компании. Повторите загрузку.');});
     return()=>{active=false;};
-  },[props.api,application.id,profileAttempt,props.resetVersion]);
+  },[props.api,application.id,profileAttempt,props.resetVersion,props.session.user.id,props.session.company.id]);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [step, setStep] = useState<DraftStep>("product");
   const lastErrorAttempt = useRef(errorAttempt);
@@ -80,6 +89,8 @@ export default function DraftForm(props: Props) {
   const confirmed=confirmedStamp===confirmationStamp;
   const companyBlock=<section className="company-summary" aria-label="Сведения компании"><h3>Компания</h3>
     <p>{profile?.company_name ?? props.companyName}</p><p className="small-note">Демонстрационные данные · {application.company_id}</p>
+    <CompanyDataView profile={profile??undefined} pending={!profile&&!profileError}/>
+    {profile && <button type="button" className="text-button" disabled={busy} onClick={()=>{setProfile(null);setConfirmedStamp(null);setProfileAttempt(n=>n+1);}}>Обновить сведения компании</button>}
     {profileError && <p role="alert">{profileError} <button type="button" className="text-button" onClick={()=>setProfileAttempt(n=>n+1)}>Повторить загрузку сведений</button></p>}
   </section>;
 
