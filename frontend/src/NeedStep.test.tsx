@@ -56,19 +56,19 @@ it.each(["Купить оборудование", null])("replaces local purpose
   expect(screen.getByLabelText("На что нужны средства")).toHaveValue(purpose ?? "");
 });
 
-it("opens and collapses a disconnected assistant without sending any request", async () => {
+it("checks availability and keeps a disconnected assistant optional", async () => {
   const h = await open();
-  const before = h.server.fetcher.mock.calls.length;
   const toggle = screen.getByRole("button", { name: "Помочь с выбором" });
   expect(toggle).toHaveAttribute("aria-expanded", "false");
   await h.user.click(toggle);
   const preview = within(screen.getByRole("region", { name: "Помощник по финансированию" }));
-  expect(preview.getByText("Ассистент пока не подключён")).toBeInTheDocument();
+  expect(await preview.findByText(/Помощник временно недоступен/)).toBeInTheDocument();
   expect(preview.getByRole("textbox", { name: "Сообщение помощнику" })).toBeDisabled();
   expect(preview.getByRole("button", { name: "Отправить сообщение" })).toBeDisabled();
   await h.user.click(screen.getByRole("button", { name: "Свернуть помощника" }));
   expect(screen.queryByRole("region", { name: "Помощник по финансированию" })).not.toBeInTheDocument();
-  expect(h.server.fetcher.mock.calls.length).toBe(before);
+  expect(h.server.fetcher.mock.calls.filter(([url])=>String(url).endsWith('/assistant/status'))).toHaveLength(1);
+  expect(h.server.fetcher.mock.calls.some(([url])=>String(url).endsWith('/assistant/chat'))).toBe(false);
 });
 
 it("keeps assistant expansion when returning to product and hides it elsewhere", async () => {

@@ -86,6 +86,7 @@ export function contractServer(
       return item?.status === 'UNDER_REVIEW' ? json(item) : error(404,'NOT_FOUND','Заявка не найдена');
     }
     if (!current.company) return error(403,'FORBIDDEN','Только клиент');
+    if (path === '/assistant/status') return json({enabled:false,available:false,model:'qwen3:4b-instruct-2507-q4_K_M',reason:'DISABLED'});
     if (path === '/company-profile') return json({...companyProfile(),company_id:current.company.id,company_name:current.company.name,profile_version:'profile-v1'});
     if (path === "/products" && method === "GET") return json(catalog);
     if (path === "/calculations/annuity" && method === "POST")

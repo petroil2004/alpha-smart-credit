@@ -422,3 +422,6 @@ button.direction-card:hover:not(:disabled) { box-shadow: inset 0 0 0 2px #202020
 .score-criteria th, .score-criteria td { text-align: left; padding: 12px 8px; border-bottom: 1px solid var(--border); }
 .score-criteria td:last-child, .score-criteria th:last-child { text-align: right; }
 .score-table-scroll { overflow-x: auto; }
+.assistant-message { margin: 12px 0; padding: 14px 16px; border-radius: 14px; background: #fff; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.55; }
+.assistant-message-user { background: #e9eaf0; }
+.assistant-panel > .small-note { margin: 14px 0; }

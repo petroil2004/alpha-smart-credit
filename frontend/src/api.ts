@@ -19,9 +19,10 @@ export function createApi(
   async function request<T>(
     path: string,
     options: RequestInit = {},
+    timeoutMs = 15_000,
   ): Promise<T> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15_000);
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const response = await fetcher(`/api/v1${path}`, {
         ...options,
@@ -78,6 +79,10 @@ export function createApi(
     }
   }
   return {
+    assistant:{
+      status:()=>request<import('./types').AssistantStatus>('/assistant/status',{},5_000),
+      chat:body=>request<import('./types').AssistantReply>('/assistant/chat',{method:'POST',body:JSON.stringify(body)},95_000),
+    },
     info: createInfoApi(fetcher),
     companyProfile: () => request<CompanyProfile>("/company-profile"),
     submit: (id, input, key) => request<Application>(`/applications/${encodeURIComponent(id)}/submit`, {method: "POST", body: JSON.stringify(input), headers: {"Idempotency-Key": key}}),
