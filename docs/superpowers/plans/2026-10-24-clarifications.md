@@ -44,10 +44,10 @@ Files: создать `backend/app/info_files.py`, `backend/tests/test_info_file
 
 Interfaces: PUT CLIENT `/applications/{id}/info-requests/{rid}/attachments/{fid}?filename=...&revision=N` raw File body. UUID fid — ключ загрузки, ответ Application. POST CLIENT `/.../attachments/{fid}/detach` `{revision}`; GET обеих ролей `/[staff/]applications/{id}/info-requests/{rid}/attachments/{fid}` — bytes attachment. В JSON только metadata `{id,filename,content_type,size_bytes,created_at,actor_id}` активных файлов.
 
-- [ ] Падающий тест: обязательный документ блокирует submit, TXT upload → метаданные/те же bytes при GET → успешное завершение → файл сохраняется и изменения запрещены.
-- [ ] Реализовать InfoAttachment (bytea с deferred loading, sha256, имя/тип/размер, detached_at). Ограниченный Request.stream до 5 МиБ, пустой/неверный формат 415, размер 413; нормализовать имя, attachment+nosniff. После чтения повторно проверить состояние под блокировкой; проверить revision, число активных файлов, фиксировать одним commit и событием.
-- [ ] Повтор fid сравнивает hash/name/type, не увеличивает revision/историю; другое тело 409, откреплённое 410. После close повтор прежнего PUT возвращает текущую карточку, новая загрузка запрещена. Detach повторяем, bytes не в JSON и не выдаются после detach; клиент видит пять активных слотов.
-- [ ] Тесты: PDF/TXT, UTF-8/NUL, пустое/ложный MIME/имя/путь, ровно лимит и превышение, поток без Content-Length, шестой файл, чужие/mismatched ID, оба ролевых скачивания, повтор/открепление/поздний PUT, загрузка против close и двух вкладок, перезапуск с теми же bytes. Полный backend; коммит feat(files).
+- [x] Падающий тест: обязательный документ блокирует submit, TXT upload → метаданные/те же bytes при GET → успешное завершение → файл сохраняется и изменения запрещены.
+- [x] Реализовать InfoAttachment (bytea с deferred loading, sha256, имя/тип/размер, detached_at). Ограниченный Request.stream до 5 МиБ, пустой/неверный формат 415, размер 413; нормализовать имя, attachment+nosniff. После чтения повторно проверить состояние под блокировкой; проверить revision, число активных файлов, фиксировать одним commit и событием.
+- [x] Повтор fid сравнивает hash/name/type, не увеличивает revision/историю; другое тело 409, откреплённое 410. После close повтор прежнего PUT возвращает текущую карточку, новая загрузка запрещена. Detach повторяем, bytes не в JSON и не выдаются после detach; клиент видит пять активных слотов.
+- [x] Тесты: PDF/TXT, UTF-8/NUL, пустое/ложный MIME/имя/путь, ровно лимит и превышение, поток без Content-Length, шестой файл, чужие/mismatched ID, оба ролевых скачивания, повтор/открепление/поздний PUT, загрузка против close и двух вкладок, перезапуск с теми же bytes. Полный backend; коммит feat(files).
 
 ### Task 3: Интерфейс, последовательное сохранение и повторы
 
