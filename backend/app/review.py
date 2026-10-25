@@ -42,37 +42,15 @@ def assessment_facts(application: Application, submission: ApplicationSubmission
 
 
 def score(facts: dict[str, Any], details: dict[str, Any]) -> tuple[int | None, str, list[str], list[str], list[dict[str, Any]]]:
-    months, debt = facts['months'], facts['debt_payment_rub']
-    missing: list[str] = []
-    if len(months) != 6:
-        missing.append('шесть месяцев финансовых данных')
-    if any(row.get('income_rub') is None for row in months):
-        missing.append('поступления за все шесть месяцев')
-    if any(row.get('expenses_rub') is None for row in months):
-        missing.append('операционные расходы за все шесть месяцев')
-    if debt is None:
-        missing.append('ежемесячные платежи по действующим долгам')
+    from .financial_factors import missing_finances, financial_factors
+    missing = missing_finances(facts)
     if details.get('business_age_months') is None:
         missing.append('возраст бизнеса')
     if missing:
         return None, 'UNKNOWN', [], missing, []
-    income = [Decimal(row['income_rub']) for row in months]
-    expenses = [Decimal(row['expenses_rub']) for row in months]
-    average_income = sum(income) / 6
-    average_expenses = sum(expenses) / 6
-    flow = average_income - average_expenses
-    debt_value = Decimal(debt)
     age = details['business_age_months']
-    volatility = (max(income) - min(income)) / average_income if average_income else Decimal(1)
-    margin = flow / average_income if average_income else Decimal(0)
-    debt_ratio = debt_value / flow if flow > 0 else Decimal('999')
-    # Same temporary scorecard as before, now with explicit factors and weights.
-    inputs = [
-        ('Возраст бизнеса', f'{age} мес.', '1' if age >= 36 else '0.72' if age >= 18 else '0.40'),
-        ('Стабильность поступлений', f'Разброс {money(volatility * 100)}%', '1' if volatility <= Decimal('0.20') else '0.60' if volatility <= Decimal('0.35') else '0.20'),
-        ('Операционный поток', f'Доля потока {money(margin * 100)}%', '1' if margin >= Decimal('0.30') else '0.60' if margin >= Decimal('0.15') else '0.20'),
-        ('Действующая долговая нагрузка', f'{money(debt_ratio * 100)}% потока' if flow > 0 else 'Нет положительного потока', '1' if debt_ratio <= Decimal('0.10') else '0.60' if debt_ratio <= Decimal('0.30') else '0.20'),
-    ]
+    financial, _ = financial_factors(facts)
+    inputs = [('Возраст бизнеса', f'{age} мес.', '1' if age >= 36 else '0.72' if age >= 18 else '0.40'), *financial]
     criteria = [{'label': label, 'input': value, 'factor': factor, 'weight': 25,
                  'points': int(Decimal(factor) * 25)} for label, value, factor in inputs]
     reasons = [f"{row['label']}: {row['input']} → {row['factor']} × {row['weight']} = {row['points']}" for row in criteria]

@@ -540,3 +540,87 @@ button.direction-card:hover:not(:disabled) { box-shadow: inset 0 0 0 2px #202020
 .assessment-check {padding:18px 20px;border:1px solid #e3e5e9;border-radius:16px;line-height:1.5}
 .assessment-check p {margin:8px 0}
 .assessment-check small {color:#747985;overflow-wrap:anywhere}
+
+/* Company profile: one illustration, an informational financial pulse and source data. */
+.company-profile-page { max-width:1180px; margin-inline:auto; }
+.company-profile-hero { display:flex; align-items:center; justify-content:space-between; gap:28px; padding:30px 36px; margin-bottom:28px; border-radius:26px; background:linear-gradient(110deg,#f3f4f6 48%,#ede7fc); overflow:hidden; }
+.company-profile-hero > div { position:relative; z-index:1; }
+.company-profile-hero .eyebrow { color:#737783; margin-bottom:12px; font-size:11px; font-weight:600; }
+.company-profile-hero h1 { font-size:36px; line-height:1.15; margin:0 0 12px; }
+.company-profile-name { font-size:19px; line-height:1.4; margin-bottom:8px; }
+.company-profile-intro { color:#737783; line-height:1.5; max-width:440px; font-size:14px; }
+.company-profile-hero .button { margin-top:22px; background:#fff; border:1px solid #dedee5; font-size:13px; min-height:44px; padding:11px 18px; }
+.company-profile-hero .button:hover:not(:disabled) { background:#f9f9fc; }
+.company-profile-hero img { width:260px; height:auto; flex-shrink:0; object-fit:contain; }
+.profile-source-data { margin-block:36px; }
+.profile-source-data > h2 { font-size:22px; margin-bottom:20px; }
+.financial-pulse { --pulse-color:#2bd18d; --pulse-tint:#183c2a; padding:30px; border:1px solid #303032; border-radius:26px; background:#1b1b1d; color:#f7f7f8; }
+.financial-pulse.pulse-yellow { --pulse-color:#f0ca62; --pulse-tint:#443b22; }
+.financial-pulse.pulse-red { --pulse-color:#ff8585; --pulse-tint:#4d282c; }
+.financial-pulse.pulse-empty { --pulse-color:#b6b6bf; --pulse-tint:#303034; }
+.pulse-header { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; }
+.pulse-eyebrow { color:#9999a4; font-size:10px; letter-spacing:1.6px; text-transform:uppercase; margin-bottom:9px; }
+.pulse-header h2 { font-size:30px; font-weight:600; letter-spacing:-.5px; line-height:1.2; }
+.pulse-period { margin-top:8px; color:#aaaab3; font-size:13px; line-height:1.5; }
+.pulse-badge { display:inline-flex; color:var(--pulse-color); background:var(--pulse-tint); padding:7px 12px; border-radius:24px; font-size:12px; line-height:1.4; white-space:nowrap; }
+.pulse-overview { display:flex; align-items:center; gap:30px; padding:28px 0; border-bottom:1px solid #ffffff12; }
+.pulse-gauge { width:144px; height:144px; flex:0 0 auto; position:relative; }
+.pulse-gauge svg { width:100%; height:100%; overflow:visible; }
+.pulse-gauge circle { fill:none; stroke-width:11; }
+.pulse-ring-track { stroke:#343437; }
+.pulse-ring-fill { stroke:var(--pulse-color); stroke-linecap:round; }
+.pulse-gauge > div { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.pulse-gauge strong { font-size:39px; line-height:1.1; letter-spacing:-1px; }
+.pulse-gauge span { color:#aaaab3; font-size:13px; margin-top:5px; }
+.pulse-assessment h3 { font-size:20px; line-height:1.4; margin-bottom:10px; }
+.pulse-assessment > p { color:#b5b5be; line-height:1.6; font-size:14px; max-width:600px; }
+.pulse-model-note { display:block; color:#92929e; font-size:12px; margin-top:14px; line-height:1.5; }
+.pulse-metrics { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; padding:24px 0 28px; }
+.pulse-metrics article { padding:20px 22px; border-radius:18px; background:#141416; min-width:0; }
+.pulse-metrics article > p { color:#aaaab3; font-size:12px; line-height:1.4; }
+.pulse-metrics strong { display:block; font-size:29px; letter-spacing:-.7px; margin:12px 0 10px; font-weight:600; }
+.pulse-metrics small { color:#a9a9b4; font-size:12px; line-height:1.5; display:block; }
+.pulse-metrics .metric-green { color:#2bd18d; }
+.pulse-metrics .metric-yellow { color:#f0ca62; }
+.pulse-metrics .metric-red { color:#ff8585; }
+.pulse-chart-heading { display:flex; align-items:center; justify-content:space-between; gap:18px; flex-wrap:wrap; margin-bottom:10px; }
+.pulse-chart-heading h3 { font-size:16px; }
+.pulse-legend { display:flex; gap:18px; color:#b5b5be; font-size:11px; }
+.pulse-legend span::before { content:''; display:inline-block; background:#6aa7ff; width:7px; height:7px; border-radius:50%; margin-right:7px; }
+.pulse-legend span+span::before { background:#b7a2f5; }
+.pulse-chart { overflow-x:auto; }
+.pulse-chart svg { display:block; width:100%; min-width:500px; height:auto; }
+.pulse-chart text { fill:#aaaab3; font:12px Arial,sans-serif; }
+.pulse-grid { stroke:#ffffff10; stroke-dasharray:4 5; }
+.pulse-income-line,.pulse-expenses-line { fill:none; stroke-width:2.5; stroke-linejoin:round; stroke-linecap:round; }
+.pulse-income-line { stroke:#6aa7ff; }
+.pulse-expenses-line { stroke:#b7a2f5; stroke-dasharray:6 5; opacity:.85; }
+.pulse-income-dot { fill:#6aa7ff; stroke:#1b1b1d; stroke-width:2; }
+.pulse-method { margin-top:18px; border-top:1px solid #ffffff12; padding-top:18px; color:#a4a4b0; font-size:12px; line-height:1.6; }
+.pulse-method summary { cursor:pointer; color:#c5c5cf; width:fit-content; }
+.pulse-method p { margin-top:12px; max-width:850px; }
+.pulse-empty-content { display:flex; align-items:center; gap:24px; padding:34px 0 12px; }
+.pulse-empty-content > span { width:72px; height:72px; display:grid; place-items:center; border:1px dashed #62626c; border-radius:20px; font-size:32px; color:#aaaab3; flex:0 0 auto; }
+.pulse-empty-content h3 { font-size:19px; margin-bottom:12px; line-height:1.4; }
+.pulse-empty-content p { color:#aaaab3; font-size:14px; line-height:1.6; max-width:650px; }
+@media(max-width:760px) {
+ .company-profile-hero { padding:26px; gap:8px; }
+ .company-profile-hero h1 { font-size:29px; }
+ .company-profile-hero img { width:180px; }
+ .financial-pulse { padding:24px; }
+ .pulse-header h2 { font-size:25px; }
+ .pulse-overview { gap:20px; }
+ .pulse-gauge { width:120px; height:120px; }
+ .pulse-assessment h3 { font-size:18px; }
+}
+@media(max-width:520px) {
+ .company-profile-hero { position:relative; padding:24px; }
+ .company-profile-hero img { width:120px; align-self:flex-start; margin-right:-42px; opacity:.75; }
+ .company-profile-hero h1 { font-size:25px; }
+ .company-profile-intro { max-width:210px; }
+ .pulse-header { flex-direction:column; gap:12px; }
+ .pulse-overview { flex-direction:column; align-items:flex-start; }
+ .pulse-metrics { grid-template-columns:1fr; }
+ .pulse-empty-content { align-items:flex-start; gap:14px; }
+ .pulse-empty-content > span { width:42px; height:42px; font-size:23px; border-radius:12px; }
+}

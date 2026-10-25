@@ -10,6 +10,7 @@ def login(client,account):
 
 def test_manual_values_preserve_client_reply_recalculate_and_are_audited(client):
     original=submit(client,draft(client,amount_rub='300000.00',term_months=36)).json()
+    initial_profile=client.get('/api/v1/company-profile').json()
     assert client.get('/api/v1/staff/profile').status_code==403
     login(client,'demo-staff-1')
     profile=client.get('/api/v1/staff/profile')
@@ -39,7 +40,19 @@ def test_manual_values_preserve_client_reply_recalculate_and_are_audited(client)
     assert updated['info_requests'][0]['messages'][-1]['text']=='Расходы подтверждены выпиской'
     assert updated['info_requests'][0]['revision']==replied['info_requests'][0]['revision']+1
     assert correction['actor_id']=='demo-staff-1' and correction['values'][0]['source']=='STAFF_VERIFIED'
+    login(client,'demo-client-1')
+    live=client.get('/api/v1/company-profile').json()
+    assert live['profile_version']!=initial_profile['profile_version']
+    assert live['finance']['months'][0]['expenses_rub']=='900000.00'
+    assert live['finance']['months'][0]['expenses_source']=='STAFF_VERIFIED'
+    assert live['financial_pulse']['score'] < initial_profile['financial_pulse']['score']
+    login(client,'demo-client-2')
+    assert client.get('/api/v1/company-profile').json()['finance']['average_expenses_rub']=='1000000.00'
+    login(client,'demo-staff-1')
     assert client.post(path,json=body,headers=headers).json()==updated
+    login(client,'demo-client-1')
+    assert client.get('/api/v1/company-profile').json()['profile_version']==live['profile_version']
+    login(client,'demo-staff-1')
     with engine.connect() as db:
         assert db.scalar(text('SELECT count(*) FROM staff_financial_corrections'))==1
     initial_expenses=original['submission']['snapshot']['company']['finance']['months'][0]['expenses_rub']
@@ -51,12 +64,15 @@ def test_manual_values_preserve_client_reply_recalculate_and_are_audited(client)
 
 def test_missing_months_and_profile_can_be_corrected_without_changing_snapshot(client):
     from app.db import SessionLocal
-    from app.models import ApplicationSubmission
+    from app.models import ApplicationSubmission, CompanyMonth
+    from sqlalchemy import delete
     original=submit(client,draft(client,amount_rub='300000.00',term_months=36)).json()
     with SessionLocal() as db:
         submission=db.get(ApplicationSubmission,uuid.UUID(original['id']))
         snapshot={**submission.snapshot,'company':{**submission.snapshot['company'],'finance':{'period':{'start_date':'2026-04-01','end_date':'2026-09-30'},'months':[],'debt_payment_rub':None}}}
-        submission.snapshot=snapshot;db.commit()
+        submission.snapshot=snapshot
+        db.execute(delete(CompanyMonth).where(CompanyMonth.company_id=='demo-company-1'))
+        db.commit()
     login(client,'demo-staff-1');prefix=f"/api/v1/staff/applications/{original['id']}/info-requests"
     requested=client.post(prefix,json={'version':original['version'],'question':'Уточните сведения'},headers={'Idempotency-Key':str(uuid.uuid4())}).json()
     assert len(requested['verified_company']['finance']['months'])==6
@@ -86,6 +102,15 @@ def test_missing_months_and_profile_can_be_corrected_without_changing_snapshot(c
     assert corrected['assessment']['recommendation']=='OFFER_REQUESTED'
     assert client.post(profile_path,json=payload,headers=key).json()==corrected
     assert len(corrected['info_requests'][0]['profile_corrections'])==1
+    login(client,'demo-client-1')
+    live=client.get('/api/v1/company-profile').json()
+    assert live['details']['registration_date']=='2020-01-01'
+    assert live['details']['registry_source']=='STAFF_VERIFIED'
+    assert live['details']['tax_id']=='7700000001'
+    assert len(live['finance']['months'])==6
+    assert all(row['income_rub']=='900000.00' and row['expenses_rub']=='500000.00' for row in live['finance']['months'])
+    assert live['finance']['debt_payment_rub']=='0.00'
+    assert live['finance']['debt_source']=='STAFF_VERIFIED'
 
 
 def test_document_toggle_is_enforced_by_upload_api(client):

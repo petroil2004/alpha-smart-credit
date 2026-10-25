@@ -30,6 +30,15 @@ it('keeps company data on the separate profile page and out of both draft steps'
  fireEvent.click(screen.getByRole('button',{name:'На главную'}));
  expect(await screen.findByRole('heading',{name:'Мои заявки'})).toBeInTheDocument();
 });
+it('shows staff-verified company details before the financial pulse',async()=>{
+ const p=companyProfile();Object.assign(p.details!,{registry_source:'STAFF_VERIFIED'});
+ const h=setup(()=>p);render(<App api={h.api}/>);
+ fireEvent.click(await screen.findByRole('button',{name:/Профиль компании:/}));
+ const source=await screen.findByRole('heading',{name:'Сведения компании'});
+ const pulse=screen.getByRole('heading',{name:'Финансовый пульс'});
+ expect(source.compareDocumentPosition(pulse)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+ expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});
 it('returning from an updated company profile requires confirming the draft again',async()=>{
  let p=companyProfile();const h=setup(()=>p);await openParameters(h.api);
  fireEvent.click(screen.getByRole('button',{name:'Перейти к шагу «Проверка»'}));const checkbox=await screen.findByRole('checkbox',{name:/Подтверждаю актуальность/});await waitFor(()=>expect(checkbox).toBeEnabled());fireEvent.click(checkbox);
