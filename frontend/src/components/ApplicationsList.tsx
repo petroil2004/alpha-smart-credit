@@ -45,7 +45,7 @@ export default function ApplicationsList({
             <p>
               Новая возможность для вашего бизнеса.
               <br />
-              Создайте заявку — заполнить её можно позже.
+              Создайте заявку — оперативно рассмотрим её после отправки.
             </p>
             <button
               className="button secondary"
@@ -58,7 +58,7 @@ export default function ApplicationsList({
           </div>
         ) : (
           <div className="application-list">
-            {items.map((item) => (
+            {[...items].sort((a,b)=>b.updated_at.localeCompare(a.updated_at)).map((item) => (
               <article className="application-row" key={item.id}>
                 <button className="application-open" disabled={busy} onClick={() => onOpen(item.id)} aria-label={`Открыть заявку ${applicationNumber(item)}`} aria-describedby={`application-details-${item.id} application-amount-${item.id}`}>
                   <span className="row-icon"><Icon name="document" /></span>
@@ -69,7 +69,7 @@ export default function ApplicationsList({
                   </span>
                   <span className="row-amount" id={`application-amount-${item.id}`}>
                     <strong className={item.amount_rub?undefined:"amount-empty"}>{amountText(item.amount_rub)}</strong>
-                    <small>{new Intl.DateTimeFormat("ru-RU", {day:"numeric", month:"short"}).format(new Date(item.updated_at))}</small>
+                    <small>Изм. {new Intl.DateTimeFormat("ru-RU", {day:"numeric", month:"short",hour:"2-digit",minute:"2-digit",timeZone:"Europe/Moscow"}).format(new Date(item.updated_at))}</small>
                   </span>
                   <span className="row-open"><Icon name="arrow" /></span>
                 </button>

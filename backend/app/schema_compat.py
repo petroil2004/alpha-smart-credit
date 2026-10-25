@@ -30,6 +30,8 @@ def allow_staff_accounts(engine: Engine) -> None:
 def add_mvp_review_columns(engine: Engine) -> None:
     """Additive upgrade for installations created before the connected MVP flow."""
     statements = (
+        "ALTER TABLE info_requests ADD COLUMN IF NOT EXISTS reply_submitted_at TIMESTAMP WITH TIME ZONE",
+        "ALTER TABLE info_attachments ADD COLUMN IF NOT EXISTS message_id INTEGER REFERENCES info_messages(id)",
         "ALTER TABLE applications ADD COLUMN IF NOT EXISTS equipment_cost_rub NUMERIC(18, 2)",
         "ALTER TABLE applications ADD COLUMN IF NOT EXISTS planned_payment_rub NUMERIC(18, 2)",
         "ALTER TABLE applications ADD COLUMN IF NOT EXISTS planned_payment_date DATE",

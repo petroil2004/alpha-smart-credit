@@ -76,7 +76,7 @@ it('missing purpose blocks the review step',async()=>{
   expect(screen.getByRole('button',{name:'Перейти к шагу «Проверка»'})).toBeDisabled();
   await h.user.click(screen.getByRole('button',{name:'Перейти к шагу «Параметры»'}));
   expect(screen.getByLabelText('На что нужны средства')).toHaveValue('');
-  expect(screen.getByRole('button',{name:'Продолжить'})).toBeDisabled();
+  expect(screen.getByRole('button',{name:'Продолжить'})).toHaveAttribute("aria-disabled","true");
 });
 
 it('equipment application remains available for completion and submission',async()=>{

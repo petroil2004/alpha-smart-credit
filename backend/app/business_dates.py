@@ -8,5 +8,5 @@ def business_today():
 
 def future_date_errors(values):
     today = business_today()
-    return {field: 'Укажите сегодняшнюю или будущую дату' for field in ('planned_payment_date', 'expected_inflow_date')
+    return {field: 'Дата не может быть раньше текущего дня' for field in ('planned_payment_date', 'expected_inflow_date')
             if values.get(field) is not None and values[field] < today}

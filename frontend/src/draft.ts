@@ -102,7 +102,13 @@ export function prepareDraftPayload(fields: DraftFields): { payload: DraftPayloa
   if(overdraft)for(const key of ['planned_payment_date','expected_inflow_date'] as const){
     const value=fields[key].trim();
     if(value&&(!/^\d{4}-\d{2}-\d{2}$/.test(value)||Number.isNaN(Date.parse(value))||new Date(value).toISOString().slice(0,10)!==value))errors[key]='Укажите корректную дату';
-    else if(value&&value<todayMoscow())errors[key]='Укажите сегодняшнюю или будущую дату';
+    else if(value&&value<todayMoscow())errors[key]='Дата не может быть раньше текущего дня';
+  }
+  let usageDays=overdraft?integer("usage_days"):null;
+  if(overdraft&&!errors.planned_payment_date&&!errors.expected_inflow_date&&fields.planned_payment_date&&fields.expected_inflow_date){
+    delete errors.usage_days;
+    usageDays=Math.round((Date.parse(fields.expected_inflow_date)-Date.parse(fields.planned_payment_date))/86400000);
+    if(usageDays<=0)errors.expected_inflow_date='Дата поступления должна быть позже даты использования средств';
   }
   const payload: DraftPayload = {
     purpose: purpose || null,
@@ -110,7 +116,7 @@ export function prepareDraftPayload(fields: DraftFields): { payload: DraftPayloa
     amount_rub: money("amount_rub"),
     term_months:
       fields.product_code && !overdraft ? integer("term_months") : null,
-    usage_days: overdraft ? integer("usage_days") : null,
+    usage_days: usageDays,
     expected_inflow_date: date || null,
     expected_inflow_amount_rub: overdraft
       ? money("expected_inflow_amount_rub")

@@ -58,8 +58,9 @@ def commit_operation(db,account,key,signature):
 def event(db,application,account,reason,now,to_status=None,comment=None):
     submission=db.get(ApplicationSubmission,application.id)
     previous=application.status
+    application.updated_at=now
     if to_status:
-        application.status=to_status;application.version+=1;application.updated_at=now
+        application.status=to_status;application.version+=1
     db.add(ApplicationEvent(application_id=application.id,actor_id=account.id,actor_role=account.role,
                             occurred_at=now,from_status=previous,to_status=application.status,reason_code=reason,
                             comment=comment,catalog_version=submission.snapshot['calculation']['catalog_version']))

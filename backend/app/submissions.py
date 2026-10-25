@@ -37,7 +37,7 @@ def financial_period(now) -> dict[str, str]:
 def replay(receipt, application, actor_id, body, db):
     if receipt.application_id != application.id or receipt.actor_id != actor_id or receipt.request_payload != body:
         raise ApiProblem(409, 'IDEMPOTENCY_CONFLICT', 'Этот ключ уже использован для другой отправки.')
-    return serialize_application(application, db)
+    return serialize_application(application, db, staff=account.role=='STAFF')
 
 
 @router.post('/applications/{application_id}/submit')
@@ -129,7 +129,7 @@ def submit_application(application_id: uuid.UUID, payload: SubmitPayload, accoun
         if receipt:
             return replay(receipt, application, account.id, body, db)
         raise
-    return serialize_application(application, db)
+    return serialize_application(application, db, staff=account.role=='STAFF')
 
 
 @router.get('/staff/applications')
@@ -146,4 +146,4 @@ def staff_application(application_id: uuid.UUID, account: StaffAccount, db: Sess
                             .where(Application.id == application_id, Application.status != 'DRAFT'))
     if not application:
         raise ApiProblem(404, 'NOT_FOUND', 'Заявка не найдена')
-    return serialize_application(application, db)
+    return serialize_application(application, db, staff=account.role=='STAFF')

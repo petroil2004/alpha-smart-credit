@@ -357,6 +357,10 @@ def update_application(
                 raise validation_error(issue)
         values[field] = value
 
+    if values['product_code']=='overdraft' and values['planned_payment_date'] and values['expected_inflow_date']:
+        days=(values['expected_inflow_date']-values['planned_payment_date']).days
+        if days<=0:raise validation_error({'expected_inflow_date':'Дата поступления должна быть позже даты использования средств'})
+        values['usage_days']=days
     validate_final_values(values)
     for field, value in values.items():
         setattr(application, field, value)

@@ -36,7 +36,7 @@ def test_manual_values_preserve_client_reply_recalculate_and_are_audited(client)
     assert updated['assessment']['score']!=original['assessment']['score']
     assert updated['submission']==original['submission']
     assert updated['version']==replied['version']+1
-    assert updated['info_requests'][0]['reply_text']=='Расходы подтверждены выпиской'
+    assert updated['info_requests'][0]['messages'][-1]['text']=='Расходы подтверждены выпиской'
     assert updated['info_requests'][0]['revision']==replied['info_requests'][0]['revision']+1
     assert correction['actor_id']=='demo-staff-1' and correction['values'][0]['source']=='STAFF_VERIFIED'
     assert client.post(path,json=body,headers=headers).json()==updated

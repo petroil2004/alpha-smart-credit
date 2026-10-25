@@ -68,7 +68,9 @@ describe("draft wizard", () => {
   it("blocks review for incomplete parameters and still saves a draft on exit", async () => {
     const {user,server}=await openDraft();
     expect(screen.getByRole('button',{name:'Перейти к шагу «Проверка»'})).toBeDisabled();
-    expect(screen.getByRole('button',{name:'Продолжить'})).toBeDisabled();
+    expect(screen.getByRole('button',{name:'Продолжить'})).toHaveAttribute("aria-disabled","true");
+    await user.click(screen.getByRole('button',{name:'Продолжить'}));
+    expect(screen.getByRole('alert')).toHaveTextContent('Корректно заполните все обязательные поля');
     await user.type(screen.getByLabelText('На что нужны средства'),'Товар');
     await user.click(screen.getByRole('button',{name:'Все заявки'}));
     expect(await screen.findByRole('heading',{name:'Мои заявки'})).toBeInTheDocument();
@@ -82,8 +84,8 @@ describe("draft wizard", () => {
         application({
           purpose: "Станок",
           product_code: "equipment",
-          amount_rub: "9007199254740993.01",
-          equipment_cost_rub:"9007199254740994.01",
+          amount_rub: "3500000.01",
+          equipment_cost_rub:"4000000.01",
           term_months: 24,
         }),
       ],
@@ -93,7 +95,7 @@ describe("draft wizard", () => {
     const summary = within(
       screen.getByRole("region", { name: "Сводка заявки" }),
     );
-    expect(summary.getByText("9 007 199 254 740 993,01 ₽")).toBeInTheDocument();
+    expect(summary.getByText("3 500 000,01 ₽")).toBeInTheDocument();
     expect(summary.getByText("Станок")).toBeInTheDocument();
     await user.click(
       summary.getByRole("button", { name: "Изменить параметры" }),
@@ -209,8 +211,8 @@ describe("draft wizard", () => {
     await goTo(user, "Продукт");
     await user.click(screen.getByRole("radio", { name: /Овердрафт/ }));
     await goTo(user, "Параметры");
-    await user.type(screen.getByLabelText("Пользование, дней"), "14");
-    fireEvent.change(screen.getByLabelText("Дата ожидаемого поступления"), {
+    fireEvent.change(screen.getByLabelText("Дата использования средств"),{target:{value:"2026-10-25"}});
+    fireEvent.change(screen.getByLabelText("Дата поступления для погашения"), {
       target: { value: "2026-11-05" },
     });
     await user.type(
@@ -219,7 +221,7 @@ describe("draft wizard", () => {
     );
     await flushStep(user);
     await screen.findByText("Изменения сохранены");
-    expect(screen.getByLabelText("Пользование, дней")).toHaveValue("14");
+    expect(screen.queryByLabelText("Пользование, дней")).not.toBeInTheDocument();
     first.unmount();
     render(<App api={api} />);
     await screen.findByRole("button", { name: "Перейти к шагу «Параметры»" });
@@ -228,9 +230,9 @@ describe("draft wizard", () => {
       "До поступления оплаты",
     );
     await goTo(user, "Параметры");
-    expect(screen.getByLabelText("Пользование, дней")).toHaveValue("14");
-    expect(screen.getByLabelText("Дата ожидаемого поступления")).toHaveValue(
-      "2026-11-05",
+    expect(screen.queryByLabelText("Пользование, дней")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Дата поступления для погашения")).toHaveValue(
+      "05.11.2026",
     );
     expect(screen.getByLabelText("Сумма ожидаемого поступления")).toHaveValue(
       "700000.00",

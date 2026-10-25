@@ -35,7 +35,7 @@ def application_values(application: Application) -> dict[str, Any]:
 
 
 
-def serialize_application(application: Application, db: Session, *, detail: bool = True) -> dict:
+def serialize_application(application: Application, db: Session, *, detail: bool = True, staff: bool = False) -> dict:
     result = application_values(application)
     submission = db.get(ApplicationSubmission, application.id)
     company_name = (submission.snapshot['company']['company_name'] if submission else
@@ -46,11 +46,12 @@ def serialize_application(application: Application, db: Session, *, detail: bool
         if submission:
             funding = db.get(ApplicationDisbursement, application.id)
             result['disbursement'] = {'confirmed_at':timestamp(funding.confirmed_at), 'amount_rub':format(funding.amount_rub,'.2f'), 'kind':funding.kind} if funding else None
-        result['info_requests'] = serialize_info_requests(application.id, db)
+        result['info_requests'] = serialize_info_requests(application.id, db, staff=staff)
         result['submission'] = {'submitted_at': timestamp(submission.submitted_at), 'submitted_by': submission.actor_id,
                                 'snapshot': submission.snapshot} if submission else None
         events = db.scalars(select(ApplicationEvent).where(ApplicationEvent.application_id == application.id)
                             .order_by(ApplicationEvent.occurred_at, ApplicationEvent.id)).all()
+        events = [event for event in events if event.reason_code not in {'INFO_REPLY_SAVED','INFO_FILE_ATTACHED','INFO_FILE_DETACHED'}]
         result['history'] = [{key: getattr(event, key) for key in
                              ('id', 'actor_id', 'actor_role', 'from_status', 'to_status', 'reason_code', 'comment', 'catalog_version', 'offer_version', 'check_version')}
                             | {'occurred_at': timestamp(event.occurred_at)} for event in events]

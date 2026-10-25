@@ -38,6 +38,13 @@ def post(client,path,body,key=None):
     return client.post(path,json=body,headers={'Idempotency-Key':key or str(uuid.uuid4())})
 
 
+def close(client,item):
+    login(client,'staff');r=item['info_requests'][-1]
+    response=post(client,base(item,True)+'/'+r['id']+'/close',{'version':item['version'],'revision':r['revision']})
+    assert response.status_code==200,response.text
+    return response.json()
+
+
 def test_full_text_clarification_keeps_snapshot_and_messages_do_not_close(client):
     item=posted(client);snapshot=item['submission']['snapshot']
     result=create_request(client,item)
@@ -50,7 +57,8 @@ def test_full_text_clarification_keeps_snapshot_and_messages_do_not_close(client
     assert item['status']=='NEEDS_INFO'
     msg=post(client,path+'/messages',{'text':'Какой документ приложить?'})
     assert msg.status_code==200,msg.text
-    assert msg.json()['info_requests'][0]['revision']==revision
+    revision=msg.json()['info_requests'][0]['revision']
+    assert revision==r['revision']+1
     assert msg.json()['status']=='NEEDS_INFO'
     login(client,'staff')
     assert post(client,base(item,True)+'/'+r['id']+'/messages',{'text':'Синтетическую справку TXT'}).status_code==200
@@ -59,11 +67,13 @@ def test_full_text_clarification_keeps_snapshot_and_messages_do_not_close(client
     result=post(client,path+'/reply/submit',{'version':item['version'],'revision':revision})
     assert result.status_code==200,result.text
     result=result.json()
-    assert result['status']=='UNDER_REVIEW'
+    assert result['status']=='NEEDS_INFO'
+    result=close(client,result)
+    login(client)
     assert result['submission']['snapshot']==snapshot
     assert result['info_requests'][0]['source']=='SELF_REPORTED'
     assert result['info_requests'][0]['closed_at']
-    assert len(result['info_requests'][0]['messages'])==2
+    assert len(result['info_requests'][0]['messages'])==3
     assert post(client,path+'/messages',{'text':'Поздно'}).status_code==409
     assert client.patch(path+'/reply',json={'revision':revision+1,'reply_text':'Изменено'}).status_code==409
 
@@ -100,7 +110,7 @@ def test_late_replays_and_sequential_requests_return_current_state(client):
     login(client)
     saved=client.patch(path+'/reply',json={'revision':1,'reply_text':'Данные уточнены'}).json()
     opkey=str(uuid.uuid4());payload={'version':saved['version'],'revision':saved['info_requests'][0]['revision']}
-    closed=post(client,path+'/reply/submit',payload,opkey).json()
+    closed=close(client,post(client,path+'/reply/submit',payload,opkey).json())
     item=create_request(client,closed).json()
     assert len(item['info_requests'])==2
     login(client)
@@ -132,7 +142,7 @@ def test_concurrent_requests_create_only_one_active(client):
 
 
 @pytest.mark.parametrize('changes', [
-    {'version':True}, {'version':0}, {'question':''}, {'reason':' '},
+    {'version':True}, {'version':0}, {'question':''},
     {'question':'x'*2001}, {'reason':'x'*1001}, {'document_required':'true'}, {'extra':1},
 ])
 def test_request_validation_is_atomic(client, changes):

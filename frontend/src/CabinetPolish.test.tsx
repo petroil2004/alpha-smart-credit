@@ -1,3 +1,6 @@
+import {fireEvent} from '@testing-library/react';
+import {ParameterFields} from './components/draft/DraftFields';
+import {prepareDraftPayload} from './draft';
 import {render,screen,waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {beforeEach,expect,it,vi} from 'vitest';
@@ -45,4 +48,14 @@ it('requires all product-specific parameters before review',()=>{
  expect(draftReadiness(overdraft).details).toBe(true);
  expect(draftReadiness({...overdraft,expected_inflow_source:''}).details).toBe(false);
  expect(draftReadiness({...overdraft,planned_payment_date:'2026-02-31'}).details).toBe(false);
+});
+
+it('caps the date year at four digits and derives overdraft days from the dates',()=>{
+ const fields=fromApplication(application({product_code:'overdraft',planned_payment_date:'2026-10-25',expected_inflow_date:'2026-11-08'}));
+ const change=vi.fn();render(<ParameterFields fields={fields} errors={{}} onChange={change}/>);
+ expect(screen.queryByLabelText('Пользование, дней')).not.toBeInTheDocument();
+ const input=screen.getByLabelText('Дата использования средств');expect(input).toHaveAttribute('maxlength','10');
+ fireEvent.change(input,{target:{value:'10.11.202612'}});
+ expect(change).toHaveBeenCalledWith('planned_payment_date','2026-11-10');
+ expect(prepareDraftPayload(fields).payload.usage_days).toBe(14);
 });

@@ -42,8 +42,8 @@ def correct(app_id:uuid.UUID,rid:uuid.UUID,payload:Correction,account:StaffAccou
     application=accessible_application(db,app_id,account)
     request=request_for(db,application,rid)
     key,signature,replay=operation(db,account,key,'staff-financial-correction',app_id,rid,payload.model_dump())
-    if replay:return serialize_application(application,db)
-    if application.status!='UNDER_REVIEW' or request.closed_at is None:
+    if replay:return serialize_application(application,db,staff=account.role=='STAFF')
+    if application.status not in {'UNDER_REVIEW','NEEDS_INFO'} or not (request.reply_submitted_at or request.closed_at):
         raise ApiProblem(409,'INVALID_STATE','Ручные значения можно внести после отправки ответа клиентом, пока заявка на рассмотрении')
     check_version(application.version,payload.version)
     reason=text_value(payload.reason,'reason',1000)
@@ -56,4 +56,4 @@ def correct(app_id:uuid.UUID,rid:uuid.UUID,payload:Correction,account:StaffAccou
     calculate_assessment(application,db,now)
     event(db,application,account,'STAFF_FINANCIAL_CORRECTED',now,None,reason)
     commit_operation(db,account,key,signature)
-    return serialize_application(application,db)
+    return serialize_application(application,db,staff=account.role=='STAFF')

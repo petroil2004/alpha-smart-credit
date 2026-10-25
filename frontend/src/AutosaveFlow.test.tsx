@@ -88,10 +88,10 @@ it("clears validation markers for parameters removed by a product change", async
   await h.user.click(screen.getByRole("button", { name: "Перейти к шагу «Продукт»" }));
   await h.user.click(screen.getByRole("radio", { name: /Овердрафт/ }));
   await h.user.click(screen.getByRole("button", { name: "Перейти к шагу «Параметры»" }));
-  fireEvent.change(screen.getByLabelText("Пользование, дней"), { target: { value: "x" } });
+  fireEvent.change(screen.getByLabelText("Дата поступления для погашения"), { target: { value: "31022026" } });
   expect(screen.getByRole("button", { name: "Перейти к шагу «Проверка»" })).toBeDisabled();
   await flushStep(h.user);
-  expect(await screen.findByLabelText("Пользование, дней")).toHaveAttribute("aria-invalid", "true");
+  expect(await screen.findByLabelText("Дата поступления для погашения")).toHaveAttribute("aria-invalid", "true");
   await h.user.click(screen.getByRole("button", { name: "Перейти к шагу «Продукт»" }));
   await h.user.click(screen.getByRole("radio", { name: /Оборотный/ }));
   await flushStep(h.user);
