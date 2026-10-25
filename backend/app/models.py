@@ -96,6 +96,14 @@ class ApplicationEvent(Base):
     check_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
+class NotificationRead(Base):
+    __tablename__ = 'notification_reads'
+
+    account_id: Mapped[str] = mapped_column(ForeignKey('accounts.id'), primary_key=True)
+    event_id: Mapped[int] = mapped_column(ForeignKey('application_events.id'), primary_key=True)
+    read_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+
 class InfoRequest(Base):
     __tablename__ = 'info_requests'
     __table_args__ = (Index('uq_open_info_request', 'application_id', unique=True, postgresql_where=text('closed_at IS NULL')),)

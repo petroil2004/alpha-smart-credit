@@ -1,3 +1,4 @@
+import {flushStep,openParameters} from "./test/save-helpers";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
@@ -7,11 +8,12 @@ import { application, contractServer } from "./test/api-fixtures";
 
 beforeEach(() => window.history.replaceState(null, "", "/#draft/00000000-0000-4000-8000-000000000001"));
 async function setup() {
-  const item = application({ purpose: "Цель" });
+  const item = application({ purpose: "Цель", product_code:"working_capital" });
   const server = contractServer({ loggedIn: true, applications: [item] });
   const user = userEvent.setup();
   render(<App api={createApi(server.fetcher)} />);
-  await user.click(await screen.findByRole("button", { name: "Перейти к шагу «Параметры»" }));
+  await screen.findByRole("button", { name: "Перейти к шагу «Параметры»" });
+  await openParameters(user);
   return { item, server, user };
 }
 
@@ -49,8 +51,9 @@ it("saves valid fields without moving away from an invalid intermediate field", 
   await waitFor(() => expect(h.server.store.get(h.item.id)?.purpose).toBe("Новая цель"));
   expect(screen.getByRole("heading", { name: "Выберите продукт" })).toBeInTheDocument();
   expect(h.server.store.get(h.item.id)?.amount_rub).toBeNull();
-  await h.user.click(screen.getByRole("button", { name: "Перейти к шагу «Проверка»" }));
-  await h.user.click(screen.getByRole("button", { name: "Сохранить и выйти" }));
+  expect(screen.getByRole("button", { name: "Перейти к шагу «Проверка»" })).toBeDisabled();
+  await h.user.click(screen.getByRole("button",{name:"Перейти к шагу «Параметры»"}));
+  await flushStep(h.user);
   expect(await screen.findByLabelText("Сумма финансирования")).toHaveValue(",");
   expect(screen.getByLabelText("Сумма финансирования")).toHaveAttribute("aria-invalid", "true");
 });
@@ -60,8 +63,8 @@ it("final action waits for saving before returning to the application list", asy
   let release!: () => void;
   h.server.holdSaves(new Promise<void>(resolve => { release = resolve; }));
   fireEvent.change(screen.getByLabelText("На что нужны средства"), { target: { value: "Сохранить перед выходом" } });
-  await h.user.click(screen.getByRole("button", { name: "Перейти к шагу «Проверка»" }));
-  await h.user.click(screen.getByRole("button", { name: "Сохранить и выйти" }));
+  expect(screen.getByRole("button", { name: "Перейти к шагу «Проверка»" })).toBeDisabled();
+  await h.user.click(screen.getByRole("button",{name:"Все заявки"}));
   expect(screen.queryByRole("heading", { name: "Мои заявки" })).not.toBeInTheDocument();
   await act(async () => release());
   expect(await screen.findByRole("heading", { name: "Мои заявки" })).toBeInTheDocument();
@@ -86,12 +89,12 @@ it("clears validation markers for parameters removed by a product change", async
   await h.user.click(screen.getByRole("radio", { name: /Овердрафт/ }));
   await h.user.click(screen.getByRole("button", { name: "Перейти к шагу «Параметры»" }));
   fireEvent.change(screen.getByLabelText("Пользование, дней"), { target: { value: "x" } });
-  await h.user.click(screen.getByRole("button", { name: "Перейти к шагу «Проверка»" }));
-  await h.user.click(screen.getByRole("button", { name: "Сохранить и выйти" }));
+  expect(screen.getByRole("button", { name: "Перейти к шагу «Проверка»" })).toBeDisabled();
+  await flushStep(h.user);
   expect(await screen.findByLabelText("Пользование, дней")).toHaveAttribute("aria-invalid", "true");
   await h.user.click(screen.getByRole("button", { name: "Перейти к шагу «Продукт»" }));
   await h.user.click(screen.getByRole("radio", { name: /Оборотный/ }));
-  await h.user.click(screen.getByRole("button", { name: "Перейти к шагу «Проверка»" }));
+  await flushStep(h.user);
   await waitFor(() => expect(h.server.store.get(h.item.id)?.product_code).toBe("working_capital"));
   expect(screen.getByRole("button", { name: "Перейти к шагу «Параметры»" })).not.toHaveClass("has-error");
 });

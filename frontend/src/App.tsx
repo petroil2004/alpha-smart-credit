@@ -29,6 +29,8 @@ import { Icon } from "./components/Icon";
 import InfoRequests from "./components/InfoRequests";
 import type {InfoController} from "./components/InfoRequests";
 import ReviewPanel from './components/ReviewPanel';
+import ApplicationJourney from "./components/ApplicationJourney";
+import ClientNotifications from "./components/ClientNotifications";
 import CompanyProfilePage from './components/CompanyProfilePage';
 
 const defaultApi = createApi();
@@ -293,6 +295,18 @@ export default function App({ api = defaultApi }: { api?: Api }) {
       adopt(application,current);
     });
   };
+  const openNotification=async(item:import('./types').ClientNotification)=>{
+    let opened=false;
+    await run('notification',async()=>{
+      if(selected&&(!await autosave.flush()||(infoController.current&&!await infoController.current.flush()))&&!window.confirm('Не все изменения сохранены. Выйти без их сохранения?'))return;
+      await verifySession();const current=sessionRef.current!;
+      const application=await getFor(item.application_id,current);
+      await verifySession(current);
+      adopt(application,current);opened=true;
+      try{await api.notifications?.read(item.id);}catch{setNotice('Заявка открыта. Не удалось отметить уведомление прочитанным.');}
+    });
+    return opened;
+  };
   const create = (product?:ProductCode) => {
     if (busy || !allowDiscard()) return;
     void run("create", async () => {
@@ -524,7 +538,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
             <p>
               Выберите финансирование для вашего бизнеса.
               <br />
-              Сохраните заявку и возвращайтесь, когда удобно.
+              Оборотный кредит, оборудование или овердрафт — от выбора до решения банка.
             </p>
           </div>
           <div className="login-footer">
@@ -578,6 +592,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
       <header className="cabinet-header">
         <button type="button" className="brand brand-home" onClick={showList} disabled={!!busy} aria-label="На главную"><span className="brand-mark" aria-hidden="true">А</span><span>{session.company ? "Кредитный кабинет" : "Кабинет сотрудника"}</span></button>
         <nav aria-label="Основная навигация"><button className="header-link" onClick={showList} disabled={!!busy} aria-current={!selected&&!profilePage ? "page" : undefined}>{session.company ? "Мои заявки" : "Поступившие заявки"}</button></nav>
+        {session.company&&<ClientNotifications key={session.user.id} api={api} session={session as import('./types').ClientSession} busy={!!busy} onOpen={openNotification} onSessionChanged={clearProfile}/>}
         <div className="account">{session.company?<button type="button" className="header-link company-profile-link" onClick={showCompanyProfile} disabled={!!busy} aria-label={`Профиль компании: ${session.company.name}`} aria-current={profilePage?'page':undefined}>{session.company.name}</button>:<span>{session.user.name}</span>}<button className="icon-button" aria-label="Сменить профиль" title="Сменить профиль" disabled={!!busy} onClick={logout}><Icon name="logout" size={18} /></button></div>
       </header>
       {!selected && !profilePage && session.company && <section className="cabinet-hero" aria-labelledby="welcome-title">
@@ -597,7 +612,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
           errorAttempt={fieldErrorAttempt} fields={fields} errors={{ ...autosave.errors, ...fieldErrors }} busy={!!busy || !!pendingSubmit || receiptBlocked}
           saveStatus={autosave.status} onChange={change} onFinish={finish} onNavigate={() => void autosave.flush()} onReauthenticate={reauthenticate}
           onSubmitApplication={submitApplication} onSessionChanged={clearProfile}/>
-          : <><SubmittedApplication application={selected} staff={!session.company}/>{!session.company&&<ReviewPanel api={api} application={selected} onUpdated={value=>{upsert(value);setSelected(value);}}/>}<InfoRequests key={session.user.id+selected.id} api={api} session={session} application={selected} onUpdated={value=>{upsert(value);setSelected(value);}} onSessionChanged={clearProfile} register={registerInfo}/></>
+          : <div className={`submitted-layout ${selected.status==='DECLINED'?'without-journey':''}`}><div className="application-stack"><SubmittedApplication application={selected} staff={!session.company}/>{!session.company&&<ReviewPanel api={api} application={selected} onUpdated={value=>{upsert(value);setSelected(value);}}/>}<InfoRequests key={session.user.id+selected.id} api={api} session={session} application={selected} onUpdated={value=>{upsert(value);setSelected(value);}} onSessionChanged={clearProfile} register={registerInfo}/></div>{selected.status!=='DECLINED'&&<aside className="draft-aside"><ApplicationJourney status={selected.status}/></aside>}</div>
           : session.company ? <ApplicationsList items={items} busy={!!busy} onOpen={open} onDelete={removeDraft} onCreate={()=>create()} onChooseProduct={create} />
           : <StaffApplications items={items} busy={!!busy} onOpen={open} onRefresh={refreshList}/>}
         <footer className="page-footer"><span>Альфа Бизнес · Кредитный кабинет</span><span>Демонстрационный проект · Все данные синтетические</span></footer>

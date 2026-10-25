@@ -32,6 +32,7 @@ export const draftSteps: {
       "usage_days",
       "expected_inflow_date",
       "expected_inflow_amount_rub",
+      "equipment_cost_rub", "planned_payment_rub", "planned_payment_date", "expected_inflow_source",
     ],
   },
   {

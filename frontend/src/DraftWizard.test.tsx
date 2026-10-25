@@ -1,4 +1,4 @@
-import { flushStep } from "./test/save-helpers";
+import { flushStep, openParameters } from "./test/save-helpers";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -9,7 +9,7 @@ import { application, contractServer } from "./test/api-fixtures";
 beforeEach(() => window.history.replaceState(null, "", "/"));
 
 async function openDraft(
-  server = contractServer({ loggedIn: true, applications: [application()] }),
+  server = contractServer({ loggedIn: true, applications: [application({product_code:"working_capital"})] }),
   fetcher: typeof fetch = server.fetcher,
 ) {
   const user = userEvent.setup();
@@ -17,7 +17,8 @@ async function openDraft(
   await user.click(
     await screen.findByRole("button", { name: "Открыть заявку 000001" }),
   );
-  await user.click(await screen.findByRole("button", { name: "Перейти к шагу «Параметры»" }));
+  await screen.findByRole("button", { name: "Перейти к шагу «Параметры»" });
+  await openParameters(user);
   return { user, server };
 }
 
@@ -64,22 +65,14 @@ describe("draft wizard", () => {
     expect(server.store.get(application().id)).toMatchObject({ purpose: "Товар к сезону", amount_rub: "500000.25", term_months: 12 });
   });
 
-  it("reviews and saves an incomplete draft without claiming it was submitted", async () => {
-    const { user, server } = await openDraft();
-    await goTo(user, "Проверка");
-    const summary = within(
-      screen.getByRole("region", { name: "Сводка заявки" }),
-    );
-    expect(summary.getAllByText("Не указано").length).toBeGreaterThan(0);
-    expect(
-      screen.queryByRole("button", { name: /Отправить заявку/ }),
-    ).not.toBeInTheDocument();
-    await flushStep(user);
-    expect(await screen.findByText("Изменения сохранены")).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "Проверьте заявку" }),
-    ).toBeInTheDocument();
-    expect(server.store.get(application().id)?.product_code).toBeNull();
+  it("blocks review for incomplete parameters and still saves a draft on exit", async () => {
+    const {user,server}=await openDraft();
+    expect(screen.getByRole('button',{name:'Перейти к шагу «Проверка»'})).toBeDisabled();
+    expect(screen.getByRole('button',{name:'Продолжить'})).toBeDisabled();
+    await user.type(screen.getByLabelText('На что нужны средства'),'Товар');
+    await user.click(screen.getByRole('button',{name:'Все заявки'}));
+    expect(await screen.findByRole('heading',{name:'Мои заявки'})).toBeInTheDocument();
+    expect(server.store.get(application().id)).toMatchObject({purpose:'Товар',status:'DRAFT'});
   });
 
   it("shows exact money and allows editing from review", async () => {
@@ -90,6 +83,7 @@ describe("draft wizard", () => {
           purpose: "Станок",
           product_code: "equipment",
           amount_rub: "9007199254740993.01",
+          equipment_cost_rub:"9007199254740994.01",
           term_months: 24,
         }),
       ],
@@ -110,8 +104,8 @@ describe("draft wizard", () => {
   it("opens the owner step for a hidden client-side field error", async () => {
     const { user, server } = await openDraft();
     await user.type(screen.getByLabelText("Сумма финансирования"), "-12");
-    await goTo(user, "Проверка");
-    await user.click(screen.getByRole("button", { name: "Сохранить и выйти" }));
+    expect(screen.getByRole("button",{name:"Перейти к шагу «Проверка»"})).toBeDisabled();
+    await flushStep(user);
     expect(await screen.findByLabelText("Сумма финансирования")).toHaveValue(
       "-12",
     );
@@ -133,6 +127,7 @@ describe("draft wizard", () => {
         application({
           purpose: "Сохранённая цель",
           product_code: "overdraft",
+          amount_rub:"500000.00",planned_payment_rub:"400000.00",planned_payment_date:"2026-10-25",expected_inflow_date:"2026-11-01",expected_inflow_source:"BUYER",
           usage_days: 14,
           expected_inflow_amount_rub: "700000.00",
         }),
@@ -175,21 +170,21 @@ describe("draft wizard", () => {
     ).toHaveAttribute("aria-invalid", "true");
   });
 
-  it("does not invent duration fields before product selection", async () => {
-    const { user } = await openDraft();
-    await goTo(user, "Параметры");
-    expect(screen.queryByLabelText("Срок, месяцев")).not.toBeInTheDocument();
-    expect(
-      screen.queryByLabelText("Пользование, дней"),
-    ).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Выбрать продукт" }));
-    expect(
-      screen.getByRole("radio", { name: /Овердрафт/ }),
-    ).toBeInTheDocument();
+  it("locks parameters and review until a product is selected", async () => {
+    const server=contractServer({loggedIn:true,applications:[application()]});
+    const user=userEvent.setup();render(<App api={createApi(server.fetcher)}/>);
+    await user.click(await screen.findByRole('button',{name:/Открыть заявку/}));
+    expect(screen.getByRole('button',{name:'Перейти к шагу «Параметры»'})).toBeDisabled();
+    expect(screen.getByRole('button',{name:'Перейти к шагу «Проверка»'})).toBeDisabled();
+    expect(screen.queryByLabelText('Срок, месяцев')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('radio',{name:/Овердрафт/}));
+    expect(screen.getByRole('button',{name:'Продолжить'})).toBeEnabled();
   });
 
   it("advances on Enter and flushes pending changes", async () => {
     const { user, server } = await openDraft();
+    fireEvent.change(screen.getByLabelText("На что нужны средства"),{target:{value:"Товар"}});
+    fireEvent.change(screen.getByLabelText("Срок, месяцев"),{target:{value:"12"}});
     const amount = screen.getByLabelText("Сумма финансирования");
     await user.type(amount, "500000");
     await user.keyboard("{Enter}");
@@ -207,7 +202,8 @@ describe("draft wizard", () => {
     await user.click(
       await screen.findByRole("button", { name: "Новая заявка" }),
     );
-    await user.click(await screen.findByRole("button", { name: "Перейти к шагу «Параметры»" }));
+    await screen.findByRole("button", { name: "Перейти к шагу «Параметры»" });
+  await openParameters(user);
     await user.type(
       screen.getByLabelText("На что нужны средства"),
       "До поступления оплаты",
@@ -228,7 +224,8 @@ describe("draft wizard", () => {
     expect(screen.getByLabelText("Пользование, дней")).toHaveValue("14");
     first.unmount();
     render(<App api={api} />);
-    await user.click(await screen.findByRole("button", { name: "Перейти к шагу «Параметры»" }));
+    await screen.findByRole("button", { name: "Перейти к шагу «Параметры»" });
+  await openParameters(user);
     expect(await screen.findByLabelText("На что нужны средства")).toHaveValue(
       "До поступления оплаты",
     );
@@ -264,6 +261,8 @@ describe("draft wizard", () => {
       screen.getByLabelText("На что нужны средства"),
       "Не терять сводку",
     );
+    fireEvent.change(screen.getByLabelText("Сумма финансирования"),{target:{value:"500000"}});
+    fireEvent.change(screen.getByLabelText("Срок, месяцев"),{target:{value:"12"}});
     server.failNextSave(503);
     await goTo(user, "Проверка");
     await flushStep(user);
@@ -296,6 +295,8 @@ describe("draft wizard", () => {
     };
     const { user } = await openDraft(server, fetcher);
     await user.type(screen.getByLabelText("На что нужны средства"), "Для проверки выхода");
+    fireEvent.change(screen.getByLabelText("Сумма финансирования"),{target:{value:"500000"}});
+    fireEvent.change(screen.getByLabelText("Срок, месяцев"),{target:{value:"12"}});
     await goTo(user, "Проверка");
     await user.click(screen.getByRole("button", { name: "Сохранить и выйти" }));
     expect(

@@ -402,3 +402,6 @@ app.include_router(review_router)
 
 from .assistant import router as assistant_router
 app.include_router(assistant_router)
+
+from .notifications import router as notifications_router
+app.include_router(notifications_router)

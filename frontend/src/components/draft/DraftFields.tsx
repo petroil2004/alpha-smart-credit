@@ -78,7 +78,6 @@ export function PurposeField(props: EditableProps) {
         onChange={event => props.onChange("purpose", event.target.value)} maxLength={500} rows={3}
         placeholder={equipment ? "Например, купить холодильную витрину для магазина" : "Например, закупить зимнюю обувь для магазина перед сезоном"}
         {...errorProps(props.errors, "purpose")} />
-      <span className="field-hint">Коротко опишите, что планируете оплатить и для какой задачи бизнеса. Можно дополнить позже.</span>
     </Field>
   </div>;
 }

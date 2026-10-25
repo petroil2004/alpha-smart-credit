@@ -1,4 +1,4 @@
-import { flushStep } from "./test/save-helpers";
+import { flushStep, openParameters } from "./test/save-helpers";
 import {
   act,
   fireEvent,
@@ -18,14 +18,15 @@ beforeEach(() => {
 });
 
 async function openExisting(
-  server = contractServer({ loggedIn: true, applications: [application()] }),
+  server = contractServer({ loggedIn: true, applications: [application({product_code:"working_capital"})] }),
 ) {
   const user = userEvent.setup();
   const view = render(<App api={createApi(server.fetcher)} />);
   await user.click(
     await screen.findByRole("button", { name: /Открыть заявку/ }),
   );
-  await user.click(await screen.findByRole("button", { name: "Перейти к шагу «Параметры»" }));
+  await screen.findByRole("button", { name: "Перейти к шагу «Параметры»" });
+  await openParameters(user);
   return { user, server, ...view };
 }
 
@@ -134,7 +135,8 @@ describe("client draft journey", () => {
     await user.click(
       await screen.findByRole("button", { name: "Новая заявка" }),
     );
-    await user.click(await screen.findByRole("button", { name: "Перейти к шагу «Параметры»" }));
+    await screen.findByRole("button", { name: "Перейти к шагу «Параметры»" });
+  await openParameters(user);
     await user.type(
       screen.getByRole("textbox", { name: "На что нужны средства" }),
       "Закупка материалов",
@@ -151,7 +153,8 @@ describe("client draft journey", () => {
     expect(await screen.findByText("Изменения сохранены")).toBeInTheDocument();
     first.unmount();
     render(<App api={api} />);
-    await user.click(await screen.findByRole("button", { name: "Перейти к шагу «Параметры»" }));
+    await screen.findByRole("button", { name: "Перейти к шагу «Параметры»" });
+  await openParameters(user);
     expect(
       await screen.findByRole("textbox", { name: "На что нужны средства" }),
     ).toHaveValue("Закупка материалов");
@@ -315,11 +318,12 @@ describe("client draft journey", () => {
   });
 
   it("opens the selected draft directly from the URL", async () => {
-    const item = application({ purpose: "Открытие по ссылке" });
+    const item = application({ purpose: "Открытие по ссылке", product_code:"working_capital" });
     window.history.replaceState(null, "", `/#draft/${item.id}`);
     const server = contractServer({ loggedIn: true, applications: [item] });
     render(<App api={createApi(server.fetcher)} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Перейти к шагу «Параметры»" }));
+    await screen.findByRole("button", { name: "Перейти к шагу «Параметры»" });
+    await openParameters(userEvent.setup());
     expect(
       await screen.findByRole("textbox", { name: "На что нужны средства" }),
     ).toHaveValue("Открытие по ссылке");

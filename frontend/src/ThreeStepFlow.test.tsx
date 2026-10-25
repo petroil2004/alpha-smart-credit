@@ -38,7 +38,7 @@ it("puts a free purpose description after calculations without preset choices", 
 });
 
 it.each(["Закупить товар или материалы", "Новая партия обуви к зиме"])("preserves old purpose %s as ordinary text", async (purpose) => {
-  const { user, server, item } = await open({ purpose });
+  const { user, server, item } = await open({ purpose,product_code:"working_capital",amount_rub:"500000.00",term_months:12 });
   await user.click(screen.getByRole("button", { name: "Продолжить" }));
   expect(screen.getByLabelText("На что нужны средства")).toHaveValue(purpose);
   fireEvent.change(screen.getByLabelText("На что нужны средства"), { target: { value: purpose + ", для магазина" } });
@@ -50,15 +50,15 @@ it.each(["Закупить товар или материалы", "Новая п
   expect(screen.getByLabelText("На что нужны средства")).toHaveValue(purpose + ", для магазина");
 });
 
-it("sends a hidden invalid amount back to parameters and focuses it", async () => {
-  const { user } = await open();
+it("keeps an invalid amount on parameters and blocks review", async () => {
+  const { user } = await open({product_code:"working_capital"});
   await user.click(screen.getByRole("button", { name: "Продолжить" }));
   fireEvent.change(screen.getByLabelText("Сумма финансирования"), { target: { value: "-1" } });
-  await user.click(screen.getByRole("button", { name: "Продолжить" }));
-  await user.click(screen.getByRole("button", { name: "Сохранить и выйти" }));
+  expect(screen.getByRole("button", { name: "Продолжить" })).toBeDisabled();
+  await user.click(screen.getByRole("button", { current:"step" }));
   const input = await screen.findByLabelText("Сумма финансирования");
   expect(input).toHaveValue("-1");
-  expect(input).toHaveFocus();
+  expect(input).toHaveAttribute("aria-invalid","true");
   expect(screen.getByRole("button", { name: "Перейти к шагу «Параметры»" })).toHaveAttribute("aria-current", "step");
 });
 
@@ -70,6 +70,7 @@ it("edits the shared amount and inflows for overdraft without an annuity payment
   fireEvent.change(screen.getByLabelText("Пользование, дней"), { target: { value: "14" } });
   fireEvent.change(screen.getByLabelText("Сумма ожидаемого поступления"), { target: { value: "150000" } });
   await user.click(screen.getByRole("button", { name: "Продолжить" }));
+  await user.click(screen.getByRole("button", {current:"step"}));
   await screen.findByText("Изменения сохранены");
   expect(server.store.get(item.id)).toMatchObject({ amount_rub: "100000.25", usage_days: 14, expected_inflow_amount_rub: "150000.00" });
   expect(screen.queryByText("Ежемесячный платёж")).not.toBeInTheDocument();

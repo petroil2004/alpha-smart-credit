@@ -132,7 +132,13 @@ export interface AssistantReply {
   source:'SERVER_CATALOG';model:string;disclaimer:string;
 }
 
+export interface ClientNotification {
+  id:number; application_id:string; status:string; title:string; message:string|null; occurred_at:string; read:boolean;
+}
+export interface NotificationList {items:ClientNotification[];unread_count:number;}
+
 export interface Api {
+  notifications?: {list():Promise<NotificationList>;read(id:number):Promise<void>};
   assistant?:{
     status():Promise<AssistantStatus>;
     chat(body:{application_id:string;message:string;history:AssistantMessage[]}):Promise<AssistantReply>;

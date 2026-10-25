@@ -52,7 +52,7 @@ it('client direct link never uses staff access',async()=>{
  expect(h.server.fetcher.mock.calls.some(([url])=>String(url).includes('/staff/'))).toBe(false);
 });
 it('same_company_different_user_invalidates_session',async()=>{
- const item=application();const h=contractServer({loggedIn:true,applications:[item]});
+ const item=application({product_code:"working_capital"});const h=contractServer({loggedIn:true,applications:[item]});
  const user=userEvent.setup();render(<App api={createApi(h.fetcher)}/>);
  await user.click(await screen.findByRole('button',{name:/Открыть заявку/}));
  await user.click(screen.getByRole('button',{name:'Перейти к шагу «Параметры»'}));
