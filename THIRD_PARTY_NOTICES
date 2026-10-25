@@ -1,0 +1,38 @@
+# Third-party notices / сторонние компоненты
+
+Дата перечня: 25.10.2026. Это перечень происхождения компонентов прототипа; исходные лицензии и copyright notices остаются у их правообладателей. Проект не предоставляет прав на товарные знаки Альфа-Банка. Оформление используется для демонстрации на хакатоне, а кредитные параметры не являются банковской офертой.
+
+## Приложение и инструменты
+
+| Компонент | Применение / версия | Лицензия / источник |
+|---|---|---|
+| Python | Backend, 3.12 (python:3.12-slim) | PSF-2.0, https://www.python.org/psf/license/ |
+| FastAPI | HTTP API, 0.115.6 | MIT, https://github.com/fastapi/fastapi |
+| Starlette / Pydantic | HTTP/валидация, транзитивные зависимости | BSD-3-Clause / MIT, https://github.com/encode/starlette / https://github.com/pydantic/pydantic |
+| SQLAlchemy | Работа с PostgreSQL, 2.0.36 | MIT, https://github.com/sqlalchemy/sqlalchemy |
+| Psycopg | Драйвер PostgreSQL, 3.2.3 | LGPL-3.0 с дополнительными разрешениями, https://www.psycopg.org/license/ |
+| Uvicorn | ASGI-сервер, 0.32.1 | BSD-3-Clause, https://github.com/encode/uvicorn |
+| PostgreSQL | Хранение, 16-alpine | PostgreSQL License, https://www.postgresql.org/about/licence/ |
+| Node.js | Сборка frontend, 22-alpine | MIT и лицензии встроенных компонентов, https://github.com/nodejs/node/blob/main/LICENSE |
+| React / React DOM | Интерфейс, версии в package-lock.json | MIT, https://github.com/facebook/react |
+| TypeScript | Проверка типов, 5.9.3 | Apache-2.0, https://github.com/microsoft/TypeScript |
+| Vite / React plugin | Сборка, версии в package-lock.json | MIT, https://github.com/vitejs/vite |
+| Nginx | HTTP и reverse proxy, nginx:alpine | BSD-2-Clause, https://nginx.org/LICENSE |
+| pytest / HTTPX | Проверки backend, 8.3.4 / 0.28.1 | MIT / BSD-3-Clause, https://github.com/pytest-dev/pytest / https://github.com/encode/httpx |
+| Vitest / Testing Library / jsdom | Проверки frontend, package-lock.json | MIT, https://github.com/vitest-dev/vitest / https://github.com/testing-library / https://github.com/jsdom/jsdom |
+| Docker / Compose | Сборка и запуск | Лицензии соответствующих установленных компонентов; Docker Desktop имеет собственные условия, https://www.docker.com/legal/ |
+
+Точный разрешённый набор frontend-зависимостей — `frontend/package-lock.json`; список пакетов и заявленных ими лицензий — `docs/jury/frontend-dependencies.json`. Прямые Python-зависимости закреплены в `backend/requirements.txt` и `requirements-dev.txt`; транзитивный состав текущего образа — `docs/jury/backend-dependencies.json`. Транзитивные Python-зависимости и базовые Alpine/Debian-образы не закреплены полным lock/digest; это ограничение воспроизводимости, версии ключевых библиотек закреплены. Для распространения самостоятельных изменённых сторонних компонентов нужно учитывать их собственные полные лицензии. Здесь нет модифицированной копии их исходников.
+
+## Необязательная модель
+
+- Qwen3-4B-Instruct-2507, Qwen Team / Alibaba Cloud. Открытые веса, Apache-2.0: https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507 и LICENSE в репозитории модели.
+- Распространение Q4_K_M в Ollama: https://ollama.com/library/qwen3:4b-instruct-2507-q4_K_M ; скачивается командой `ollama pull`, не включается в Git. Используемый тег: `qwen3:4b-instruct-2507-q4_K_M`.
+- Ollama runtime: MIT, https://github.com/ollama/ollama . Дополнительный CPU-образ закреплён версией и digest в compose.yaml; включает собственные транзитивные компоненты, в том числе llama.cpp (MIT, https://github.com/ggml-org/llama.cpp).
+- OpenAI-совместимый HTTP-протокол не требует OpenAI SDK или обращения к платному OpenAI API. При замене провайдера проверяющий выбирает модель с открытыми весами и её лицензию. Провайдеры Cloud.ru/OpenRouter не являются обязательными зависимостями поставки.
+
+## Данные, изображения и смоделированные интеграции
+
+Все демонстрационные компании, аккаунты, показатели и истории подготовлены командой; сторонние датасеты и реальные персональные/банковские документы не используются. `company-profiles.json` — банковский синтетический набор; `credit-history.json` — фиксированные ответы БКИ. ФНС, БКИ, статус клиента банка, согласие и выдача моделируются локально; обращения в реальные корпоративные системы отсутствуют.
+
+Четыре декоративные PNG созданы ImageGen при разработке; происхождение описано в `frontend/public/images/credit/README.md`. ImageGen не является сервисом или зависимостью проверяемого продукта. Дизайн не является копией работающего банковского кабинета. Логотип/название банка используются в контексте хакатона по разрешению организаторов. Веса, ключи, платные инструменты разработки и внешние архивы в поставку не входят.
