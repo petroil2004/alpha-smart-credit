@@ -50,6 +50,13 @@ def test_unavailable_bki_does_not_decline_and_only_explicit_retry_unblocks(clien
     refreshed = client.post(path+'/assessment').json()
     assert refreshed['checks'][1]['reason_code'] == 'CLEAR'
     assert refreshed['recommendation'] == 'OFFER_REQUESTED'
+    # Reopening the card and recalculating again must not restore the first failure.
+    assert client.get(path).json()['assessment']==refreshed
+    repeated=client.post(path+'/assessment').json()
+    assert repeated['recommendation']=='OFFER_REQUESTED' and repeated['checks'][1]['attempt']==2
+    approved=client.post(path+'/decision',json={'version':sent['version'],'decision':'APPROVE'},headers={'Idempotency-Key':str(uuid.uuid4())})
+    assert approved.status_code==200,approved.text
+    assert approved.json()['assessment']['recommendation']=='OFFER_REQUESTED'
 
 
 def test_overdue_requires_staff_explanation_without_changing_score(client):

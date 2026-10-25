@@ -11,7 +11,8 @@ export function mergeInfoApplication(old:Application,next:Application):Applicati
   const messages=new Map([...previous.messages,...incoming.messages].map(m=>[m.id,m]));
   requests.set(incoming.id,{...(incoming.revision>=previous.revision?incoming:previous),messages:[...messages.values()].sort((a,b)=>a.id-b.id)});
  }
- return {...newer,info_requests:[...requests.values()].sort((a,b)=>a.created_at.localeCompare(b.created_at)||a.id.localeCompare(b.id))};
+ const assessment=old.version===next.version&&old.assessment&&next.assessment&&Date.parse(old.assessment.calculated_at)>Date.parse(next.assessment.calculated_at)?old.assessment:newer.assessment;
+ return {...newer,...(assessment?{assessment}:{}),info_requests:[...requests.values()].sort((a,b)=>a.created_at.localeCompare(b.created_at)||a.id.localeCompare(b.id))};
 }
 type Job=(application:Application)=>Promise<Application>;
 export class InfoQueue {

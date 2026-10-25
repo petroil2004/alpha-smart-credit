@@ -201,6 +201,9 @@ input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: #b4251
 .delete-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
 .delete-dialog-error { padding: 12px; margin-top: 16px; background: #fff0ef; color: #a81519; border-radius: 9px; overflow-wrap: anywhere; }
 .delete-dialog-progress { margin-top: 12px; color: var(--muted); }
+.decision-dialog .decision-approve-symbol { background:#e6f5eb; color:#167943; }
+.decision-confirm-comment { margin-block:14px; white-space:pre-wrap; overflow-wrap:anywhere; }
+.decision-availability { margin-bottom:24px; }
 .boot-screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px; color: #fff; }
 .login-page { min-height: 100vh; display: grid; grid-template-columns: 1.1fr 1fr; }
 .login-story { position: relative; padding: 50px 10%; overflow: hidden; color: #fff; display: flex; flex-direction: column; justify-content: space-between; gap: 60px; }
