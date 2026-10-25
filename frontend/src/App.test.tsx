@@ -245,12 +245,12 @@ describe("client draft journey", () => {
     await user.click(screen.getByRole("radio", { name: /Овердрафт/ }));
     await goToStep(user, "Параметры");
     expect(screen.queryByLabelText("Срок, месяцев")).not.toBeInTheDocument();
-    await user.type(screen.getByLabelText("Пользование, дней"), "14");
+    fireEvent.change(screen.getByLabelText("Дата использования средств"),{target:{value:"2026-10-25"}});
     await user.type(
       screen.getByLabelText("Сумма ожидаемого поступления"),
       "500000",
     );
-    fireEvent.change(screen.getByLabelText("Дата ожидаемого поступления"), {
+    fireEvent.change(screen.getByLabelText("Дата поступления для погашения"), {
       target: { value: "2026-11-01" },
     });
     await goToStep(user, "Продукт");
@@ -262,7 +262,7 @@ describe("client draft journey", () => {
     await goToStep(user, "Продукт");
     await user.click(screen.getByRole("radio", { name: /Овердрафт/ }));
     await goToStep(user, "Параметры");
-    expect(screen.getByLabelText("Пользование, дней")).toHaveValue("");
+    expect(screen.getByLabelText("Дата использования средств")).toHaveValue("");
     expect(screen.getByLabelText("Сумма ожидаемого поступления")).toHaveValue(
       "",
     );

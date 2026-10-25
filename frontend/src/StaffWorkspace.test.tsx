@@ -24,10 +24,9 @@ it('lets staff explicitly enter a zero debt payment with an audit reason after a
  const server=contractServer();server.setSession(staff);
  const api=createApi(server.fetcher),accept=vi.fn(),register=vi.fn();api.info!.correctFinancial=vi.fn(async()=>({...item,version:2}));
  const user=userEvent.setup();render(<ManualFinancial api={api} application={item} request={request} session={staff} guard={async()=>{}} accept={accept} register={register}/>);
- await user.click(screen.getByRole('button',{name:'Внести данные вручную'}));
+ await user.click(screen.getByRole('button',{name:'Скорректировать финансовые данные'}));
  expect(screen.getByRole('button',{name:'Сохранить и пересчитать'})).toBeDisabled();
- await user.selectOptions(screen.getByLabelText('Показатель 1'),'debt_payment_rub');
- await user.type(screen.getByLabelText('Сумма, ₽ 1'),'0');
+ await user.type(screen.getByLabelText('Текущие платежи по долгам'),'0');
  await user.type(screen.getByLabelText('Основание ручного уточнения'),'Проверено по справке клиента');
  await user.click(screen.getByRole('button',{name:'Сохранить и пересчитать'}));
  await waitFor(()=>expect(accept).toHaveBeenCalledWith({...item,version:2}));

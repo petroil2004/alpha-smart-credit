@@ -80,10 +80,10 @@ export default function DraftReview({
           ) : overdraft ? (
             <>
               <Row label="Лимит">{formatMoneyRub(fields.amount_rub)}</Row>
-              <Row label="Планируемая оплата">{formatMoneyRub(fields.planned_payment_rub)}</Row>
-              <Row label="Дата оплаты">{fields.planned_payment_date || "Не указано"}</Row>
+              <Row label="Сумма использования лимита">{formatMoneyRub(fields.planned_payment_rub)}</Row>
+              <Row label="Дата использования средств">{fields.planned_payment_date || "Не указано"}</Row>
               <Row label="Пользование, дней">
-                {fields.usage_days.trim() || "Не указано"}
+                {Math.round((Date.parse(fields.expected_inflow_date)-Date.parse(fields.planned_payment_date))/86400000) || "Не указано"}
               </Row>
               <Row label="Ожидаемая дата поступления">
                 {fields.expected_inflow_date || "Не указано"}

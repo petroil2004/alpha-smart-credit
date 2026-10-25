@@ -3,7 +3,7 @@ import uuid
 from typing import Annotated
 from fastapi import APIRouter, Depends, Header
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, StrictBool
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from .access import ClientAccount, StaffAccount
 from .db import get_db
@@ -23,9 +23,8 @@ class Payload(BaseModel):
 class CreateRequest(Payload):
     version:Positive
     question:StrictStr
-    reason:StrictStr
-    document_required:StrictBool
-    financial_required:StrictBool=False
+    reason:StrictStr=""
+    document_required:StrictBool=False
 
 
 class FinancialValue(Payload):
@@ -43,7 +42,6 @@ class SaveReply(Payload):
 class SubmitReply(Payload):
     version:Positive
     revision:Positive
-    financial_values:list[FinancialValue]=[]
 
 
 class Message(Payload):
@@ -54,47 +52,68 @@ class Message(Payload):
 def create_request(app_id:uuid.UUID,payload:CreateRequest,account:StaffAccount,db:Session=Depends(get_db),key:str|None=Header(None,alias='Idempotency-Key')):
     application=accessible_application(db,app_id,account)
     key,sig,replay=operation(db,account,key,'create',app_id,None,payload.model_dump())
-    if replay:return serialize_application(application,db)
+    if replay:return serialize_application(application,db,staff=account.role=='STAFF')
     check_version(application.version,payload.version)
     if application.status!='UNDER_REVIEW':raise ApiProblem(409,'INVALID_STATE','Запрос доступен только при рассмотрении заявки')
     if db.scalar(select(InfoRequest.id).where(InfoRequest.application_id==app_id,InfoRequest.closed_at.is_(None))):
         raise ApiProblem(409,'REQUEST_OPEN','Один запрос уже открыт')
-    question=text_value(payload.question,'question',2000);reason=text_value(payload.reason,'reason',1000)
+    question=text_value(payload.question,'question',2000);reason=text_value(payload.reason,'reason',1000,False)
     now=utc_now()
-    db.add(InfoRequest(application_id=app_id,question=question,reason=reason,document_required=payload.document_required,financial_required=payload.financial_required,created_by=account.id,created_at=now))
+    db.add(InfoRequest(application_id=app_id,question=question,reason=reason,document_required=payload.document_required,financial_required=False,created_by=account.id,created_at=now))
     event(db,application,account,'INFO_REQUESTED',now,'NEEDS_INFO',question)
     commit_operation(db,account,key,sig)
-    return serialize_application(application,db)
+    return serialize_application(application,db,staff=account.role=='STAFF')
 
 
 @router.patch('/applications/{app_id}/info-requests/{rid}/reply')
 def save_reply(app_id:uuid.UUID,rid:uuid.UUID,payload:SaveReply,account:ClientAccount,db:Session=Depends(get_db)):
     application=accessible_application(db,app_id,account);item=request_for(db,application,rid);require_open(application,item)
     value=text_value(payload.reply_text,'reply_text',2000,False)
-    if item.reply_text==value:return serialize_application(application,db)
+    if item.reply_text==value:return serialize_application(application,db,staff=account.role=='STAFF')
     check_version(item.revision,payload.revision)
     item.reply_text=value;item.reply_by=account.id;item.revision+=1
     event(db,application,account,'INFO_REPLY_SAVED',utc_now())
     db.commit()
-    return serialize_application(application,db)
+    return serialize_application(application,db,staff=account.role=='STAFF')
 
 
 @router.post('/applications/{app_id}/info-requests/{rid}/reply/submit')
 def submit_reply(app_id:uuid.UUID,rid:uuid.UUID,payload:SubmitReply,account:ClientAccount,db:Session=Depends(get_db),key:str|None=Header(None,alias='Idempotency-Key')):
     application=accessible_application(db,app_id,account);item=request_for(db,application,rid)
     key,sig,replay=operation(db,account,key,'submit',app_id,rid,payload.model_dump())
-    if replay:return serialize_application(application,db)
+    if replay:return serialize_application(application,db,staff=account.role=='STAFF')
     require_open(application,item);check_version(application.version,payload.version);check_version(item.revision,payload.revision)
-    text_value(item.reply_text,'reply_text',2000)
-    values=validate_financial_values(payload.financial_values, application, db)
-    if item.financial_required and not values:
-        raise validation_error({'financial_values':'Добавьте структурированные финансовые значения для проверки'})
-    if item.document_required and not db.scalar(select(func.count()).select_from(InfoAttachment).where(InfoAttachment.request_id==rid,InfoAttachment.detached_at.is_(None))):
-        raise validation_error({'attachments':'Прикрепите запрошенный документ'})
-    now=utc_now();item.financial_values=values or None;item.closed_at=now;item.closed_by=account.id;item.revision+=1
-    event(db,application,account,'INFO_REPLY_SUBMITTED',now,'UNDER_REVIEW')
+    pending=db.scalars(select(InfoAttachment).where(InfoAttachment.request_id==rid,InfoAttachment.detached_at.is_(None),InfoAttachment.message_id.is_(None))).all()
+    if not item.reply_text.strip() and not pending:
+        raise validation_error({'reply_text':'Напишите сообщение или прикрепите документ'})
+    now=utc_now()
+    message=InfoMessage(request_id=rid,actor_id=account.id,actor_role=account.role,text=item.reply_text.strip() or 'Документы для рассмотрения',created_at=now)
+    db.add(message);db.flush()
+    for attachment in pending:attachment.message_id=message.id
+    item.reply_text='';item.reply_by=account.id;item.reply_submitted_at=now;item.revision+=1
+    event(db,application,account,'INFO_REPLY_SUBMITTED',now,'NEEDS_INFO')
     commit_operation(db,account,key,sig)
     return serialize_application(application,db)
+
+
+class CloseRequest(Payload):
+    version:Positive
+    revision:Positive
+
+
+@router.post('/staff/applications/{app_id}/info-requests/{rid}/close')
+def close_request(app_id:uuid.UUID,rid:uuid.UUID,payload:CloseRequest,account:StaffAccount,db:Session=Depends(get_db),key:str|None=Header(None,alias='Idempotency-Key')):
+    application=accessible_application(db,app_id,account);item=request_for(db,application,rid)
+    key,sig,replay=operation(db,account,key,'close',app_id,rid,payload.model_dump())
+    if replay:return serialize_application(application,db,staff=True)
+    require_open(application,item);check_version(application.version,payload.version);check_version(item.revision,payload.revision)
+    if item.reply_submitted_at is None:raise ApiProblem(409,'REPLY_REQUIRED','Дождитесь отправленного ответа клиента')
+    if item.document_required and not db.scalar(select(InfoAttachment.id).where(InfoAttachment.request_id==rid,InfoAttachment.detached_at.is_(None),InfoAttachment.message_id.is_not(None)).limit(1)):
+        raise validation_error({'attachments':'Клиент ещё не отправил запрошенный документ'})
+    now=utc_now();item.closed_at=now;item.closed_by=account.id;item.revision+=1
+    event(db,application,account,'INFO_REQUEST_CLOSED',now,'UNDER_REVIEW')
+    commit_operation(db,account,key,sig)
+    return serialize_application(application,db,staff=True)
 
 
 def validate_financial_values(values, application, db):
@@ -123,34 +142,17 @@ def validate_financial_values(values, application, db):
     return result
 
 
-@router.post('/staff/applications/{app_id}/info-requests/{rid}/accept-financial')
-def accept_financial(app_id:uuid.UUID,rid:uuid.UUID,account:StaffAccount,db:Session=Depends(get_db),key:str|None=Header(None,alias='Idempotency-Key')):
-    application=accessible_application(db,app_id,account);item=request_for(db,application,rid)
-    key,sig,replay=operation(db,account,key,'accept-financial',app_id,rid,{})
-    if replay:return serialize_application(application,db)
-    if application.status!='UNDER_REVIEW' or item.closed_at is None or not item.financial_values:
-        raise ApiProblem(409,'INVALID_STATE','Можно принять только отправленное структурированное финансовое уточнение')
-    if item.financial_accepted_at is not None:raise ApiProblem(409,'FINANCIAL_ALREADY_ACCEPTED','Эти финансовые сведения уже приняты')
-    now=utc_now();item.financial_accepted_at=now;item.financial_accepted_by=account.id
-    # SessionLocal intentionally disables autoflush.  The score queries only
-    # accepted rows, therefore persist this state before recalculating it.
-    db.flush()
-    from .review import calculate_assessment
-    calculate_assessment(application,db,now)
-    event(db,application,account,'FINANCIAL_INFO_ACCEPTED',now,None,'Приняты структурированные финансовые сведения')
-    commit_operation(db,account,key,sig)
-    return serialize_application(application,db)
-
 
 def add_message(app_id,rid,payload,account,db,key):
     application=accessible_application(db,app_id,account);item=request_for(db,application,rid)
     key,sig,replay=operation(db,account,key,'message',app_id,rid,payload.model_dump())
-    if replay:return serialize_application(application,db)
+    if replay:return serialize_application(application,db,staff=account.role=='STAFF')
     require_open(application,item);value=text_value(payload.text,'text',1000);now=utc_now()
     db.add(InfoMessage(request_id=rid,actor_id=account.id,actor_role=account.role,text=value,created_at=now))
+    if account.role=='CLIENT':item.reply_submitted_at=now;item.reply_by=account.id;item.revision+=1
     event(db,application,account,'INFO_MESSAGE',now)
     commit_operation(db,account,key,sig)
-    return serialize_application(application,db)
+    return serialize_application(application,db,staff=account.role=='STAFF')
 
 
 @router.post('/applications/{app_id}/info-requests/{rid}/messages')

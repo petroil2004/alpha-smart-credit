@@ -54,7 +54,7 @@ it("keeps an invalid amount on parameters and blocks review", async () => {
   const { user } = await open({product_code:"working_capital"});
   await user.click(screen.getByRole("button", { name: "Продолжить" }));
   fireEvent.change(screen.getByLabelText("Сумма финансирования"), { target: { value: "-1" } });
-  expect(screen.getByRole("button", { name: "Продолжить" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Продолжить" })).toHaveAttribute("aria-disabled","true");
   await user.click(screen.getByRole("button", { current:"step" }));
   const input = await screen.findByLabelText("Сумма финансирования");
   expect(input).toHaveValue("-1");
@@ -66,8 +66,8 @@ it("edits the shared amount and inflows for overdraft without an annuity payment
   const { user, server, item } = await open({ product_code: "overdraft" });
   await user.click(screen.getByRole("button", { name: "Продолжить" }));
   expect(screen.queryByText(/Расчёт обновится автоматически/)).not.toBeInTheDocument();
-  fireEvent.change(screen.getByLabelText("Сумма финансирования"), { target: { value: "100000,25" } });
-  fireEvent.change(screen.getByLabelText("Пользование, дней"), { target: { value: "14" } });
+  fireEvent.change(screen.getByLabelText("Лимит овердрафта"), { target: { value: "100000,25" } });
+  fireEvent.change(screen.getByLabelText("Дата использования средств"),{target:{value:"2026-10-25"}});fireEvent.change(screen.getByLabelText("Дата поступления для погашения"),{target:{value:"2026-11-08"}});
   fireEvent.change(screen.getByLabelText("Сумма ожидаемого поступления"), { target: { value: "150000" } });
   await user.click(screen.getByRole("button", { name: "Продолжить" }));
   await user.click(screen.getByRole("button", {current:"step"}));

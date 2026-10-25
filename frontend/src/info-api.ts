@@ -17,14 +17,14 @@ export function createInfoApi(fetcher:typeof fetch):InfoApi {
  }
  const json=(method:string,body:unknown,key?:string):RequestInit=>({method,body:JSON.stringify(body),headers:{'Content-Type':'application/json',...(key?{'Idempotency-Key':key}:{})}});
  return {
+  close:(id,rid,body,key)=>request<Application>(path(id,rid,true)+'/close',json('POST',body,key)),
   correctFinancial:(id,rid,body,key)=>request<Application>(path(id,rid,true)+'/financial-corrections',json('POST',body,key)),
   create:(id,body,key)=>request<Application>(path(id,undefined,true),json('POST',body,key)),
   save:(id,rid,revision,text)=>request<Application>(path(id,rid)+'/reply',json('PATCH',{revision,reply_text:text})),
   submit:(id,rid,body,key)=>request<Application>(path(id,rid)+'/reply/submit',json('POST',body,key)),
   message:(id,rid,staff,text,key)=>request<Application>(path(id,rid,staff)+'/messages',json('POST',{text},key)),
-  upload:(id,rid,fid,revision,file)=>request<Application>(path(id,rid)+'/attachments/'+encodeURIComponent(fid)+'?'+new URLSearchParams({filename:file.name,revision:String(revision)}),{method:'PUT',body:file,headers:{'Content-Type':file.type || (file.name.toLowerCase().endsWith('.pdf')?'application/pdf':'text/plain')}}),
+  upload:(id,rid,fid,revision,file)=>request<Application>(path(id,rid)+'/attachments/'+encodeURIComponent(fid)+'?'+new URLSearchParams({filename:file.name,revision:String(revision)}),{method:'PUT',body:file,headers:{'Content-Type':file.type || (file.name.toLowerCase().endsWith('.pdf')?'application/pdf':file.name.toLowerCase().endsWith('.png')?'image/png':'image/jpeg')}}),
   detach:(id,rid,fid,revision)=>request<Application>(path(id,rid)+'/attachments/'+encodeURIComponent(fid)+'/detach',json('POST',{revision})),
-  acceptFinancial:(id,rid,key)=>request<Application>(path(id,rid,true)+'/accept-financial',json('POST',{},key)),
   download:(id,rid,fid,staff)=>request<Blob>(path(id,rid,staff)+'/attachments/'+encodeURIComponent(fid),{},true),
  };
 }

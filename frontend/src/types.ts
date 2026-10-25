@@ -173,21 +173,23 @@ export interface Api {
   ): Promise<Application>;
 }
 
-export interface InfoAttachment {
+export interface InfoAttachment {message_id?:number|null;
   id:string; filename:string; content_type:string; size_bytes:number; actor_id:string; created_at:string;
 }
 export interface InfoMessage {id:number; text:string; actor_id:string; actor_role:string; created_at:string;}
 export interface InfoRequest {
   id:string; question:string; reason:string; document_required:boolean; revision:number; reply_text:string;
   source:'SELF_REPORTED'; created_at:string; created_by:string; reply_by:string|null; closed_at:string|null; closed_by:string|null;
+  reply_submitted_at?:string|null;
   staff_corrections?:StaffCorrection[];
   financial_required?:boolean; financial_values?:FinancialValue[]|null; financial_accepted_at?:string|null;
   messages:InfoMessage[]; attachments:InfoAttachment[];
 }
 export interface FinancialValue {kind:"income_rub"|"expenses_rub"|"debt_payment_rub";month:string|null;value_rub:string;source:"CLIENT_DOCUMENT"|"CLIENT_CONFIRMED";}
-export interface InfoCreate {version:number; question:string; reason:string; document_required:boolean; financial_required?:boolean;}
-export interface InfoSubmit {version:number; revision:number; financial_values?:FinancialValue[];}
+export interface InfoCreate {version:number; question:string; reason:string; document_required:boolean;}
+export interface InfoSubmit {version:number; revision:number;}
 export interface InfoApi {
+  close?(id:string,rid:string,body:InfoSubmit,key:string):Promise<Application>;
   correctFinancial?(id:string,rid:string,body:ManualFinancialInput,key:string):Promise<Application>;
   create(id:string,body:InfoCreate,key:string):Promise<Application>;
   save(id:string,rid:string,revision:number,text:string):Promise<Application>;
@@ -195,6 +197,5 @@ export interface InfoApi {
   message(id:string,rid:string,staff:boolean,text:string,key:string):Promise<Application>;
   upload(id:string,rid:string,fid:string,revision:number,file:File):Promise<Application>;
   detach(id:string,rid:string,fid:string,revision:number):Promise<Application>;
-  acceptFinancial(id:string,rid:string,key:string):Promise<Application>;
   download(id:string,rid:string,fid:string,staff:boolean):Promise<Blob>;
 }

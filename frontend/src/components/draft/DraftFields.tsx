@@ -1,4 +1,3 @@
-import {todayMoscow} from "../../dates";
 import type { ReactNode } from "react";
 import type { DraftFields, FieldErrors, ProductCatalog } from "../../types";
 import { products } from "../../products";
@@ -106,6 +105,16 @@ export function ProductFields({ fields, errors, onChange, catalog }: EditablePro
   </div>;
 }
 
+function DateField({name,label,fields,errors,onChange}:EditableProps&{name:'planned_payment_date'|'expected_inflow_date';label:string}){
+ const value=fields[name],display=/^\d{4}-\d{2}-\d{2}$/.test(value)?value.slice(8,10)+'.'+value.slice(5,7)+'.'+value.slice(0,4):value;
+ return <Field name={name} label={label} errors={errors}><input aria-label={label} type="text" inputMode="numeric" autoComplete="off" maxLength={10} placeholder="дд.мм.гггг" value={display} onChange={event=>{
+  if(/^\d{4}-\d{2}-\d{2}$/.test(event.target.value)){onChange(name,event.target.value);return;}
+  const digits=event.target.value.replace(/\D/g,'').slice(0,8);
+  const text=digits.slice(0,2)+(digits.length>2?'.'+digits.slice(2,4):'')+(digits.length>4?'.'+digits.slice(4,8):'');
+  onChange(name,digits.length===8?digits.slice(4,8)+'-'+digits.slice(2,4)+'-'+digits.slice(0,2):text);
+ }} {...errorProps(errors,name)}/></Field>;
+}
+
 export function ParameterFields(props: EditableProps & {includeEquipment?:boolean}) {
   const { fields, errors, onChange } = props;
   if (!fields.product_code)
@@ -120,7 +129,7 @@ export function ParameterFields(props: EditableProps & {includeEquipment?:boolea
   const label = overdraft ? "Пользование, дней" : "Срок, месяцев";
   return (
     <>
-      <Field name={duration} label={label} errors={errors}>
+      {!overdraft&&<Field name={duration} label={label} errors={errors}>
         <input
           aria-label={label}
           type="text"
@@ -130,39 +139,21 @@ export function ParameterFields(props: EditableProps & {includeEquipment?:boolea
           placeholder={overdraft ? "Количество дней" : "Количество месяцев"}
           {...errorProps(errors, duration)}
         />
-      </Field>
+      </Field>}
       {overdraft && (
         <div className="overdraft-fields">
-          <p className="small-note">
-            Лимит — сколько доступно. Планируемая оплата — сколько из лимита вы используете для расчёта с поставщиком. Проценты рассчитываются от этой оплаты.
-          </p>
+          <p className="small-note">Укажите, какую часть лимита планируете использовать и когда поступят деньги для её погашения. Проценты считаются от используемой суммы.</p>
           <div className="field-grid">
-            <MoneyField {...props} name="planned_payment_rub" label="Планируемая оплата поставщику" />
-            <Field name="planned_payment_date" label="Дата планируемой оплаты" errors={errors}>
-              <input aria-label="Дата планируемой оплаты" type="date" min={todayMoscow()} value={fields.planned_payment_date}
-                onChange={event => onChange("planned_payment_date", event.target.value)} {...errorProps(errors, "planned_payment_date")} />
-            </Field>
-            <Field
-              name="expected_inflow_date"
-              label="Дата ожидаемого поступления"
-              errors={errors}
-            >
-              <input
-                aria-label="Дата ожидаемого поступления"
-                type="date" min={todayMoscow()}
-                value={fields.expected_inflow_date}
-                onChange={(event) =>
-                  onChange("expected_inflow_date", event.target.value)
-                }
-                {...errorProps(errors, "expected_inflow_date")}
-              />
-            </Field>
+            <MoneyField {...props} name="planned_payment_rub" label="Сумма использования лимита" />
+            <DateField {...props} name="planned_payment_date" label="Дата использования средств"/>
+            <DateField {...props} name="expected_inflow_date" label="Дата поступления для погашения"/>
             <MoneyField
               {...props}
               name="expected_inflow_amount_rub"
               label="Сумма ожидаемого поступления"
             />
           </div>
+          {fields.planned_payment_date&&fields.expected_inflow_date&&Number.isFinite(Date.parse(fields.planned_payment_date))&&Number.isFinite(Date.parse(fields.expected_inflow_date))&&<p className="small-note">Срок использования: {Math.round((Date.parse(fields.expected_inflow_date)-Date.parse(fields.planned_payment_date))/86400000)} дн. Рассчитывается по указанным датам.</p>}
           <Field name="expected_inflow_source" label="Источник ожидаемого поступления" errors={errors}>
             <select aria-label="Источник ожидаемого поступления" value={fields.expected_inflow_source} onChange={event=>onChange("expected_inflow_source", event.target.value as typeof fields.expected_inflow_source)} {...errorProps(errors,"expected_inflow_source")}>
               <option value="">Выберите источник</option><option value="BUYER">Покупатель</option><option value="CONTRACT">Договор</option><option value="REGULAR_REVENUE">Обычная выручка</option><option value="OTHER">Другое</option>

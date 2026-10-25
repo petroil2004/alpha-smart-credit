@@ -16,7 +16,7 @@ from .problems import ApiProblem, validation_error
 from .serialization import serialize_application
 
 router=APIRouter(prefix='/api/v1')
-MAX_BYTES=5*1024*1024
+MAX_BYTES=5_000_000
 
 
 class Detach(Payload):
@@ -29,14 +29,10 @@ def file_values(filename,content_type,content):
         raise validation_error({'filename':'Укажите имя файла без пути, до 128 символов'})
     kind=content_type.split(';')[0].strip().lower()
     extension=name.rsplit('.',1)[-1].lower()
-    if not content or (kind,extension) not in {('application/pdf','pdf'),('text/plain','txt')}:
-        raise ApiProblem(415,'FILE_FORMAT','Поддерживаются непустые PDF и TXT в UTF-8')
-    if kind=='application/pdf':
-        if not content.startswith(b'%PDF-'):raise ApiProblem(415,'FILE_FORMAT','Содержимое не похоже на PDF')
-    else:
-        try:content.decode('utf-8')
-        except UnicodeDecodeError as exc:raise ApiProblem(415,'FILE_FORMAT','TXT должен быть в UTF-8') from exc
-        if b'\0' in content:raise ApiProblem(415,'FILE_FORMAT','TXT не должен содержать нулевые байты')
+    signatures={('application/pdf','pdf'):b'%PDF-',('image/png','png'):b'\x89PNG\r\n\x1a\n',('image/jpeg','jpg'):b'\xff\xd8\xff',('image/jpeg','jpeg'):b'\xff\xd8\xff'}
+    signature=signatures.get((kind,extension))
+    if not content or signature is None or not content.startswith(signature):
+        raise ApiProblem(415,'FILE_FORMAT','Выберите PDF, PNG или JPG с соответствующим содержимым')
     return name,kind,hashlib.sha256(content).hexdigest()
 
 
@@ -78,7 +74,7 @@ async def upload(app_id:uuid.UUID,rid:uuid.UUID,fid:uuid.UUID,request:Request,ac
     await run_in_threadpool(preflight,db,app_id,rid,account)
     data=bytearray()
     async for chunk in request.stream():
-        if len(data)+len(chunk)>MAX_BYTES:raise ApiProblem(413,'FILE_TOO_LARGE','Размер файла — не более 5 МиБ')
+        if len(data)+len(chunk)>MAX_BYTES:raise ApiProblem(413,'FILE_TOO_LARGE','Размер файла — не более 5 МБ')
         data.extend(chunk)
     content=bytes(data)
     name,kind,digest=file_values(filename,request.headers.get('content-type',''),content)
@@ -97,7 +93,9 @@ def detach(app_id:uuid.UUID,rid:uuid.UUID,fid:uuid.UUID,payload:Detach,account:C
     attachment=db.get(InfoAttachment,fid)
     if attachment is None or attachment.request_id!=rid:raise ApiProblem(404,'NOT_FOUND','Файл не найден')
     if attachment.detached_at:return serialize_application(application,db)
-    require_open(application,item);check_version(item.revision,payload.revision)
+    require_open(application,item)
+    if attachment.message_id is not None:raise ApiProblem(409,'FILE_SENT','Отправленный документ нельзя открепить')
+    check_version(item.revision,payload.revision)
     now=utc_now();attachment.detached_at=now;item.revision+=1
     event(db,application,account,'INFO_FILE_DETACHED',now,comment=attachment.filename)
     db.commit()
@@ -105,8 +103,10 @@ def detach(app_id:uuid.UUID,rid:uuid.UUID,fid:uuid.UUID,payload:Detach,account:C
 
 
 def download_file(db,app_id,rid,fid,account):
-    application=accessible_application(db,app_id,account,lock=False);request_for(db,application,rid)
+    application=accessible_application(db,app_id,account,lock=False);clarification=request_for(db,application,rid)
     item=attachment_for(db,rid,fid)
+    if account.role=='STAFF' and item.message_id is None and (clarification.closed_at is None or clarification.reply_submitted_at is not None):
+        raise ApiProblem(404,'NOT_FOUND','Файл не найден')
     return Response(content=item.content,media_type=item.content_type,headers={
         'Content-Disposition':"attachment; filename*=UTF-8''"+quote(item.filename,safe=''),
         'X-Content-Type-Options':'nosniff','Cache-Control':'private, no-store'})

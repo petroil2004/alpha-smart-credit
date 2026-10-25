@@ -187,7 +187,7 @@ def decide(application_id: uuid.UUID, payload: DecisionPayload, account: StaffAc
     application = accessible_application(db, application_id, account)
     operation_key, signature, replay = operation(db, account, key, 'decision', application_id, None, payload.model_dump())
     if replay:
-        return serialize_application(application, db)
+        return serialize_application(application, db, staff=account.role=='STAFF')
     if application.status != 'UNDER_REVIEW':
         raise ApiProblem(409, 'INVALID_STATE', 'Итоговое решение доступно только при рассмотрении')
     if application.version != payload.version:
@@ -200,4 +200,4 @@ def decide(application_id: uuid.UUID, payload: DecisionPayload, account: StaffAc
     event(db, application, account, 'STAFF_APPROVED' if payload.decision == 'APPROVE' else 'STAFF_DECLINED', now,
           'APPROVED' if payload.decision == 'APPROVE' else 'DECLINED', comment)
     commit_operation(db, account, operation_key, signature)
-    return serialize_application(application, db)
+    return serialize_application(application, db, staff=account.role=='STAFF')

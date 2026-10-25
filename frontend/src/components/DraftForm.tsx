@@ -65,6 +65,7 @@ export default function DraftForm(props: Props) {
     })().catch(()=>{if(active)setProfileError('Не удалось загрузить сведения компании. Повторите загрузку.');});
     return()=>{active=false;};
   },[props.api,application.id,profileAttempt,props.resetVersion,props.session.user.id,props.session.company.id]);
+  const [stepError,setStepError]=useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [step, setStep] = useState<DraftStep>("product");
   const lastErrorAttempt = useRef(errorAttempt);
@@ -74,7 +75,7 @@ export default function DraftForm(props: Props) {
   const current = draftSteps[index];
   const last = index === draftSteps.length - 1;
   const calculator = useLoanCalculator(props.api, fields, application.id);
-  const readiness=draftReadiness(fields);
+  const readiness=draftReadiness(fields,calculator.catalog);
   const canVisit=(next:DraftStep)=>next==='product'||(next==='details'?readiness.product:readiness.details);
   const previousReset=useRef(props.resetVersion);
   useEffect(()=>{
@@ -114,7 +115,9 @@ export default function DraftForm(props: Props) {
   }, [step, errorAttempt]);
 
   const goTo = (next: DraftStep) => {
-    if (!busy && canVisit(next)) { props.onNavigate(); setStep(next); }
+    if(busy)return;
+    if(!canVisit(next)){setStepError(true);return;}
+    setStepError(false);props.onNavigate();setStep(next);
   };
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -168,7 +171,7 @@ export default function DraftForm(props: Props) {
               <>
                 {fields.product_code && fields.product_code !== "overdraft"
                   ? <LoanCalculator fields={fields} onChange={props.onChange} errors={errors} state={calculator} onReauthenticate={reauthenticate}/>
-                  : <><MoneyField {...props} name="amount_rub" label="Сумма финансирования" /><ParameterFields {...props} />{fields.product_code === "overdraft" && <p className="small-note">Это лимит овердрафта. Сервер проверит срок, покрытие поступлением и рассчитает проценты при отправке. Это не решение об одобрении.</p>}</>}
+                  : <><MoneyField {...props} name="amount_rub" label="Лимит овердрафта" /><ParameterFields {...props} />{fields.product_code === "overdraft" && <p className="small-note">При отправке заявки проверим покрытие поступлением и рассчитаем проценты за указанный срок.</p>}</>}
                 <PurposeField {...props} />
                 {!fields.product_code && (
                   <button
@@ -189,6 +192,7 @@ export default function DraftForm(props: Props) {
             )}
           </fieldset>
           {!last && !canVisit(draftSteps[index+1].id) && <p className="small-note">{step==='product'?'Выберите продукт, чтобы продолжить.':'Заполните цель и обязательные параметры финансирования, чтобы перейти к проверке.'}</p>}
+          {stepError&&<p role="alert" className="field-error step-validation">Корректно заполните все обязательные поля, чтобы перейти к следующему шагу.</p>}
           <div className="wizard-navigation">
             {index > 0 && (
               <button
@@ -206,8 +210,9 @@ export default function DraftForm(props: Props) {
             {!last && (
               <button
                 className="button primary wizard-next"
+                aria-disabled={!canVisit(draftSteps[index+1].id)}
                 type="submit"
-                disabled={busy || !canVisit(draftSteps[index+1].id)}
+                disabled={busy}
               >
                 Продолжить
                 <Icon name="arrow" size={18} />
