@@ -25,6 +25,7 @@ from .company_profile import get_company_profile
 from .serialization import serialize_application
 from .calculator import CalculationValidationError, calculate_annuity
 from .product_catalog import get_catalog
+from .business_dates import future_date_errors
 
 API_PREFIX = "/api/v1"
 MONEY_PATTERN = re.compile(r"^\d+(?:\.\d{1,2})?$")
@@ -99,11 +100,12 @@ def request_validation_fields(error: RequestValidationError) -> dict[str, str]:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(engine)
-    from .schema_compat import allow_deleted_creation_receipts, allow_staff_accounts, add_mvp_review_columns
+    from .schema_compat import allow_deleted_creation_receipts, allow_staff_accounts, add_mvp_review_columns, add_application_numbers
 
     allow_deleted_creation_receipts(engine)
     allow_staff_accounts(engine)
     add_mvp_review_columns(engine)
+    add_application_numbers(engine)
     from .seed import ensure_demo_accounts
 
     ensure_demo_accounts()
@@ -151,13 +153,13 @@ def parse_money(value: str, field: str) -> Decimal:
     return amount.quantize(Decimal("0.01"))
 
 
-def parse_date(value: str) -> date:
+def parse_date(value: str, field: str) -> date:
     if not DATE_PATTERN.fullmatch(value):
-        raise validation_error({"expected_inflow_date": "Укажите дату в формате YYYY-MM-DD"})
+        raise validation_error({field: "Укажите дату в формате YYYY-MM-DD"})
     try:
         return date.fromisoformat(value)
     except ValueError as exc:
-        raise validation_error({"expected_inflow_date": "Укажите корректную дату"}) from exc
+        raise validation_error({field: "Укажите корректную дату"}) from exc
 
 
 def validate_final_values(values: dict[str, Any]) -> None:
@@ -350,7 +352,9 @@ def update_application(
             if not 0 < value <= MAX_STORED_INTEGER:
                 raise validation_error({field: "Укажите положительное целое число не больше 2147483647"})
         elif field in {"expected_inflow_date", "planned_payment_date"} and value is not None:
-            value = parse_date(value)
+            value = parse_date(value, field)
+            if issue := future_date_errors({field:value}):
+                raise validation_error(issue)
         values[field] = value
 
     validate_final_values(values)
@@ -405,3 +409,6 @@ app.include_router(assistant_router)
 
 from .notifications import router as notifications_router
 app.include_router(notifications_router)
+
+from .disbursements import router as disbursements_router
+app.include_router(disbursements_router)

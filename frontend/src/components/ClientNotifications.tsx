@@ -1,3 +1,4 @@
+import {applicationNumber} from "../application-number";
 import {useEffect,useId,useRef,useState} from 'react';
 import type {Api,ClientNotification,ClientSession,NotificationList} from '../types';
 import {sameSession} from '../session';
@@ -50,7 +51,7 @@ export default function ClientNotifications({api,session,busy,onOpen,onSessionCh
     {open&&<section id={id} className="notifications-panel" aria-label="Уведомления клиента"><h2>Уведомления</h2>
       {error&&<p role="alert">Не удалось обновить уведомления. <button type="button" className="text-button" onClick={()=>setAttempt(n=>n+1)}>Повторить</button></p>}
       {!data.items.length&&!error&&<p className="small-note">Здесь появятся изменения статусов ваших заявок.</p>}
-      <ul>{data.items.map(item=><li key={item.id}><button type="button" className={`notification-item ${item.read?'':'is-unread'}`} disabled={busy||opening} onClick={()=>void visit(item)}><strong>{item.title}</strong><span>Заявка № {item.application_id.slice(-6)}</span><StatusBadge status={item.status}/>{item.message&&<span>{item.message}</span>}<time dateTime={item.occurred_at}>{new Date(item.occurred_at).toLocaleString('ru-RU')}</time></button></li>)}</ul>
+      <ul>{data.items.map(item=><li key={item.id}><button type="button" className={`notification-item ${item.read?'':'is-unread'}`} disabled={busy||opening} onClick={()=>void visit(item)}><strong>{item.title}</strong><span>Заявка № {applicationNumber({id:item.application_id,application_number:item.application_number})}</span><StatusBadge status={item.status}/>{item.message&&<span>{item.message}</span>}<time dateTime={item.occurred_at}>{new Date(item.occurred_at).toLocaleString('ru-RU')}</time></button></li>)}</ul>
     </section>}
   </div>;
 }

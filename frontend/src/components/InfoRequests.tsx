@@ -49,7 +49,7 @@ function InfoWorkspace({api,session,application,onUpdated,onSessionChanged,regis
   {(error||action.error)&&<div role="alert" className="notice error-notice">{(error??action.error)!.message}{(error??action.error)!.status===401&&<button type="button" className="text-button" onClick={()=>{void api.login(session.user.id).then(()=>guard()).then(()=>setError(null)).catch(e=>setError(infoError(e)));}}>Войти снова</button>}</div>}
   <InfoNewRequest key={reset} visible={!session.company&&(!open&&current.status==='UNDER_REVIEW'||!!action.pending)} pending={!!action.pending} broken={action.error?.code==='INVALID_INFO_RECEIPT'} busy={action.busy} question={question} reason={reason} required={required} financialRequired={financialRequired} setQuestion={setQuestion} setReason={setReason} setRequired={setRequired} setFinancialRequired={setFinancialRequired} onCreate={()=>void create()}/>
   {current.info_requests?.map(request=><InfoRequestPanel key={reset+':'+request.id} api={api} session={session} application={current} request={request} guard={guard} accept={accept} register={controller=>childRegistration(request.id,controller)}/>)}
-  {!current.info_requests?.length&&session.company&&<p className="small-note">Здесь появится запрос сотрудника, если понадобятся дополнительные сведения.</p>}
+  {!current.info_requests?.length&&<p className="small-note">{session.company?'Здесь появится запрос сотрудника, если понадобятся дополнительные сведения.':'Уточнений по заявке пока не было.'}</p>}
  </section>;
 }
 function InfoNewRequest({visible,pending,broken,busy,question,reason,required,financialRequired,setQuestion,setReason,setRequired,setFinancialRequired,onCreate}:{visible:boolean;pending:boolean;broken:boolean;busy:boolean;question:string;reason:string;required:boolean;financialRequired:boolean;setQuestion:(v:string)=>void;setReason:(v:string)=>void;setRequired:(v:boolean)=>void;setFinancialRequired:(v:boolean)=>void;onCreate:()=>void;}){
@@ -59,7 +59,7 @@ function InfoNewRequest({visible,pending,broken,busy,question,reason,required,fi
  <label className="field"><span>Какие сведения нужны</span><textarea maxLength={2000} value={question} onChange={e=>setQuestion(e.target.value)} disabled={busy}/></label>
  <label className="field"><span>Зачем нужны сведения</span><textarea maxLength={1000} value={reason} onChange={e=>setReason(e.target.value)} disabled={busy}/></label>
  <label className="info-checkbox"><input type="checkbox" checked={required} onChange={e=>setRequired(e.target.checked)} disabled={busy}/><span>Нужен документ</span></label>
- <label className="info-checkbox"><input type="checkbox" checked={financialRequired} onChange={e=>setFinancialRequired(e.target.checked)} disabled={busy}/><span>Нужны структурированные финансовые значения</span></label></>}
+ <label className="info-checkbox"><input type="checkbox" checked={financialRequired} onChange={e=>setFinancialRequired(e.target.checked)} disabled={busy}/><span>Уточнить доходы, расходы или долговые платежи</span></label><p className="small-note">Числа из документа клиент укажет в отдельных полях. Они попадут в скоринг только после вашей проверки и подтверждения.</p></>}
  <button className="button primary" type="button" disabled={busy||broken||(!pending&&(!question.trim()||!reason.trim()))} onClick={onCreate}>{busy?'Отправляем…':pending?'Проверить запрос':'Запросить сведения'}</button>
  </section>;
 }

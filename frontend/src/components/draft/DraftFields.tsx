@@ -1,3 +1,4 @@
+import {todayMoscow} from "../../dates";
 import type { ReactNode } from "react";
 import type { DraftFields, FieldErrors, ProductCatalog } from "../../types";
 import { products } from "../../products";
@@ -100,11 +101,12 @@ export function ProductFields({ fields, errors, onChange, catalog }: EditablePro
         </label>;
       })}
     </div>
+    <a className="credit-terms-link" href="/credit-terms.html" target="_blank" rel="noopener noreferrer">Полные условия финансирования ↗</a>
     {errors.product_code && <span className="field-error" id="product_code-error">{errors.product_code}</span>}
   </div>;
 }
 
-export function ParameterFields(props: EditableProps) {
+export function ParameterFields(props: EditableProps & {includeEquipment?:boolean}) {
   const { fields, errors, onChange } = props;
   if (!fields.product_code)
     return (
@@ -132,12 +134,12 @@ export function ParameterFields(props: EditableProps) {
       {overdraft && (
         <div className="overdraft-fields">
           <p className="small-note">
-            Для овердрафта важно знать, когда поступят деньги для возврата.
+            Лимит — сколько доступно. Планируемая оплата — сколько из лимита вы используете для расчёта с поставщиком. Проценты рассчитываются от этой оплаты.
           </p>
           <div className="field-grid">
             <MoneyField {...props} name="planned_payment_rub" label="Планируемая оплата поставщику" />
             <Field name="planned_payment_date" label="Дата планируемой оплаты" errors={errors}>
-              <input aria-label="Дата планируемой оплаты" type="date" value={fields.planned_payment_date}
+              <input aria-label="Дата планируемой оплаты" type="date" min={todayMoscow()} value={fields.planned_payment_date}
                 onChange={event => onChange("planned_payment_date", event.target.value)} {...errorProps(errors, "planned_payment_date")} />
             </Field>
             <Field
@@ -147,7 +149,7 @@ export function ParameterFields(props: EditableProps) {
             >
               <input
                 aria-label="Дата ожидаемого поступления"
-                type="date"
+                type="date" min={todayMoscow()}
                 value={fields.expected_inflow_date}
                 onChange={(event) =>
                   onChange("expected_inflow_date", event.target.value)
@@ -168,7 +170,7 @@ export function ParameterFields(props: EditableProps) {
           </Field>
         </div>
       )}
-      {fields.product_code === "equipment" && <MoneyField {...props} name="equipment_cost_rub" label="Стоимость оборудования" />}
+      {props.includeEquipment!==false && fields.product_code === "equipment" && <MoneyField {...props} name="equipment_cost_rub" label="Стоимость оборудования" />}
     </>
   );
 }

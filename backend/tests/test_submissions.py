@@ -73,8 +73,8 @@ def test_submit_equipment_and_overdraft_with_product_facts(client):
     assert equipment_result.json()['submission']['snapshot']['application']['equipment_cost_rub'] == '600000.00'
 
     overdraft = draft(client, product_code='overdraft', amount_rub='100000.00', term_months=None, usage_days=14,
-                      planned_payment_rub='90000.00', planned_payment_date='2026-10-24',
-                      expected_inflow_date='2026-11-01', expected_inflow_amount_rub='100000.00', expected_inflow_source='BUYER')
+                      planned_payment_rub='90000.00', planned_payment_date='2099-10-24',
+                      expected_inflow_date='2099-11-01', expected_inflow_amount_rub='100000.00', expected_inflow_source='BUYER')
     overdraft_result = submit(client, overdraft)
     assert overdraft_result.status_code == 200, overdraft_result.text
     calculation = overdraft_result.json()['submission']['snapshot']['calculation']

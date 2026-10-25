@@ -87,6 +87,8 @@ export interface DraftPayload {
 }
 
 export interface Application extends DraftPayload {
+  application_number?:number;
+  disbursement?:{confirmed_at:string;amount_rub:string;kind:"CREDITED"|"OVERDRAFT_LIMIT"}|null;
   id: string;
   company_id: string;
   status: "DRAFT" | "UNDER_REVIEW" | (string & {});
@@ -133,11 +135,12 @@ export interface AssistantReply {
 }
 
 export interface ClientNotification {
-  id:number; application_id:string; status:string; title:string; message:string|null; occurred_at:string; read:boolean;
+  id:number; application_id:string; application_number?:number; status:string; title:string; message:string|null; occurred_at:string; read:boolean;
 }
 export interface NotificationList {items:ClientNotification[];unread_count:number;}
 
 export interface Api {
+  disburse?(id:string,body:{version:number;confirmed:true},key:string):Promise<Application>;
   notifications?: {list():Promise<NotificationList>;read(id:number):Promise<void>};
   assistant?:{
     status():Promise<AssistantStatus>;

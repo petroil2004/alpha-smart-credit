@@ -38,16 +38,19 @@ export default function LoanCalculator({fields,onChange,state,errors:saveErrors=
   const term=Number(fields.term_months);
   return <div className="loan-calculator">
     <div className="loan-controls">
-    <MoneyField {...props} name="amount_rub" label="Сумма финансирования"/>
+    <div className="loan-control-group"><MoneyField {...props} name="amount_rub" label="Сумма финансирования"/>
     {product && <div className="slider-control">
       <input type="range" aria-label="Сумма финансирования, ползунок" min={product.amount_min_rub} max={product.amount_max_rub} step={product.amount_step_rub} value={sliderAmountValue(fields.amount_rub,product)} onChange={e=>onChange("amount_rub",Number(e.target.value).toFixed(2))}/>
       <div className="slider-limits"><span>{formatMoneyRub(product.amount_min_rub)}</span><span>{formatMoneyRub(product.amount_max_rub)}</span></div>
     </div>}
-    <ParameterFields {...props}/>
+    </div>
+    <div className="loan-control-group"><ParameterFields {...props} includeEquipment={false}/>
     {product && product.term_min_months!==null && product.term_max_months!==null && <div className="slider-control">
       <input type="range" aria-label="Срок, месяцев, ползунок" min={product.term_min_months} max={product.term_max_months} step={1} value={Number.isSafeInteger(term)?Math.max(product.term_min_months,Math.min(product.term_max_months,term)):product.term_min_months} onChange={e=>onChange("term_months",e.target.value)}/>
       <div className="slider-limits"><span>{product.term_min_months} мес.</span><span>{product.term_max_months} мес.</span></div>
     </div>}
+    </div>
+    {fields.product_code==="equipment"&&<div className="loan-control-group"><MoneyField {...props} name="equipment_cost_rub" label="Стоимость оборудования"/></div>}
     </div>
     <LoanCalculationSummary state={state} onReauthenticate={onReauthenticate}/>
   </div>;

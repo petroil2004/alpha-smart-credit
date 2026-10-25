@@ -4,7 +4,7 @@ import uuid
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Index, LargeBinary, text, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Identity, Boolean, Index, LargeBinary, text, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -36,8 +36,10 @@ class UserSession(Base):
 
 class Application(Base):
     __tablename__ = "applications"
+    __table_args__ = (Index('uq_application_number', 'application_number', unique=True),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    application_number: Mapped[int] = mapped_column(BigInteger, Identity(), nullable=False)
     company_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="DRAFT")
     purpose: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -77,6 +79,16 @@ class ApplicationSubmission(Base):
     request_payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
     submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False)
+
+
+class ApplicationDisbursement(Base):
+    __tablename__ = 'application_disbursements'
+
+    application_id: Mapped[uuid.UUID] = mapped_column(ForeignKey('applications.id'), primary_key=True)
+    actor_id: Mapped[str] = mapped_column(ForeignKey('accounts.id'), nullable=False)
+    confirmed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    amount_rub: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
 
 
 class ApplicationEvent(Base):

@@ -1,3 +1,4 @@
+import {applicationNumber} from "../application-number";
 import { useEffect, useId, useRef } from "react";
 import type { Application } from "../types";
 
@@ -30,7 +31,7 @@ export default function DeleteDraftDialog({ application, busy, error, onCancel, 
       <span className="delete-dialog-symbol" aria-hidden="true">!</span>
       <h2 id={titleId}>Удалить черновик?</h2>
       <div id={descriptionId}>
-        <p>Заявка № {application.id.slice(-6)}</p>
+        <p>Заявка № {applicationNumber(application)}</p>
         {application.purpose && <p className="delete-dialog-purpose">{application.purpose}</p>}
         <p>Черновик будет удалён. Восстановить его не получится.</p>
       </div>

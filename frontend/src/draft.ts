@@ -1,3 +1,4 @@
+import {todayMoscow} from "./dates";
 import type {
   Application,
   DraftFields,
@@ -97,6 +98,11 @@ export function prepareDraftPayload(fields: DraftFields): { payload: DraftPayloa
       new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) !== date)
   ) {
     errors.expected_inflow_date = "Укажите корректную дату";
+  }
+  if(overdraft)for(const key of ['planned_payment_date','expected_inflow_date'] as const){
+    const value=fields[key].trim();
+    if(value&&(!/^\d{4}-\d{2}-\d{2}$/.test(value)||Number.isNaN(Date.parse(value))||new Date(value).toISOString().slice(0,10)!==value))errors[key]='Укажите корректную дату';
+    else if(value&&value<todayMoscow())errors[key]='Укажите сегодняшнюю или будущую дату';
   }
   const payload: DraftPayload = {
     purpose: purpose || null,

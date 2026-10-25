@@ -1,3 +1,4 @@
+import {applicationNumber} from "../application-number";
 import type { Application,ProductCode } from "../types";
 import { products } from "../products";
 import StatusBadge from './StatusBadge';
@@ -59,10 +60,10 @@ export default function ApplicationsList({
           <div className="application-list">
             {items.map((item) => (
               <article className="application-row" key={item.id}>
-                <button className="application-open" disabled={busy} onClick={() => onOpen(item.id)} aria-label={`Открыть заявку ${item.id.slice(-6)}`} aria-describedby={`application-details-${item.id} application-amount-${item.id}`}>
+                <button className="application-open" disabled={busy} onClick={() => onOpen(item.id)} aria-label={`Открыть заявку ${applicationNumber(item)}`} aria-describedby={`application-details-${item.id} application-amount-${item.id}`}>
                   <span className="row-icon"><Icon name="document" /></span>
                   <span className="row-main" id={`application-details-${item.id}`}>
-                    <span className="row-topline">№ {item.id.slice(-6)} <StatusBadge status={item.status}/></span>
+                    <span className="row-topline">№ {applicationNumber(item)} <StatusBadge status={item.status}/></span>
                     <span className="row-title">{products.find(product => product.code === item.product_code)?.title || "Новая заявка"}</span>
                     <span className="row-purpose">{item.purpose || "Расскажите о задаче вашего бизнеса"}</span>
                   </span>
@@ -72,7 +73,7 @@ export default function ApplicationsList({
                   </span>
                   <span className="row-open"><Icon name="arrow" /></span>
                 </button>
-                {item.status === "DRAFT" && <button className="icon-button row-delete" disabled={busy} onClick={() => onDelete(item.id)} aria-label={`Удалить черновик ${item.id.slice(-6)}`} title="Удалить черновик"><Icon name="trash" /></button>}
+                {item.status === "DRAFT" && <button className="icon-button row-delete" disabled={busy} onClick={() => onDelete(item.id)} aria-label={`Удалить черновик ${applicationNumber(item)}`} title="Удалить черновик"><Icon name="trash" /></button>}
               </article>
             ))}
           </div>

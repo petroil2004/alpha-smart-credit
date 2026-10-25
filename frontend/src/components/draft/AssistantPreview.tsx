@@ -43,7 +43,7 @@ export default function AssistantPreview(props:Props){
   </div>
   {props.open&&<section id={panelId} className="assistant-panel" aria-label="Помощник по финансированию">
    <h3>Помощник по финансированию</h3>
-   {checking?<p role="status">Проверяем подключение помощника…</p>:!available?<div className="assistant-placeholder"><p>{unavailable}</p><button type="button" className="text-button" onClick={()=>setAttempt(n=>n+1)}>Проверить подключение</button></div>:<p className="small-note">Опишите задачу бизнеса. Помощник предложит продукт; окончательный выбор за вами.</p>}
+   {checking?<p role="status">Проверяем подключение помощника…</p>:!available?<div className="assistant-placeholder"><p>{unavailable}</p><button type="button" className="text-button" onClick={()=>setAttempt(n=>n+1)}>Проверить подключение</button></div>:null}
    <div role="log" aria-label="Диалог с помощником" aria-live="polite">{messages.map((item,index)=><p className={`assistant-message assistant-message-${item.role}`} key={index}><strong>{item.role==='user'?'Вы':'Помощник'}: </strong>{item.content}</p>)}</div>
    {reply?.suggested_product&&<button type="button" className="button secondary assistant-select" onClick={()=>props.onSelect(reply.suggested_product!)}>Выбрать продукт: {products.find(product=>product.code===reply.suggested_product)?.title}</button>}
    {reply&&<p className="small-note">{reply.disclaimer}</p>}
