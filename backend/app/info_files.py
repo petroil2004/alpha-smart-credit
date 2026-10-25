@@ -38,7 +38,8 @@ def file_values(filename,content_type,content):
 
 def preflight(db,app_id,rid,account):
     application=accessible_application(db,app_id,account,lock=False)
-    request_for(db,application,rid)
+    item=request_for(db,application,rid)
+    if not item.document_required:raise ApiProblem(409,'DOCUMENT_NOT_REQUESTED','Прикрепление документов не включено в этом запросе')
     # Do not retain a database transaction while the browser sends file bytes.
     db.rollback()
 
@@ -51,7 +52,9 @@ def store_file(db,app_id,rid,fid,account,revision,filename,kind,digest,content):
             raise ApiProblem(409,'FILE_KEY_CONFLICT','Ключ файла уже использован для другого вложения')
         if existing.detached_at:raise ApiProblem(410,'FILE_DETACHED','Файл откреплён. Для новой загрузки выберите файл снова.')
         return serialize_application(application,db)
-    require_open(application,item);check_version(item.revision,revision)
+    require_open(application,item)
+    if not item.document_required:raise ApiProblem(409,'DOCUMENT_NOT_REQUESTED','Прикрепление документов не включено в этом запросе')
+    check_version(item.revision,revision)
     count=db.scalar(select(func.count()).select_from(InfoAttachment).where(InfoAttachment.request_id==rid,InfoAttachment.detached_at.is_(None)))
     if count>=5:raise validation_error({'attachments':'Допускается до пяти файлов. Открепите лишний.'})
     now=utc_now()

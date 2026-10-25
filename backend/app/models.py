@@ -149,6 +149,17 @@ class StaffFinancialCorrection(Base):
     values: Mapped[list] = mapped_column(JSONB, nullable=False)
 
 
+class StaffProfileCorrection(Base):
+    __tablename__ = 'staff_profile_corrections'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    application_id: Mapped[uuid.UUID] = mapped_column(ForeignKey('applications.id'), nullable=False, index=True)
+    request_id: Mapped[uuid.UUID] = mapped_column(ForeignKey('info_requests.id'), nullable=False)
+    actor_id: Mapped[str] = mapped_column(ForeignKey('accounts.id'), nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    details: Mapped[dict] = mapped_column(JSONB, nullable=False)
+
+
 class InfoMessage(Base):
     __tablename__ = 'info_messages'
     id: Mapped[int] = mapped_column(primary_key=True)

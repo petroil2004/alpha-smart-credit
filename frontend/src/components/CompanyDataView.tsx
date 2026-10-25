@@ -11,7 +11,7 @@ function month(value:string){
  const name=new Intl.DateTimeFormat('ru-RU',{month:'long',timeZone:'UTC'}).format(new Date(value+'-01T00:00:00Z'));
  return name[0].toUpperCase()+name.slice(1)+' '+value.slice(0,4);
 }
-function source(value:string|null){return value==='BANK_DATA'?null:<small className="value-source">{value==='SELF_REPORTED'?'Со слов клиента':value==='MOCK_CHECK'?'Имитация проверки':'Источник не указан'}</small>;}
+function source(value:string|null){return value==='BANK_DATA'?null:<small className="value-source">{value==='STAFF_VERIFIED'?'Проверено сотрудником':value==='SELF_REPORTED'?'Со слов клиента':value==='MOCK_CHECK'?'Имитация проверки':'Источник не указан'}</small>;}
 export default function CompanyDataView({profile,historical=false,pending=false}:{profile?:CompanyProfile;historical?:boolean;pending?:boolean}){
  const details=profile?.details,finance=profile?.finance;
  const absent=historical?'Не зафиксировано при отправке':pending?'Загружаем сведения…':'Нет сведений в наборе';
@@ -27,7 +27,7 @@ export default function CompanyDataView({profile,historical=false,pending=false}
      <div><dt>Статус регистрации бизнеса</dt><dd>{details.registration_status==='ACTIVE'?'Действует':details.registration_status==='TERMINATED'?'Деятельность прекращена':unknown}</dd></div>
      <div><dt>Клиент банка</dt><dd>{details.is_bank_client===null?unknown:details.is_bank_client?'Да':'Нет'}</dd></div>
     </dl>
-    <p className="small-note">ИНН, ОКВЭД и статус — из локальной имитации ФНС; финансовые сведения синтетические. Реального обращения во внешние сервисы нет.</p>
+    <p className="small-note">{details.registry_source==='STAFF_VERIFIED'?'Регистрационные сведения проверены сотрудником по материалам уточнения. Все данные синтетические.':'ИНН, ОКВЭД и статус — из локальной имитации ФНС; финансовые сведения синтетические. Реального обращения во внешние сервисы нет.'}</p>
     <p className="small-note">Дата сведений: {date(profile?.as_of_date)}. Набор подготовлен: {date(profile?.prepared_on)}.</p>
    </>:<p className="small-note">{absent}</p>}
   </details>
@@ -45,7 +45,7 @@ export default function CompanyDataView({profile,historical=false,pending=false}
      <div><dt>Текущие платежи по долгам, ₽/мес.</dt><dd>{money(finance.debt_payment_rub)}{finance.debt_payment_rub!==null&&source(finance.debt_source)}</dd></div>
     </dl>
     <p className="small-note">Платежи по долгам на {date(finance.debt_as_of)}. Среднее показано только для полного ряда из шести месяцев. Это сводка данных, без оценки риска или одобрения.</p>
-    {historical&&<p className="small-note">Данные зафиксированы при отправке заявки и не обновляются текущим профилем компании.</p>}
+    {historical&&<p className="small-note">Исходные данные зафиксированы при отправке заявки. Подтверждённые сотрудником поправки учтены в этой карточке.</p>}
    </>:<p className="small-note">{absent}</p>}
   </details>
  </div>;

@@ -50,7 +50,6 @@ export default function LoanCalculator({fields,onChange,state,errors:saveErrors=
       <div className="slider-limits"><span>{product.term_min_months} мес.</span><span>{product.term_max_months} мес.</span></div>
     </div>}
     </div>
-    {fields.product_code==="equipment"&&<div className="loan-control-group"><MoneyField {...props} name="equipment_cost_rub" label="Полная стоимость оборудования"/><p className="small-note">Стоимость покупки может быть выше суммы кредита: разницу компания оплачивает своими средствами.</p></div>}
     </div>
     <LoanCalculationSummary state={state} onReauthenticate={onReauthenticate}/>
   </div>;

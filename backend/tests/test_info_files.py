@@ -43,7 +43,7 @@ def test_document_requirement_persistence_download_and_close(client):
     (b'a'*(LIMIT+1),'x.txt','text/plain',413),
 ],ids=['empty','bad-pdf','mime-mismatch','bad-image','text-rejected','null-text','path','control-name','oversize'])
 def test_invalid_file_is_atomic(client,data,name,kind,status):
-    item,r=opened(client);login(client)
+    item,r=opened(client,True);login(client)
     response,_=upload(client,item,r,data,name,kind)
     assert response.status_code==status,response.text
     current=client.get('/api/v1/applications/'+item['id']).json()
@@ -51,7 +51,7 @@ def test_invalid_file_is_atomic(client,data,name,kind,status):
 
 
 def test_limits_streaming_pdf_and_slots(client):
-    item,r=opened(client);login(client)
+    item,r=opened(client,True);login(client)
     response,_=upload(client,item,r,iter([b'%PDF-'+b'a'*(LIMIT-5)]),'large.pdf')
     assert response.status_code==200,response.text
     item=response.json();r=item['info_requests'][0]
@@ -66,7 +66,7 @@ def test_limits_streaming_pdf_and_slots(client):
 
 
 def test_replay_detach_does_not_resurrect_and_isolation(client):
-    item,r=opened(client);login(client);fid=str(uuid.uuid4())
+    item,r=opened(client,True);login(client);fid=str(uuid.uuid4())
     first,path=upload(client,item,r,b'%PDF-abc','x.pdf',fid=fid)
     assert first.status_code==200
     assert upload(client,item,r,b'%PDF-abc','x.pdf',fid=fid)[0].json()==first.json()
@@ -99,7 +99,7 @@ def test_parallel_upload_and_submit_are_serialized(client):
 
 
 def test_file_ids_must_belong_to_request_and_parallel_uploads_conflict(client):
-    item,r=opened(client);login(client)
+    item,r=opened(client,True);login(client)
     with TestClient(app) as other:
         login(other)
         with ThreadPoolExecutor(2) as pool:
@@ -109,7 +109,7 @@ def test_file_ids_must_belong_to_request_and_parallel_uploads_conflict(client):
     wrong=base(item)+'/'+str(uuid.uuid4())+'/attachments/'+fid
     assert client.get(wrong).status_code==404
     assert post(client,wrong+'/detach',{'revision':r['revision']}).status_code==404
-    other,r2=opened(client);login(client)
+    other,r2=opened(client,True);login(client)
     wrong=base(other)+'/'+r2['id']+'/attachments/'+fid
     assert client.get(wrong).status_code==404
     assert post(client,wrong+'/detach',{'revision':1}).status_code==404

@@ -58,6 +58,8 @@ def serialize_application(application: Application, db: Session, *, detail: bool
         # A draft has no assessment.  Keeping the key absent for drafts also
         # preserves the compact draft/list projection used by existing clients.
         if submission:
+            from .verified_data import effective_company
+            result['verified_company']=effective_company(application,submission,db)
             from .models import ApplicationAssessment
             assessment = db.get(ApplicationAssessment, application.id)
             result['assessment'] = assessment.result if assessment else None

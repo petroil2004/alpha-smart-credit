@@ -18,6 +18,7 @@ export function createInfoApi(fetcher:typeof fetch):InfoApi {
  const json=(method:string,body:unknown,key?:string):RequestInit=>({method,body:JSON.stringify(body),headers:{'Content-Type':'application/json',...(key?{'Idempotency-Key':key}:{})}});
  return {
   close:(id,rid,body,key)=>request<Application>(path(id,rid,true)+'/close',json('POST',body,key)),
+  correctProfile:(id,rid,body,key)=>request<Application>(path(id,rid,true)+'/profile-corrections',json('POST',body,key)),
   correctFinancial:(id,rid,body,key)=>request<Application>(path(id,rid,true)+'/financial-corrections',json('POST',body,key)),
   create:(id,body,key)=>request<Application>(path(id,undefined,true),json('POST',body,key)),
   save:(id,rid,revision,text)=>request<Application>(path(id,rid)+'/reply',json('PATCH',{revision,reply_text:text})),

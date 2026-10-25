@@ -32,3 +32,18 @@ it('lets staff explicitly enter a zero debt payment with an audit reason after a
  await waitFor(()=>expect(accept).toHaveBeenCalledWith({...item,version:2}));
  expect(api.info!.correctFinancial).toHaveBeenCalledWith(item.id,'r',{version:1,reason:'Проверено по справке клиента',values:[{kind:'debt_payment_rub',month:null,value_rub:'0'}]},expect.any(String));
 });
+
+it('offers finance or company profile and creates six rows when the snapshot has no finance',async()=>{
+ const {default:DataCorrections}=await import('./components/DataCorrections');
+ const request:InfoRequest={id:'r',question:'Уточните данные',reason:'',document_required:false,revision:3,reply_text:'',source:'SELF_REPORTED',created_at:'2026-10-25T00:00:00Z',created_by:staff.user.id,reply_by:'demo-client-1',reply_submitted_at:'2026-10-25T01:00:00Z',closed_at:null,closed_by:null,messages:[],attachments:[]};
+ const item=application({status:'NEEDS_INFO',info_requests:[request]});
+ const api=createApi(contractServer().fetcher),user=userEvent.setup();
+ render(<DataCorrections api={api} application={item} request={request} session={staff} guard={async()=>{}} accept={vi.fn()} register={vi.fn()}/>);
+ await user.click(screen.getByRole('button',{name:'Скорректировать данные'}));
+ await user.selectOptions(screen.getByLabelText('Что корректируем'),'finance');
+ expect(screen.getAllByRole('row')).toHaveLength(7);
+ expect(screen.getAllByPlaceholderText('Нет сведений')).toHaveLength(12);
+ await user.selectOptions(screen.getByLabelText('Что корректируем'),'profile');
+ expect(screen.getByRole('region',{name:'Корректировка профиля компании'})).toBeVisible();
+ expect(screen.getByLabelText('ИНН')).toBeVisible();
+});

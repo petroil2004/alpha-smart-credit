@@ -528,3 +528,6 @@ button.direction-card:hover:not(:disabled) { box-shadow: inset 0 0 0 2px #202020
 .info-closed { margin-top: 20px; }
 .manual-financial .small-note { margin: 20px 0; }
 .row-amount small { font-variant-numeric: tabular-nums; }
+
+.application-stack > .review-card { margin-top: 0; }
+.data-correction-selector { margin-top: 24px; }

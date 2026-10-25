@@ -35,29 +35,10 @@ def money(value: Decimal) -> str:
     return format(value.quantize(MONEY, rounding=ROUND_HALF_UP), '.2f')
 
 
-def accepted_financial_values(application_id: uuid.UUID, db: Session) -> list[dict[str, Any]]:
-    accepted = [(item.financial_accepted_at, 0, str(item.id), item.financial_values or []) for item in db.scalars(select(InfoRequest).where(
-        InfoRequest.application_id == application_id, InfoRequest.financial_accepted_at.is_not(None)
-    ))]
-    accepted += [(item.recorded_at, 1, item.id, item.values) for item in db.scalars(select(StaffFinancialCorrection).where(
-        StaffFinancialCorrection.application_id == application_id
-    ))]
-    return [value for _, _, _, values in sorted(accepted) for value in values]
-
-
 def assessment_facts(application: Application, submission: ApplicationSubmission, db: Session) -> dict[str, Any]:
-    finance = submission.snapshot['company'].get('finance', {})
-    months = [dict(row) for row in finance.get('months', [])]
-    debt = finance.get('debt_payment_rub')
-    by_month = {item['month']: item for item in months}
-    for value in accepted_financial_values(application.id, db):
-        if value['kind'] == 'debt_payment_rub':
-            debt = value['value_rub']
-        elif value.get('month') in by_month:
-            row = by_month[value['month']]
-            row[value['kind']] = value['value_rub']
-            row[value['kind'].replace('_rub', '_source')] = value['source']
-    return {'months': months, 'debt_payment_rub': debt}
+    from .verified_data import effective_company
+    finance=effective_company(application,submission,db)['finance']
+    return {'months':finance['months'],'debt_payment_rub':finance['debt_payment_rub']}
 
 
 def score(facts: dict[str, Any], details: dict[str, Any]) -> tuple[int | None, str, list[str], list[str], list[dict[str, Any]]]:
@@ -105,12 +86,13 @@ def calculate_assessment(application: Application, db: Session, now: datetime | 
     if submission is None:
         raise ApiProblem(409, 'NOT_SUBMITTED', 'Сначала отправьте заявку на рассмотрение')
     snapshot = submission.snapshot
-    details = snapshot['company'].get('details') or {}
+    from .verified_data import effective_company
+    details = effective_company(application,submission,db)['details']
     facts = assessment_facts(application, submission, db)
     score_value, group, reasons, missing, criteria = score(facts, details)
     formal: list[str] = []
     decline: list[str] = []
-    if details.get('registry_source') != 'FNS_MOCK' or not details.get('tax_id') or not details.get('okved'):
+    if details.get('registry_source') not in {'FNS_MOCK','STAFF_VERIFIED'} or not details.get('tax_id') or not details.get('okved'):
         missing.append('сведения ИНН и ОКВЭД из имитации ФНС')
     if details.get('registration_status') != 'ACTIVE':
         decline.append('В имитации ФНС статус регистрации не «Действует»')
@@ -119,7 +101,7 @@ def calculate_assessment(application: Application, db: Session, now: datetime | 
     if (details.get('business_age_months') or 0) < 9:
         decline.append('Возраст бизнеса меньше 9 полных месяцев')
     formal.extend([
-        'Имитация ФНС: ' + ('сведения получены' if details.get('registry_source') == 'FNS_MOCK' and details.get('tax_id') and details.get('okved') else 'нет полных сведений'),
+        ('Регистрационные сведения проверены сотрудником: ' if details.get('registry_source')=='STAFF_VERIFIED' else 'Имитация ФНС: ') + ('сведения получены' if details.get('registry_source') in {'FNS_MOCK','STAFF_VERIFIED'} and details.get('tax_id') and details.get('okved') else 'нет полных сведений'),
         'Регистрация бизнеса: ' + ('действует' if details.get('registration_status') == 'ACTIVE' else 'не подтверждена как действующая'),
         'Клиент банка: ' + ('да' if details.get('is_bank_client') is True else 'не подтверждён'),
     ])
@@ -127,8 +109,6 @@ def calculate_assessment(application: Application, db: Session, now: datetime | 
     try:
         if app['product_code'] in {'working_capital', 'equipment'}:
             calc = calculate_annuity(app['product_code'], Decimal(app['amount_rub']), app['term_months'])
-            if app['product_code'] == 'equipment' and Decimal(app.get('equipment_cost_rub') or '0') < Decimal(app['amount_rub']):
-                decline.append('Сумма кредита превышает стоимость оборудования')
             if not missing:
                 income = sum(Decimal(row['income_rub']) for row in facts['months']) / 6
                 expenses = sum(Decimal(row['expenses_rub']) for row in facts['months']) / 6

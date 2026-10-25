@@ -47,3 +47,65 @@ def test_manual_values_preserve_client_reply_recalculate_and_are_audited(client)
     assert restored['assessment']['score']==original['assessment']['score']
     login(client,'demo-client-1')
     assert len(client.get(f"/api/v1/applications/{original['id']}").json()['info_requests'][0]['staff_corrections'])==2
+
+
+def test_missing_months_and_profile_can_be_corrected_without_changing_snapshot(client):
+    from app.db import SessionLocal
+    from app.models import ApplicationSubmission
+    original=submit(client,draft(client,amount_rub='300000.00',term_months=36)).json()
+    with SessionLocal() as db:
+        submission=db.get(ApplicationSubmission,uuid.UUID(original['id']))
+        snapshot={**submission.snapshot,'company':{**submission.snapshot['company'],'finance':{'period':{'start_date':'2026-04-01','end_date':'2026-09-30'},'months':[],'debt_payment_rub':None}}}
+        submission.snapshot=snapshot;db.commit()
+    login(client,'demo-staff-1');prefix=f"/api/v1/staff/applications/{original['id']}/info-requests"
+    requested=client.post(prefix,json={'version':original['version'],'question':'Уточните сведения'},headers={'Idempotency-Key':str(uuid.uuid4())}).json()
+    assert len(requested['verified_company']['finance']['months'])==6
+    request=requested['info_requests'][0];rid=request['id']
+    login(client,'demo-client-1');path=f"/api/v1/applications/{original['id']}/info-requests/{rid}"
+    saved=client.patch(path+'/reply',json={'revision':request['revision'],'reply_text':'Сведения предоставлены'}).json()
+    replied=client.post(path+'/reply/submit',json={'version':saved['version'],'revision':saved['info_requests'][0]['revision']},headers={'Idempotency-Key':str(uuid.uuid4())}).json()
+    profile_path=prefix+'/'+rid+'/profile-corrections'
+    payload={'version':replied['version'],'reason':'Проверено сотрудником','details':{'is_bank_client':True}}
+    assert client.post(profile_path,json=payload,headers={'Idempotency-Key':str(uuid.uuid4())}).status_code==403
+    login(client,'demo-staff-1')
+    for details in [{'tax_id':'abc'},{'registration_date':'9999-01-01'},{'is_bank_client':'yes'},{'okved':'abc'}]:
+        assert client.post(profile_path,json={**payload,'details':details},headers={'Idempotency-Key':str(uuid.uuid4())}).status_code==422
+    values=[{'kind':kind,'month':f'2026-{month:02d}','value_rub':'900000.00' if kind=='income_rub' else '500000.00'} for month in range(4,10) for kind in ['income_rub','expenses_rub']]
+    values.append({'kind':'debt_payment_rub','month':None,'value_rub':'0.00'})
+    response=client.post(prefix+'/'+rid+'/financial-corrections',json={'version':replied['version'],'reason':'Проверено по сведениям клиента','values':values},headers={'Idempotency-Key':str(uuid.uuid4())})
+    assert response.status_code==200,response.text
+    updated=response.json();assert updated['verified_company']['finance']['average_income_rub']=='900000.00'
+    payload={'version':updated['version'],'reason':'Проверено по регистрационным сведениям','details':{'legal_form':'OOO','tax_id':'7700000001','okved':'47.11','registration_date':'2020-01-01','registration_status':'ACTIVE','is_bank_client':True}}
+    key={'Idempotency-Key':str(uuid.uuid4())};corrected=client.post(profile_path,json=payload,headers=key)
+    assert corrected.status_code==200,corrected.text
+    corrected=corrected.json()
+    assert corrected['verified_company']['details']['registration_date']=='2020-01-01'
+    assert corrected['verified_company']['details']['registry_source']=='STAFF_VERIFIED'
+    assert corrected['verified_company']['details']['business_age_months']>=72
+    assert corrected['submission']['snapshot']==snapshot
+    assert corrected['assessment']['recommendation']=='OFFER_REQUESTED'
+    assert client.post(profile_path,json=payload,headers=key).json()==corrected
+    assert len(corrected['info_requests'][0]['profile_corrections'])==1
+
+
+def test_document_toggle_is_enforced_by_upload_api(client):
+    from test_info_requests import opened
+    from test_info_files import upload
+    item,request=opened(client,False);login(client,'demo-client-1')
+    assert upload(client,item,request)[0].status_code==409
+    assert client.get('/api/v1/applications/'+item['id']).json()['info_requests'][0]['attachments']==[]
+
+
+def test_overdraft_inconsistent_amounts_and_dates_cannot_be_saved_or_submitted(client):
+    item=draft(client,product_code='overdraft',amount_rub='100000.00',term_months=None,planned_payment_rub='90000.00',planned_payment_date='2099-10-24',expected_inflow_date='2099-11-01',expected_inflow_amount_rub='100000.00',expected_inflow_source='BUYER')
+    path='/api/v1/applications/'+item['id']
+    for changes in [{'planned_payment_rub':'100001.00'},{'expected_inflow_date':'2099-10-23'},{'expected_inflow_date':'2100-01-01'}]:
+        response=client.patch(path,json={'version':item['version'],**changes})
+        assert response.status_code==422,response.text
+    assert client.get(path).json()==item
+    changed=client.patch(path,json={'version':item['version'],'expected_inflow_amount_rub':'90000.00'}).json()
+    assert submit(client,changed).status_code==422  # principal alone does not cover interest
+    response=client.patch(path,json={'version':changed['version'],'expected_inflow_amount_rub':'100000.00'})
+    assert response.status_code==200
+    sent=submit(client,response.json());assert sent.status_code==200,sent.text
+    assert sent.json()['submission']['snapshot']['calculation']['usage_days']==8

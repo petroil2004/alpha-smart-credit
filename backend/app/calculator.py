@@ -54,11 +54,11 @@ def calculate_overdraft(limit_rub: Decimal, payment_rub: Decimal, usage_days: in
     if not product.amount_min_rub <= limit_rub <= product.amount_max_rub:
         fields["amount_rub"] = f"Укажите лимит от {product.amount_min_rub} до {product.amount_max_rub} ₽"
     if payment_rub <= 0 or payment_rub > limit_rub:
-        fields["planned_payment_rub"] = "Планируемая оплата должна быть больше нуля и не превышать лимит"
+        fields["planned_payment_rub"] = "Сумма использования должна быть больше нуля и не превышать лимит"
     if not product.usage_min_days <= usage_days <= product.usage_max_days:
         fields["usage_days"] = f"Укажите срок использования от {product.usage_min_days} до {product.usage_max_days} дней"
-    if inflow_date < payment_date or inflow_date > payment_date.fromordinal(payment_date.toordinal() + usage_days):
-        fields["expected_inflow_date"] = "Поступление должно быть в период использования овердрафта"
+    if (inflow_date-payment_date).days != usage_days or inflow_date <= payment_date:
+        fields["expected_inflow_date"] = "Дата поступления должна быть позже даты использования; срок должен совпадать с разницей дат"
     if fields:
         raise CalculationValidationError(fields)
     with localcontext() as context:

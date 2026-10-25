@@ -37,7 +37,7 @@ def financial_period(now) -> dict[str, str]:
 def replay(receipt, application, actor_id, body, db):
     if receipt.application_id != application.id or receipt.actor_id != actor_id or receipt.request_payload != body:
         raise ApiProblem(409, 'IDEMPOTENCY_CONFLICT', 'Этот ключ уже использован для другой отправки.')
-    return serialize_application(application, db, staff=account.role=='STAFF')
+    return serialize_application(application, db)
 
 
 @router.post('/applications/{application_id}/submit')
@@ -76,8 +76,6 @@ def submit_application(application_id: uuid.UUID, payload: SubmitPayload, accoun
         fields['amount_rub'] = 'Укажите сумму'
     if application.product_code in {'working_capital', 'equipment'} and application.term_months is None:
         fields['term_months'] = 'Укажите срок'
-    if application.product_code == 'equipment' and application.equipment_cost_rub is None:
-        fields['equipment_cost_rub'] = 'Укажите стоимость оборудования'
     if application.product_code == 'overdraft':
         for name in ('usage_days', 'expected_inflow_date', 'expected_inflow_amount_rub', 'planned_payment_rub', 'planned_payment_date', 'expected_inflow_source'):
             if getattr(application, name) is None:

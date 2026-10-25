@@ -4,6 +4,7 @@ import type { Api, Application, CompanyProfile, ClientSession } from "../types";
 import { useLoanCalculator } from "../hooks/useLoanCalculator";
 import LoanCalculator, { LoanCalculationSummary } from "./draft/LoanCalculator";
 import ApplicationJourney from "./ApplicationJourney";
+import {draftConstraints} from '../draft-constraints';
 import {draftReadiness} from "../draft-readiness";
 import { draftSteps } from "../draft-steps";
 import type { DraftStep } from "../draft-steps";
@@ -75,8 +76,10 @@ export default function DraftForm(props: Props) {
   const current = draftSteps[index];
   const last = index === draftSteps.length - 1;
   const calculator = useLoanCalculator(props.api, fields, application.id);
+  const constraints=draftConstraints(fields,calculator.catalog);
+  const editableProps={...props,errors:{...errors,...constraints}};
   const readiness=draftReadiness(fields,calculator.catalog);
-  const canVisit=(next:DraftStep)=>next==='product'||(next==='details'?readiness.product:readiness.details);
+  const canVisit=(next:DraftStep)=>next==='product'||(next==='details'?readiness.product:readiness.details&&!Object.keys(constraints).length);
   const previousReset=useRef(props.resetVersion);
   useEffect(()=>{
     if(previousReset.current===props.resetVersion)return;
@@ -159,7 +162,7 @@ export default function DraftForm(props: Props) {
               <p>{current.description}</p>
             </div>
             {step === "product" && <>
-              <ProductFields {...props} catalog={calculator.catalog} />
+              <ProductFields {...editableProps} catalog={calculator.catalog} />
               <AssistantPreview open={assistantOpen} onToggle={() => setAssistantOpen(value => !value)} api={props.api} session={props.session} applicationId={application.id} onSelect={code=>{
                 props.onChange('product_code',code);
                 const choices=form.current?.querySelector<HTMLElement>('.product-options');
@@ -171,8 +174,8 @@ export default function DraftForm(props: Props) {
               <>
                 {fields.product_code && fields.product_code !== "overdraft"
                   ? <LoanCalculator fields={fields} onChange={props.onChange} errors={errors} state={calculator} onReauthenticate={reauthenticate}/>
-                  : <><MoneyField {...props} name="amount_rub" label="Лимит овердрафта" /><ParameterFields {...props} />{fields.product_code === "overdraft" && <p className="small-note">При отправке заявки проверим покрытие поступлением и рассчитаем проценты за указанный срок.</p>}</>}
-                <PurposeField {...props} />
+                  : <><MoneyField {...editableProps} name="amount_rub" label="Лимит овердрафта" /><ParameterFields {...editableProps} />{fields.product_code === "overdraft" && <p className="small-note">При отправке заявки проверим покрытие поступлением и рассчитаем проценты за указанный срок.</p>}</>}
+                <PurposeField {...editableProps} />
                 {!fields.product_code && (
                   <button
                     className="text-button choose-product"

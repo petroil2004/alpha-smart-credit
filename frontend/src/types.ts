@@ -43,7 +43,7 @@ export interface StaffSession {
 export type Session = ClientSession | StaffSession;
 export interface CompanyDetails {
   legal_form:string|null; tax_id:string|null; okved:string|null; registration_date:string|null;
-  registry_source?:"FNS_MOCK"|null; business_age_months:number|null; registration_status:string|null; is_bank_client:boolean|null;
+  registry_source?:"FNS_MOCK"|"STAFF_VERIFIED"|null; business_age_months:number|null; registration_status:string|null; is_bank_client:boolean|null;
 }
 export interface CompanyFinance {
   period:{start_date:string;end_date:string};
@@ -96,6 +96,7 @@ export interface Application extends DraftPayload {
   submitted_at?: string | null;
   submission?: {submitted_at: string; submitted_by: string; snapshot: SubmissionSnapshot} | null;
   history?: ApplicationEvent[];
+  verified_company?:CompanyProfile;
   info_requests?: InfoRequest[];
   next_action?: "CLIENT"|"STAFF"|null;
   assessment?: Assessment | null;
@@ -181,6 +182,7 @@ export interface InfoRequest {
   id:string; question:string; reason:string; document_required:boolean; revision:number; reply_text:string;
   source:'SELF_REPORTED'; created_at:string; created_by:string; reply_by:string|null; closed_at:string|null; closed_by:string|null;
   reply_submitted_at?:string|null;
+  profile_corrections?:{id:number;actor_name:string;recorded_at:string;reason:string;details:Partial<CompanyDetails>}[];
   staff_corrections?:StaffCorrection[];
   financial_required?:boolean; financial_values?:FinancialValue[]|null; financial_accepted_at?:string|null;
   messages:InfoMessage[]; attachments:InfoAttachment[];
@@ -188,7 +190,9 @@ export interface InfoRequest {
 export interface FinancialValue {kind:"income_rub"|"expenses_rub"|"debt_payment_rub";month:string|null;value_rub:string;source:"CLIENT_DOCUMENT"|"CLIENT_CONFIRMED";}
 export interface InfoCreate {version:number; question:string; reason:string; document_required:boolean;}
 export interface InfoSubmit {version:number; revision:number;}
+export interface ProfileCorrectionInput {version:number;reason:string;details:Partial<Pick<CompanyDetails,"legal_form"|"tax_id"|"okved"|"registration_date"|"registration_status"|"is_bank_client">>;}
 export interface InfoApi {
+  correctProfile?(id:string,rid:string,body:ProfileCorrectionInput,key:string):Promise<Application>;
   close?(id:string,rid:string,body:InfoSubmit,key:string):Promise<Application>;
   correctFinancial?(id:string,rid:string,body:ManualFinancialInput,key:string):Promise<Application>;
   create(id:string,body:InfoCreate,key:string):Promise<Application>;
