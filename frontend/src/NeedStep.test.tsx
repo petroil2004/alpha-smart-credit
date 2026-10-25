@@ -1,4 +1,4 @@
-import { flushStep } from "./test/save-helpers";
+import { flushStep, openParameters } from "./test/save-helpers";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
@@ -8,7 +8,7 @@ import { application, contractServer } from "./test/api-fixtures";
 
 beforeEach(() => window.history.replaceState(null, "", "/"));
 async function open(purpose: string | null = null) {
-  const item = application({ purpose });
+  const item = application({ purpose,product_code:"working_capital",amount_rub:"500000.00",term_months:12 });
   window.history.replaceState(null, "", `/#draft/${item.id}`);
   const server = contractServer({ loggedIn: true, applications: [item] });
   const api = createApi(server.fetcher);
@@ -18,7 +18,7 @@ async function open(purpose: string | null = null) {
   return { user, server, api, item, ...view };
 }
 async function parameters(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole("button", { name: "Перейти к шагу «Параметры»" }));
+  await openParameters(user);
 }
 
 it("saves a custom purpose across steps and a page reload", async () => {
@@ -72,7 +72,7 @@ it("checks availability and keeps a disconnected assistant optional", async () =
 });
 
 it("keeps assistant expansion when returning to product and hides it elsewhere", async () => {
-  const h = await open();
+  const h = await open("Закупка");
   await h.user.click(screen.getByRole("button", { name: "Помочь с выбором" }));
   for (const step of ["Параметры", "Проверка"]) {
     await h.user.click(screen.getByRole("button", { name: `Перейти к шагу «${step}»` }));

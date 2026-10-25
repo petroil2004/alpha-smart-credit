@@ -17,7 +17,7 @@ async function open(api:ReturnType<typeof setup>['api']){
  fireEvent.click(await screen.findByRole('button',{name:'Помочь с выбором'}));
  await waitFor(()=>expect(screen.getByLabelText('Сообщение помощнику')).toBeEnabled());
  fireEvent.change(screen.getByLabelText('Сообщение помощнику'),{target:{value:'Нужна печь для пекарни'}});
- fireEvent.click(screen.getByRole('button',{name:'Отправить сообщение'}));
+ fireEvent.keyDown(screen.getByRole('textbox',{name:'Сообщение помощнику'}),{key:'Enter'});
 }
 it('chooses the recommended product only after the client explicitly clicks it',async()=>{
  const h=setup(async()=>reply);await open(h.api);
@@ -36,4 +36,17 @@ it('drops the answer when another profile has taken over the session',async()=>{
  await act(async()=>finish(reply));await screen.findByRole('button',{name:'Войти в кабинет'});
  expect(screen.queryByRole('button',{name:/Выбрать продукт:/})).not.toBeInTheDocument();
  expect(h.server.store.get(h.item.id)?.product_code).toBeNull();
+});
+it('keeps Shift+Enter as a newline and sends with plain Enter',async()=>{
+ const h=setup(async()=>reply);const {default:userEvent}=await import('@testing-library/user-event');const user=userEvent.setup();
+ render(<App api={h.api}/>);
+ await user.click(await screen.findByRole('button',{name:/Открыть заявку/}));
+ await user.click(screen.getByRole('button',{name:'Помочь с выбором'}));
+ const field=screen.getByLabelText('Сообщение помощнику');await waitFor(()=>expect(field).toBeEnabled());
+ await user.type(field,'Нужна печь{Shift>}{Enter}{/Shift}Для пекарни');
+ expect(field).toHaveValue('Нужна печь\nДля пекарни');expect(h.assistant.chat).not.toHaveBeenCalled();
+ await user.keyboard('{Enter}');
+ await screen.findByRole('button',{name:'Выбрать продукт: Кредит на оборудование'});
+ expect(h.assistant.chat).toHaveBeenCalledTimes(1);
+ expect(screen.getByRole('heading',{name:'Выберите продукт'})).toBeInTheDocument();
 });

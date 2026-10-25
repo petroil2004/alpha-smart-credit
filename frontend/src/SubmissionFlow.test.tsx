@@ -71,15 +71,16 @@ it('confirmation resets on edited data',async()=>{
   expect(checkbox()).not.toBeChecked(); expect(send()).toBeDisabled();
 });
 
-it('invalid purpose returns to details',async()=>{
+it('missing purpose blocks the review step',async()=>{
   const h=await setup({purpose:null});
-  await waitFor(()=>expect(checkbox()).not.toBeDisabled());
-  await h.user.click(checkbox()); await h.user.click(send());
-  expect(await screen.findByLabelText('На что нужны средства')).toHaveAttribute('aria-invalid','true');
+  expect(screen.getByRole('button',{name:'Перейти к шагу «Проверка»'})).toBeDisabled();
+  await h.user.click(screen.getByRole('button',{name:'Перейти к шагу «Параметры»'}));
+  expect(screen.getByLabelText('На что нужны средства')).toHaveValue('');
+  expect(screen.getByRole('button',{name:'Продолжить'})).toBeDisabled();
 });
 
 it('equipment application remains available for completion and submission',async()=>{
-  const h=await setup({product_code:'equipment'});
+  const h=await setup({product_code:'equipment',equipment_cost_rub:'3500000.00'});
   expect(screen.getByRole('button',{name:'Отправить заявку'})).toBeInTheDocument();
   expect(screen.queryByText(/Отправка этого продукта пока недоступна/)).not.toBeInTheDocument();
   await h.user.click(screen.getByRole('button',{name:'Сохранить и выйти'}));

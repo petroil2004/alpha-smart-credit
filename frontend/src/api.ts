@@ -79,6 +79,10 @@ export function createApi(
     }
   }
   return {
+    notifications:{
+      list:()=>request<import('./types').NotificationList>('/notifications'),
+      read:id=>request<void>(`/notifications/${id}/read`,{method:'POST'}),
+    },
     assistant:{
       status:()=>request<import('./types').AssistantStatus>('/assistant/status',{},5_000),
       chat:body=>request<import('./types').AssistantReply>('/assistant/chat',{method:'POST',body:JSON.stringify(body)},95_000),

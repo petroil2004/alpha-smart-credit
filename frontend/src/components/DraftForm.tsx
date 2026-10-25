@@ -3,6 +3,8 @@ import type { FormEvent } from "react";
 import type { Api, Application, CompanyProfile, ClientSession } from "../types";
 import { useLoanCalculator } from "../hooks/useLoanCalculator";
 import LoanCalculator, { LoanCalculationSummary } from "./draft/LoanCalculator";
+import ApplicationJourney from "./ApplicationJourney";
+import {draftReadiness} from "../draft-readiness";
 import { draftSteps } from "../draft-steps";
 import type { DraftStep } from "../draft-steps";
 import {
@@ -74,6 +76,8 @@ export default function DraftForm(props: Props) {
   const current = draftSteps[index];
   const last = index === draftSteps.length - 1;
   const calculator = useLoanCalculator(props.api, fields, application.id);
+  const readiness=draftReadiness(fields);
+  const canVisit=(next:DraftStep)=>next==='product'||(next==='details'?readiness.product:readiness.details);
   const previousReset=useRef(props.resetVersion);
   useEffect(()=>{
     if(previousReset.current===props.resetVersion)return;
@@ -106,7 +110,7 @@ export default function DraftForm(props: Props) {
   }, [step, errorAttempt]);
 
   const goTo = (next: DraftStep) => {
-    if (!busy) { props.onNavigate(); setStep(next); }
+    if (!busy && canVisit(next)) { props.onNavigate(); setStep(next); }
   };
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -124,7 +128,7 @@ export default function DraftForm(props: Props) {
               <li key={item.id}>
                 <button
                   type="button"
-                  disabled={busy}
+                  disabled={busy || !canVisit(item.id)}
                   aria-label={`Перейти к шагу «${item.label}»`}
                   aria-current={step === item.id ? "step" : undefined}
                   className={`step-button ${step === item.id ? "is-current" : ""} ${item.fields.some((field) => errors[field]) ? "has-error" : ""}`}
@@ -150,7 +154,12 @@ export default function DraftForm(props: Props) {
             </div>
             {step === "product" && <>
               <ProductFields {...props} catalog={calculator.catalog} />
-              <AssistantPreview open={assistantOpen} onToggle={() => setAssistantOpen(value => !value)} api={props.api} session={props.session} applicationId={application.id} onSelect={code=>props.onChange('product_code',code)} onSessionChanged={props.onSessionChanged}/>
+              <AssistantPreview open={assistantOpen} onToggle={() => setAssistantOpen(value => !value)} api={props.api} session={props.session} applicationId={application.id} onSelect={code=>{
+                props.onChange('product_code',code);
+                const choices=form.current?.querySelector<HTMLElement>('.product-options');
+                choices?.scrollIntoView?.({behavior:'smooth',block:'start'});
+                form.current?.querySelector<HTMLInputElement>(`input[name="product"][value="${code}"]`)?.focus({preventScroll:true});
+              }} onSessionChanged={props.onSessionChanged}/>
             </>}
             {step === "details" && (
               <>
@@ -176,6 +185,7 @@ export default function DraftForm(props: Props) {
               </>
             )}
           </fieldset>
+          {!last && !canVisit(draftSteps[index+1].id) && <p className="small-note">{step==='product'?'Выберите продукт, чтобы продолжить.':'Заполните цель и обязательные параметры финансирования, чтобы перейти к проверке.'}</p>}
           <div className="wizard-navigation">
             {index > 0 && (
               <button
@@ -203,7 +213,7 @@ export default function DraftForm(props: Props) {
               <button
                 className="button primary wizard-next"
                 type="submit"
-                disabled={busy}
+                disabled={busy || !canVisit(draftSteps[index+1].id)}
               >
                 Продолжить
                 <Icon name="arrow" size={18} />
@@ -221,40 +231,8 @@ export default function DraftForm(props: Props) {
         </form>
       </div>
       <aside className="draft-aside">
-        <div className="journey-card">
-          <h2>Путь заявки</h2>
-          <ol className="journey">
-            <li className="current">
-              <span>1</span>
-              <div>
-                <strong>Подготовка заявки</strong>
-                <small>
-                  Шаг {index + 1} из {draftSteps.length}: {current.label.toLowerCase()}
-                </small>
-              </div>
-            </li>
-            <li>
-              <span>2</span>
-              <div>
-                <strong>Рассмотрение</strong>
-                <small>После отправки заявки</small>
-              </div>
-            </li>
-            <li>
-              <span>3</span>
-              <div>
-                <strong>Предложение и оформление</strong>
-                <small>После решения банка</small>
-              </div>
-            </li>
-          </ol>
-          <div className="aside-note">
-            <Icon name="shield" />
-            <p>
-              Заявка ещё не отправлена в банк.
-            </p>
-          </div>
-        </div>
+        <ApplicationJourney status="DRAFT" step={`Шаг ${index+1} из ${draftSteps.length}: ${current.label.toLowerCase()}`}/>
+        <div className="aside-note"><Icon name="shield"/><p>Заявка ещё не отправлена в банк.</p></div>
         <div className="quiet-note">
           <Icon name="clock" size={17} />
           <p>
@@ -262,9 +240,7 @@ export default function DraftForm(props: Props) {
             что отображается «Изменения сохранены».
           </p>
         </div>
-        <span className="version-label">
-          Версия заявки {application.version}
-        </span>
+
       </aside>
     </div>
   );
