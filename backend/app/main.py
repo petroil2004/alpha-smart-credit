@@ -402,7 +402,9 @@ def delete_application(
 
 @app.get(f"{API_PREFIX}/company-profile")
 def company_profile(account: ClientAccount, db: Session = Depends(get_db)):
-    return get_company_profile(account, db)
+    from .financial_pulse import build_financial_pulse
+    profile = get_company_profile(account, db)
+    return {**profile, "financial_pulse": build_financial_pulse(profile)}
 
 
 from .submissions import router as submissions_router

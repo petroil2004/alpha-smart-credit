@@ -16,7 +16,7 @@ export function validateCompanyProfile(profile:unknown){
  if(!record(profile)||!text(profile.company_id)||!text(profile.profile_version)||!text(profile.company_name)||profile.source!=='BANK_DATA'
    ||!date(profile.as_of_date)||!nullableDate(profile.prepared_on)||!nullableText(profile.data_version))throw Error('Invalid company profile');
  const d=profile.details;
- if(!record(d)||!(d.legal_form===null||d.legal_form==='OOO'||d.legal_form==='IP')||!nullableText(d.tax_id)||!nullableText(d.okved)||!(d.registry_source===undefined||d.registry_source===null||d.registry_source==='FNS_MOCK')
+ if(!record(d)||!(d.legal_form===null||d.legal_form==='OOO'||d.legal_form==='IP')||!nullableText(d.tax_id)||!nullableText(d.okved)||!(d.registry_source===undefined||d.registry_source===null||d.registry_source==='FNS_MOCK'||d.registry_source==='STAFF_VERIFIED')
    ||!nullableDate(d.registration_date)||!(d.business_age_months===null||(typeof d.business_age_months==='number'&&Number.isSafeInteger(d.business_age_months)&&d.business_age_months>=0))
    ||!(d.registration_status===null||d.registration_status==='ACTIVE'||d.registration_status==='TERMINATED')
    ||!(d.is_bank_client===null||typeof d.is_bank_client==='boolean'))throw Error('Invalid company details');

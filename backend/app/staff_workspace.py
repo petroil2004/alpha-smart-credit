@@ -12,6 +12,7 @@ from .models import StaffFinancialCorrection, utc_now
 from .problems import ApiProblem
 from .review import calculate_assessment
 from .serialization import serialize_application
+from .company_updates import update_company_data
 
 router = APIRouter(prefix='/api/v1/staff')
 
@@ -51,6 +52,7 @@ def correct(app_id:uuid.UUID,rid:uuid.UUID,payload:Correction,account:StaffAccou
     values=[{**value,'source':'STAFF_VERIFIED'} for value in values]
     now=utc_now()
     db.add(StaffFinancialCorrection(application_id=application.id,request_id=request.id,actor_id=account.id,recorded_at=now,reason=reason,values=values))
+    update_company_data(db,application.company_id,now,financial_values=values)
     application.version+=1;application.updated_at=now;request.revision+=1
     db.flush()
     calculate_assessment(application,db,now)
@@ -108,7 +110,8 @@ def correct_profile(app_id:uuid.UUID,rid:uuid.UUID,payload:ProfileCorrection,acc
     if errors:raise validation_error(errors)
     if all(company['details'].get(field)==value for field,value in patch.items()):raise validation_error({'details':'Измените хотя бы одно поле'})
     now=utc_now();db.add(StaffProfileCorrection(application_id=app_id,request_id=rid,actor_id=account.id,recorded_at=now,reason=reason,details=patch))
-    application.version+=1;request.revision+=1
+    update_company_data(db,application.company_id,now,details=patch)
+    application.version+=1;application.updated_at=now;request.revision+=1
     db.flush();calculate_assessment(application,db,now)
     event(db,application,account,'STAFF_PROFILE_CORRECTED',now,None,reason)
     commit_operation(db,account,key,signature)

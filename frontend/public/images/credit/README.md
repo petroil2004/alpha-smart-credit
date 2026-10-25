@@ -10,3 +10,5 @@
 | overdraft.png | Чёрно-красное кольцо и серебряная монета ₽; овердрафт |
 
 Общая формулировка запроса генерации: «Background extraction: isolate the requested object grouping from the approved UI reference, match design/colors/lighting, genuinely transparent background, centered square cutout, full visible edges and transparent margin. No UI, card background, labels, buttons or unrelated objects. Preserve Alfa red and silver-lilac iridescence». Для каждого файла указан соответствующий объект из таблицы; референсы — утверждённые в чате макеты главной и трёх продуктов. Исходные генерации сохранены отдельно; файлы в этой папке — точные копии выбранных результатов.
+
+`company-profile.png` — иллюстрация кошелька, диаграммы и процентов, предоставлена Петей 25.10.2026 для страницы профиля компании. Исходный PNG 558×440 с прозрачностью скопирован без изменений.

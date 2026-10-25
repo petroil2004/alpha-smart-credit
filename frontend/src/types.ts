@@ -51,7 +51,16 @@ export interface CompanyFinance {
   debt_payment_rub:string|null; debt_source:string|null; debt_as_of:string|null;
   average_income_rub:string|null; average_expenses_rub:string|null;
 }
+export type PulseLevel = "GREEN" | "YELLOW" | "RED";
+export interface FinancialPulse {
+  status: "READY" | "INSUFFICIENT_DATA"; model_version: string;
+  score: number|null; level: PulseLevel|null; missing: string[];
+  metrics: {average_income_rub:string;income_change_percent:string|null;margin_percent:string;
+    debt_load_percent:string|null;free_flow_rub:string;margin_level:PulseLevel;debt_level:PulseLevel}|null;
+  series: {month:string;income_rub:string;expenses_rub:string}[];
+}
 export interface CompanyProfile {
+  financial_pulse?: FinancialPulse;
   details?:CompanyDetails; finance?:CompanyFinance;
   prepared_on?:string|null; as_of_date?:string; data_version?:string|null;
   company_id: string; company_name: string; profile_version: string; source: "BANK_DATA";
