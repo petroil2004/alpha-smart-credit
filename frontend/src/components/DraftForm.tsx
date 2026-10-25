@@ -30,7 +30,6 @@ interface Props extends EditableProps {
   busy: boolean;
   saveStatus: SaveState["status"];
   resetVersion: number;
-  onFinish: () => void;
   onSubmitApplication: (versions: {profile_version:string;catalog_version:string}) => void;
   onSessionChanged: () => void;
   onNavigate: () => void;
@@ -45,7 +44,6 @@ export default function DraftForm(props: Props) {
     errorAttempt,
     busy,
     saveStatus,
-    onFinish,
   } = props;
   const [profile,setProfile]=useState<CompanyProfile|null>(null);
   const [profileError,setProfileError]=useState<string|null>(null);
@@ -101,6 +99,12 @@ export default function DraftForm(props: Props) {
     if (owner) setStep(owner.id);
   }, [errors, errorAttempt]);
 
+  useEffect(()=>{
+    if(step!=="review")return;
+    const owner=draftSteps.find(item=>item.fields.some(field=>errors[field]));
+    if(owner)setStep(owner.id);
+  },[errors,step]);
+
   useEffect(() => {
     const invalid = form.current?.querySelector<HTMLElement>(
       '[aria-invalid="true"]',
@@ -115,8 +119,7 @@ export default function DraftForm(props: Props) {
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (busy) return;
-    if (last) onFinish();
-    else goTo(draftSteps[index + 1].id);
+    if (!last) goTo(draftSteps[index + 1].id);
   };
 
   return (
@@ -197,15 +200,6 @@ export default function DraftForm(props: Props) {
                 Назад
               </button>
             )}
-            {last && <button
-              className="button secondary wizard-next"
-              type="button"
-              disabled={busy}
-              onClick={onFinish}
-            >
-              {busy ? "Сохраняем…" : "Сохранить и выйти"}
-              {!busy && <Icon name="check" size={18} />}
-            </button>}
             {last && fields.product_code && <button className="button primary" type="button" disabled={busy || !confirmed || !profile || !calculator.catalog || !calculationReady} onClick={()=>{
               if(profile && calculator.catalog && confirmed && calculationReady)props.onSubmitApplication({profile_version:profile.profile_version,catalog_version:calculator.catalog.catalog_version});
             }}>{busy ? 'Отправляем…' : 'Отправить заявку'}</button>}

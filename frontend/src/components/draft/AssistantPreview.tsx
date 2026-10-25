@@ -47,11 +47,11 @@ export default function AssistantPreview(props:Props){
    <div role="log" aria-label="Диалог с помощником" aria-live="polite">{messages.map((item,index)=><p className={`assistant-message assistant-message-${item.role}`} key={index}><strong>{item.role==='user'?'Вы':'Помощник'}: </strong>{item.content}</p>)}</div>
    {reply?.suggested_product&&<button type="button" className="button secondary assistant-select" onClick={()=>props.onSelect(reply.suggested_product!)}>Выбрать продукт: {products.find(product=>product.code===reply.suggested_product)?.title}</button>}
    {reply&&<p className="small-note">{reply.disclaimer}</p>}
-   <label className="field"><span>Сообщение помощнику</span><textarea value={text} onKeyDown={event=>{
+   <label className="field"><textarea aria-label="Сообщение помощнику" value={text} onKeyDown={event=>{
      if(event.key==='Enter'&&!event.shiftKey&&!event.nativeEvent.isComposing){
       event.preventDefault();if(available&&!checking&&!sending)void send();
      }
-    }} onChange={event=>setText(event.target.value)} disabled={!available||checking||sending} rows={2} maxLength={1200} placeholder="Например, хочу купить печь для пекарни"/></label>
+    }} onChange={event=>setText(event.target.value)} disabled={!available||checking||sending} rows={2} maxLength={1200} placeholder="Опишите задачу бизнеса — например, купить печь для пекарни"/></label>
    <button type="button" className="button secondary" disabled={!available||checking||sending||!text.trim()} onClick={()=>void send()}>{sending?'Помощник отвечает…':'Отправить сообщение'}</button>
    {error&&<p role="alert" className="field-error">{error}</p>}
   </section>}

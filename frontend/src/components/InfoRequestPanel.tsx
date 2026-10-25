@@ -5,6 +5,7 @@ import {InfoQueue} from '../info-queue';
 import {InfoReceipts,readUpload,writeUpload} from '../info-receipts';
 import type {UploadReceipt} from '../info-receipts';
 import {useInfoAction,infoError} from '../hooks/useInfoAction';
+import ManualFinancial from "./ManualFinancial";
 import {ApiError} from '../api';
 interface Props {api:Api;session:Session;application:Application;request:InfoRequest;guard:()=>Promise<void>;accept:(a:Application)=>void;register:(c:InfoController|null)=>void;}
 const date=(value:string)=>new Intl.DateTimeFormat('ru-RU',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Moscow'}).format(new Date(value));
@@ -13,6 +14,7 @@ export default function InfoRequestPanel(props:Props){
  const callbacks=useRef(props);callbacks.current=props;
  const alive=useRef(true),[,tick]=useState(0),[error,setError]=useState<ApiError|null>(null),[message,setMessage]=useState('');
  const [financialKind,setFinancialKind]=useState<FinancialValue['kind']>('expenses_rub'),[financialMonth,setFinancialMonth]=useState(''),[financialValue,setFinancialValue]=useState('');
+ const [manualControl,setManualControl]=useState<InfoController|null>(null);
  const [file,setFile]=useState<File|null>(null),[upload,setUpload]=useState<UploadReceipt|null>(null),[uploadBroken,setUploadBroken]=useState(false);
  const uploadRef=useRef(upload);uploadRef.current=upload;
  const [store]=useState(()=>new InfoReceipts(session.user.id,application.id,request.id));
@@ -26,9 +28,9 @@ export default function InfoRequestPanel(props:Props){
  useEffect(()=>{try{const value=readUpload(session.user.id,application.id,request.id);if(value&&request.attachments.some(a=>a.id===value.id)){writeUpload(session.user.id,application.id,request.id,null);setUpload(null);}else setUpload(value);}catch(e){setUploadBroken(true);setError(infoError(e));}},[]);
  const active=!request.closed_at&&application.status==='NEEDS_INFO';
  const frozen=submit.busy||!!submit.pending;
- const dirty=queue.dirty||!!file||!!upload||chat.busy||!!chat.pending||!!message.trim()||submit.busy||!!submit.pending;
+ const dirty=!!manualControl?.dirty||queue.dirty||!!file||!!upload||chat.busy||!!chat.pending||!!message.trim()||submit.busy||!!submit.pending;
  const flushRef=useRef<()=>Promise<boolean>>(async()=>true);
- flushRef.current=async()=>{const saved=staff?true:await queue.flush();const chatDone=await chat.wait();const submitDone=await submit.wait();return saved&&chatDone&&submitDone&&!file&&!upload&&!message.trim();};
+ flushRef.current=async()=>{const saved=staff?true:await queue.flush();const chatDone=await chat.wait();const submitDone=await submit.wait();return saved&&chatDone&&submitDone&&(!manualControl||await manualControl.flush())&&!file&&!upload&&!message.trim();};
  const registerRef=useRef(props.register);registerRef.current=props.register;
  useEffect(()=>{registerRef.current({flush:()=>flushRef.current(),dirty});},[dirty]);
  useEffect(()=>()=>registerRef.current(null),[]);
@@ -83,7 +85,8 @@ export default function InfoRequestPanel(props:Props){
    {!staff&&active?<label className="field"><span>Ответ на запрос</span><textarea aria-label="Ответ на запрос" maxLength={2000} value={queue.text} disabled={frozen} onChange={e=>queue.setText(e.target.value)}/><small>{queue.dirty?'Сохраняем изменения…':'Изменения сохранены'}</small></label>:<p className="info-text">{request.reply_text||'Клиент пока не добавил ответ.'}</p>}
    {staff&&active&&<p className="small-note">Черновик ответа. Клиент ещё не отправил его на рассмотрение.</p>}
    {!staff&&active&&request.financial_required&&<div className="financial-reply"><h4>Уточнение финансовых показателей</h4><p className="small-note">Укажите показатель, месяц и сумму из документа. Сотрудник проверит число и подтвердит его для перерасчёта. Сам файл автоматически не распознаётся.</p><label className="field"><span>Показатель</span><select value={financialKind} onChange={e=>setFinancialKind(e.target.value as FinancialValue['kind'])}><option value="expenses_rub">Операционные расходы</option><option value="income_rub">Поступления</option><option value="debt_payment_rub">Платёж по действующим долгам</option></select></label>{financialKind!=='debt_payment_rub'&&<label className="field"><span>Месяц</span><select value={financialMonth} onChange={e=>setFinancialMonth(e.target.value)}><option value="">Выберите месяц</option>{application.submission?.snapshot.company.finance?.months.map(row=><option key={row.month} value={row.month}>{row.month}</option>)}</select></label>}<label className="field"><span>Сумма, ₽</span><input inputMode="decimal" value={financialValue} onChange={e=>setFinancialValue(e.target.value)} placeholder="Например, 570000.00"/></label></div>}
-   {staff&&!active&&request.financial_values?.length&&<div className="financial-reply"><h4>Уточнение финансовых показателей</h4><ul>{request.financial_values.map((value,index)=><li key={index}>{value.kind} {value.month??'текущий'}: {value.value_rub} ₽ ({value.source==='CLIENT_DOCUMENT'?'документ':'клиент'})</li>)}</ul>{request.financial_accepted_at?<p className="small-note">Сотрудник принял эти значения для расчёта.</p>:<button className="button secondary" disabled={financial.busy} type="button" onClick={()=>void acceptFinancial()}>{financial.busy?'Принимаем…':'Принять для расчёта'}</button>}</div>}
+   {staff&&!active&&!!request.financial_values?.length&&<div className="financial-reply"><h4>Уточнение финансовых показателей</h4><ul>{request.financial_values.map((value,index)=><li key={index}>{value.kind} {value.month??'текущий'}: {value.value_rub} ₽ ({value.source==='CLIENT_DOCUMENT'?'документ':'клиент'})</li>)}</ul>{request.financial_accepted_at?<p className="small-note">Сотрудник принял эти значения для расчёта.</p>:<button className="button secondary" disabled={financial.busy} type="button" onClick={()=>void acceptFinancial()}>{financial.busy?'Принимаем…':'Принять для расчёта'}</button>}</div>}
+   <ManualFinancial api={api} application={application} request={request} session={session} guard={()=>callbacks.current.guard()} accept={accept} register={setManualControl}/>
    <h4>Документы</h4>
    {!request.attachments.length&&<p className="small-note">Документы пока не прикреплены.</p>}
    <ul className="info-files">{request.attachments.map(a=><li key={a.id}><button className="text-button" type="button" onClick={()=>void download(a.id,a.filename)}>{a.filename}</button><span>{Math.ceil(a.size_bytes/1024)} КБ</span>{!staff&&active&&<button className="text-button" type="button" disabled={frozen} onClick={()=>queue.enqueue(item=>api.info!.detach(item.id,request.id,a.id,item.info_requests!.find(r=>r.id===request.id)!.revision))} aria-label={`Открепить ${a.filename}`}>Открепить</button>}</li>)}</ul>

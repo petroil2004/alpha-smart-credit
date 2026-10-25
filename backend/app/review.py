@@ -15,7 +15,7 @@ from .access import StaffAccount
 from .calculator import calculate_annuity, calculate_overdraft
 from .db import get_db
 from .info_common import accessible_application, commit_operation, event, operation, text_value
-from .models import Application, ApplicationAssessment, ApplicationSubmission, InfoRequest, utc_now
+from .models import Application, ApplicationAssessment, ApplicationSubmission, InfoRequest, StaffFinancialCorrection, utc_now
 from .problems import ApiProblem, validation_error
 from .serialization import serialize_application
 
@@ -36,9 +36,13 @@ def money(value: Decimal) -> str:
 
 
 def accepted_financial_values(application_id: uuid.UUID, db: Session) -> list[dict[str, Any]]:
-    return [value for item in db.scalars(select(InfoRequest).where(
+    accepted = [(item.financial_accepted_at, 0, str(item.id), item.financial_values or []) for item in db.scalars(select(InfoRequest).where(
         InfoRequest.application_id == application_id, InfoRequest.financial_accepted_at.is_not(None)
-    ).order_by(InfoRequest.financial_accepted_at, InfoRequest.id)) for value in (item.financial_values or [])]
+    ))]
+    accepted += [(item.recorded_at, 1, item.id, item.values) for item in db.scalars(select(StaffFinancialCorrection).where(
+        StaffFinancialCorrection.application_id == application_id
+    ))]
+    return [value for _, _, _, values in sorted(accepted) for value in values]
 
 
 def assessment_facts(application: Application, submission: ApplicationSubmission, db: Session) -> dict[str, Any]:
