@@ -38,7 +38,7 @@ export default function AssistantPreview(props:Props){
   finally{if(id===requestId.current)setSending(false);}
  }
  return <div className={`assistant-preview ${props.open?'is-open':''}`}>
-  <div className="assistant-invitation"><div><strong>Не уверены, что выбрать?</strong><p>Поможем сравнить варианты финансирования.</p></div>
+  <div className="assistant-invitation"><div><strong>Не уверены, что выбрать?</strong><p>Сравним продукты и объясним условия простыми словами.</p></div>
    <button type="button" className="button assistant-toggle" aria-expanded={props.open} aria-controls={panelId} onClick={props.onToggle}>{props.open?'Свернуть помощника':'Помочь с выбором'}</button>
   </div>
   {props.open&&<section id={panelId} className="assistant-panel" aria-label="Помощник по финансированию">
@@ -51,7 +51,7 @@ export default function AssistantPreview(props:Props){
      if(event.key==='Enter'&&!event.shiftKey&&!event.nativeEvent.isComposing){
       event.preventDefault();if(available&&!checking&&!sending)void send();
      }
-    }} onChange={event=>setText(event.target.value)} disabled={!available||checking||sending} rows={2} maxLength={1200} placeholder="Опишите задачу бизнеса — например, купить печь для пекарни"/></label>
+    }} onChange={event=>setText(event.target.value)} disabled={!available||checking||sending} rows={2} maxLength={1200} placeholder="Опишите задачу или спросите, например: что такое овердрафт?"/></label>
    <button type="button" className="button secondary" disabled={!available||checking||sending||!text.trim()} onClick={()=>void send()}>{sending?'Помощник отвечает…':'Отправить сообщение'}</button>
    {error&&<p role="alert" className="field-error">{error}</p>}
   </section>}

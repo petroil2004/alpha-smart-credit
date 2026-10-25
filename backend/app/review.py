@@ -81,7 +81,7 @@ def score(facts: dict[str, Any], details: dict[str, Any]) -> tuple[int | None, s
     return total, group, reasons, [], criteria
 
 
-def calculate_assessment(application: Application, db: Session, now: datetime | None = None) -> dict[str, Any]:
+def calculate_assessment(application: Application, db: Session, now: datetime | None = None, *, retry_checks: bool = False) -> dict[str, Any]:
     submission = db.get(ApplicationSubmission, application.id)
     if submission is None:
         raise ApiProblem(409, 'NOT_SUBMITTED', 'Сначала отправьте заявку на рассмотрение')
@@ -90,21 +90,36 @@ def calculate_assessment(application: Application, db: Session, now: datetime | 
     details = effective_company(application,submission,db)['details']
     facts = assessment_facts(application, submission, db)
     score_value, group, reasons, missing, criteria = score(facts, details)
+    from .external_checks import company_checks
+    stamp = (now or utc_now()).isoformat().replace('+00:00', 'Z')
+    stored = db.get(ApplicationAssessment, application.id)
+    checks = company_checks(application.company_id, details, stamp,
+                            stored.result.get('checks') if stored else None, retry=retry_checks)
     formal: list[str] = []
     decline: list[str] = []
-    if details.get('registry_source') not in {'FNS_MOCK','STAFF_VERIFIED'} or not details.get('tax_id') or not details.get('okved'):
-        missing.append('сведения ИНН и ОКВЭД из имитации ФНС')
-    if details.get('registration_status') != 'ACTIVE':
-        decline.append('В имитации ФНС статус регистрации не «Действует»')
-    if details.get('is_bank_client') is not True:
-        decline.append('Компания не подтверждена как действующий клиент банка')
-    if (details.get('business_age_months') or 0) < 9:
-        decline.append('Возраст бизнеса меньше 9 полных месяцев')
-    formal.extend([
-        ('Регистрационные сведения проверены сотрудником: ' if details.get('registry_source')=='STAFF_VERIFIED' else 'Имитация ФНС: ') + ('сведения получены' if details.get('registry_source') in {'FNS_MOCK','STAFF_VERIFIED'} and details.get('tax_id') and details.get('okved') else 'нет полных сведений'),
-        'Регистрация бизнеса: ' + ('действует' if details.get('registration_status') == 'ACTIVE' else 'не подтверждена как действующая'),
-        'Клиент банка: ' + ('да' if details.get('is_bank_client') is True else 'не подтверждён'),
-    ])
+    hard_stops: list[str] = []
+    pending: list[str] = []
+    affordability = None
+    if checks[0]['status'] == 'MISSING_DATA':
+        missing.append('полные регистрационные сведения компании')
+    if details.get('registration_status') == 'TERMINATED':
+        hard_stops.append('Регистрация бизнеса прекращена')
+    elif details.get('registration_status') not in {'ACTIVE', 'TERMINATED'}:
+        missing.append('действующий статус регистрации')
+    if details.get('is_bank_client') is False:
+        hard_stops.append('Компания не подтверждена как действующий клиент банка')
+    elif details.get('is_bank_client') is not True:
+        missing.append('подтверждение, что компания является клиентом банка')
+    age = details.get('business_age_months')
+    if age is not None and age < 9:
+        hard_stops.append('Возраст бизнеса меньше 9 полных месяцев')
+    bki = checks[1]
+    if bki['status'] == 'UNAVAILABLE':
+        pending.append('БКИ временно недоступно: повторите проверку. Это не основание для отказа')
+    elif bki['status'] == 'MISSING_DATA':
+        missing.append('синтетическая кредитная история компании')
+    manual_review = bki['reason_code'] == 'OVERDUE' or group == 'MEDIUM'
+    formal.extend(['Клиент банка: ' + ('да' if details.get('is_bank_client') is True else 'не подтверждён')])
     app = snapshot['application']
     try:
         if app['product_code'] in {'working_capital', 'equipment'}:
@@ -113,6 +128,7 @@ def calculate_assessment(application: Application, db: Session, now: datetime | 
                 income = sum(Decimal(row['income_rub']) for row in facts['months']) / 6
                 expenses = sum(Decimal(row['expenses_rub']) for row in facts['months']) / 6
                 limit = max(Decimal(0), Decimal('0.50') * max(income - expenses, Decimal(0)) - Decimal(facts['debt_payment_rub']))
+                affordability = {'kind': 'MONTHLY_PAYMENT', 'requested_rub': calc['monthly_payment_rub'], 'available_rub': money(limit)}
                 if Decimal(calc['monthly_payment_rub']) > limit:
                     decline.append('Новый ежемесячный платёж превышает допустимую нагрузку')
                 formal.append(f'Допустимый новый платёж: {money(limit)} ₽')
@@ -123,27 +139,38 @@ def calculate_assessment(application: Application, db: Session, now: datetime | 
             if not missing:
                 income = sum(Decimal(row['income_rub']) for row in facts['months']) / 6
                 expenses = sum(Decimal(row['expenses_rub']) for row in facts['months']) / 6
-                if Decimal(app['amount_rub']) > min(Decimal('2000000'), Decimal('0.30') * income):
+                limit = min(Decimal('2000000'), Decimal('0.30') * income)
+                affordability = {'kind': 'OVERDRAFT_LIMIT', 'requested_rub': app['amount_rub'], 'available_rub': money(limit)}
+                if Decimal(app['amount_rub']) > limit:
                     decline.append('Лимит превышает 30% средних поступлений')
                 if income - expenses - Decimal(facts['debt_payment_rub']) <= 0:
                     decline.append('После долгов операционный поток не положительный')
                 formal.append(f'Оценка процентов: {calc["interest_rub"]} ₽')
     except (KeyError, TypeError, ValueError):
         missing.append('полные параметры заявки')
-    if missing:
+    if hard_stops:
+        recommendation, decision_reasons = 'RECOMMEND_DECLINE', hard_stops
+    elif pending:
+        recommendation, decision_reasons = 'KEEP_UNDER_REVIEW', pending
+    elif missing:
         recommendation = 'REQUEST_INFO'
-        reasons.extend(f'Нужно уточнить: {value}' for value in missing)
+        decision_reasons = [f'Нужно уточнить: {value}' for value in dict.fromkeys(missing)]
     elif decline or group == 'HIGH':
         recommendation = 'RECOMMEND_DECLINE'
-        reasons.extend(decline)
-        if group == 'HIGH': reasons.append('Высокая группа риска по демонстрационному скорингу')
+        decision_reasons = decline + (['Высокая группа риска по демонстрационному скорингу'] if group == 'HIGH' else [])
     else:
         recommendation = 'OFFER_REQUESTED'
-        if group == 'MEDIUM': reasons.append('Средняя группа риска: сотрудник должен указать причину ручного решения')
-    result = {'model_version': SCORECARD_VERSION, 'score': score_value, 'group': group,
-              'recommendation': recommendation, 'reasons': reasons, 'missing': missing, 'formal_checks': formal, 'criteria': criteria,
-              'calculated_at': (now or utc_now()).isoformat().replace('+00:00', 'Z')}
-    stored = db.get(ApplicationAssessment, application.id)
+        decision_reasons = (['Есть просрочки в синтетической кредитной истории. Проверьте обстоятельства и обоснуйте ручное решение'] if bki['reason_code'] == 'OVERDUE' else [])
+        if group == 'MEDIUM':
+            decision_reasons.append('Средняя группа риска: сотрудник должен указать причину ручного решения')
+        if not decision_reasons:
+            decision_reasons = ['Проверки и ограничение нагрузки пройдены. Решение подтверждает сотрудник']
+    reasons.extend(decision_reasons)
+    result = {'model_version': SCORECARD_VERSION, 'policy_version': 'demo-credit-policy-v1-checks',
+              'score': score_value, 'group': group, 'recommendation': recommendation,
+              'reasons': reasons, 'decision_reasons': decision_reasons, 'manual_review_required': manual_review,
+              'affordability': affordability, 'checks': checks, 'missing': list(dict.fromkeys(missing)),
+              'formal_checks': formal, 'criteria': criteria, 'calculated_at': stamp}
     if stored is None:
         db.add(ApplicationAssessment(application_id=application.id, financial_facts=facts, result=result, calculated_at=now or utc_now()))
     else:
@@ -156,7 +183,7 @@ def refresh_assessment(application_id: uuid.UUID, account: StaffAccount, db: Ses
     application = accessible_application(db, application_id, account)
     if application.status not in {'UNDER_REVIEW', 'NEEDS_INFO'}:
         raise ApiProblem(409, 'INVALID_STATE', 'Оценить можно только заявку на рассмотрении')
-    result = calculate_assessment(application, db)
+    result = calculate_assessment(application, db, retry_checks=True)
     db.commit()
     return result
 
@@ -173,7 +200,9 @@ def decide(application_id: uuid.UUID, payload: DecisionPayload, account: StaffAc
     if application.version != payload.version:
         raise ApiProblem(409, 'VERSION_CONFLICT', 'Заявка изменилась. Обновите карточку.')
     assessment = calculate_assessment(application, db)
-    comment = text_value(payload.comment, 'comment', 1000, payload.decision == 'DECLINE' or assessment['group'] == 'MEDIUM')
+    if assessment['recommendation'] == 'KEEP_UNDER_REVIEW':
+        raise validation_error({'decision': 'Повторите недоступную проверку перед итоговым решением'})
+    comment = text_value(payload.comment, 'comment', 1000, payload.decision == 'DECLINE' or assessment['manual_review_required'])
     if payload.decision == 'APPROVE' and assessment['recommendation'] != 'OFFER_REQUESTED':
         raise validation_error({'decision': 'Одобрение недоступно: сначала устраните причины в оценке или запросите сведения'})
     now = utc_now()

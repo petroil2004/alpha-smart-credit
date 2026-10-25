@@ -121,8 +121,12 @@ export interface DraftFields {
 
 export interface Assessment {
   model_version: string; score: number | null; group: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
-  recommendation: "REQUEST_INFO" | "RECOMMEND_DECLINE" | "OFFER_REQUESTED";
+  recommendation: "REQUEST_INFO" | "RECOMMEND_DECLINE" | "OFFER_REQUESTED" | "KEEP_UNDER_REVIEW";
   reasons: string[]; missing: string[]; formal_checks: string[]; calculated_at: string;
+  decision_reasons?: string[];
+  manual_review_required?: boolean;
+  affordability?: {kind:'MONTHLY_PAYMENT'|'OVERDRAFT_LIMIT';requested_rub:string;available_rub:string}|null;
+  checks?: {source:string;label:string;checked_at:string;status:string;reason_code:string;summary:string;payload_version:string;attempt?:number}[];
   criteria?: {label:string;input:string;factor:string;weight:number;points:number}[];
 }
 

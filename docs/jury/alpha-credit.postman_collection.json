@@ -1,0 +1,457 @@
+{
+  "info": {
+    "name": "Alpha Smart Credit — сквозной путь",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Запускайте по порядку с cookie jar. Создаёт новую синтетическую заявку CLIENT1; существующие данные не удаляет. По умолчанию http://127.0.0.1:8080. ИИ не нужен. Idempotency-Key генерируется для каждого нового запуска; для проверки повтора сохраните один UUID и то же тело. Файлы проверяются отдельно по Swagger/браузеру."
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8080"
+    },
+    {
+      "key": "application_id",
+      "value": ""
+    },
+    {
+      "key": "version",
+      "value": "1"
+    },
+    {
+      "key": "profile_version",
+      "value": ""
+    },
+    {
+      "key": "catalog_version",
+      "value": ""
+    },
+    {
+      "key": "request_id",
+      "value": ""
+    },
+    {
+      "key": "revision",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "01. Состояние",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/v1/health"
+      }
+    },
+    {
+      "name": "02. Публичные условия",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/v1/public/products"
+      }
+    },
+    {
+      "name": "03. Войти CLIENT1",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/auth/demo-login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"account_id\": \"demo-client-1\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "04. Профиль и его версия",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/v1/company-profile"
+      }
+    },
+    {
+      "name": "05. Создать черновик",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/applications",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "06. Заполнить параметры",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/applications/{{application_id}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"version\":{{version}},\"product_code\":\"working_capital\",\"amount_rub\":\"300000.00\",\"term_months\":36,\"purpose\":\"Закупка материалов\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "07. Отправить",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/applications/{{application_id}}/submit",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"version\":{{version}},\"profile_version\":\"{{profile_version}}\",\"catalog_version\":\"{{catalog_version}}\",\"confirmed\":true}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "08. Войти STAFF",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/auth/demo-login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"account_id\": \"demo-staff-1\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "09. Очередь",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/v1/staff/applications"
+      }
+    },
+    {
+      "name": "10. Карточка",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/v1/staff/applications/{{application_id}}"
+      }
+    },
+    {
+      "name": "11. Пересчитать / повторить источник",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{base_url}}/api/v1/staff/applications/{{application_id}}/assessment"
+      }
+    },
+    {
+      "name": "12. Запросить текстовое уточнение",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/staff/applications/{{application_id}}/info-requests",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"version\":{{version}},\"question\":\"Поясните назначение закупки\",\"document_required\":false}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "13. Войти CLIENT1",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/auth/demo-login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"account_id\": \"demo-client-1\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "14. Сохранить частный черновик ответа",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/applications/{{application_id}}/info-requests/{{request_id}}/reply",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"revision\":{{revision}},\"reply_text\":\"Материалы для выполнения нового заказа\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "15. Отправить ответ",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/applications/{{application_id}}/info-requests/{{request_id}}/reply/submit",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"version\":{{version}},\"revision\":{{revision}}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "16. Войти STAFF",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/auth/demo-login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"account_id\": \"demo-staff-1\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "17. Завершить уточнение",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/staff/applications/{{application_id}}/info-requests/{{request_id}}/close",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"version\":{{version}},\"revision\":{{revision}}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "18. Одобрить",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/staff/applications/{{application_id}}/decision",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"version\":{{version}},\"decision\":\"APPROVE\",\"comment\":\"Сведения проверены\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "19. Войти CLIENT1",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/auth/demo-login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"account_id\": \"demo-client-1\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "20. Уведомления",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/v1/notifications"
+      }
+    },
+    {
+      "name": "21. Согласие и демонстрационная выдача",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/applications/{{application_id}}/disbursement",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"version\":{{version}},\"confirmed\":true}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "22. Итоговая карточка",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/v1/applications/{{application_id}}"
+      }
+    }
+  ],
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (pm.response.code >= 400) { pm.test('Успешный ответ', () => pm.expect(pm.response.code).to.be.below(400)); }",
+          "if (pm.response.code === 200 || pm.response.code === 201) {",
+          " const data = pm.response.json();",
+          " if(data.catalog_version) pm.collectionVariables.set('catalog_version', data.catalog_version);",
+          " if(data.profile_version) pm.collectionVariables.set('profile_version', data.profile_version);",
+          " if(data.id && data.version) { pm.collectionVariables.set('application_id', data.id); pm.collectionVariables.set('version', data.version); }",
+          " if(data.info_requests && data.info_requests.length) { const info=data.info_requests[data.info_requests.length-1]; pm.collectionVariables.set('request_id',info.id); pm.collectionVariables.set('revision',info.revision); }",
+          "}"
+        ]
+      }
+    }
+  ]
+}

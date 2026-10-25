@@ -1,0 +1,11 @@
+{
+  "version": "synthetic-credit-history-v1",
+  "companies": {
+    "demo-company-1": {"outcomes": ["CLEAR"]},
+    "demo-company-2": {"outcomes": ["OVERDUE"]},
+    "demo-company-3": {"outcomes": ["NO_HISTORY"]},
+    "demo-company-4": {"outcomes": ["CLEAR"]},
+    "demo-company-5": {"outcomes": ["CLEAR"]},
+    "demo-company-6": {"outcomes": ["UNAVAILABLE", "CLEAR"]}
+  }
+}

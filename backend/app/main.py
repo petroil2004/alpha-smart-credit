@@ -233,6 +233,12 @@ def me(account: CurrentAccount) -> dict[str, Any]:
     return serialize_session(account)
 
 
+@app.get(f"{API_PREFIX}/public/products", tags=["catalog"])
+def public_products() -> dict[str, Any]:
+    """Public demonstration terms; no customer or application data."""
+    return get_catalog()
+
+
 @app.get(f"{API_PREFIX}/products")
 def products(account: ClientAccount) -> dict[str, Any]:
     return get_catalog()
