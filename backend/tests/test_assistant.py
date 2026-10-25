@@ -66,7 +66,9 @@ def test_local_http_recommendation_uses_catalog_and_never_changes_draft(client, 
     item = draft(client)
     body = {'application_id': item['id'], 'message': 'Нужна новая печь для пекарни',
             'history': [{'role': 'user', 'content': 'У меня пекарня'}]}
-    assert client.get('/api/v1/assistant/status').json()['available'] is True
+    state = client.get('/api/v1/assistant/status').json()
+    assert state['available'] is True
+    assert state['request_timeout_seconds'] == settings.llm_timeout_seconds
     response = client.post('/api/v1/assistant/chat', json=body)
     assert response.status_code == 200, response.text
     reply = response.json()

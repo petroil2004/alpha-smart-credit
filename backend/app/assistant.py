@@ -102,14 +102,14 @@ def _provider(path: str, payload: dict | None = None, timeout: float = 3) -> dic
 @router.get('/status')
 def status(account: ClientAccount):
     if not settings.assistant_enabled:
-        return {'enabled': False, 'available': False, 'model': settings.llm_model, 'reason': 'DISABLED'}
+        return {'enabled': False, 'available': False, 'model': settings.llm_model, 'reason': 'DISABLED', 'request_timeout_seconds': settings.llm_timeout_seconds}
     try:
         models = _provider('/models').get('data', [])
         available = any(isinstance(model, dict) and model.get('id') == settings.llm_model for model in models)
         return {'enabled': True, 'available': available, 'model': settings.llm_model,
-                'reason': None if available else 'MODEL_MISSING'}
+                'reason': None if available else 'MODEL_MISSING', 'request_timeout_seconds': settings.llm_timeout_seconds}
     except (ApiProblem, TypeError):
-        return {'enabled': True, 'available': False, 'model': settings.llm_model, 'reason': 'UNAVAILABLE'}
+        return {'enabled': True, 'available': False, 'model': settings.llm_model, 'reason': 'UNAVAILABLE', 'request_timeout_seconds': settings.llm_timeout_seconds}
 
 
 def _terms(product: dict) -> str:

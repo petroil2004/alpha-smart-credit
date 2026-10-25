@@ -128,7 +128,7 @@ export interface Assessment {
 export type FieldErrors = Partial<Record<keyof DraftFields, string>>;
 
 export interface AssistantMessage {role:'user'|'assistant';content:string;}
-export interface AssistantStatus {enabled:boolean;available:boolean;model:string;reason:string|null;}
+export interface AssistantStatus {request_timeout_seconds?:number;enabled:boolean;available:boolean;model:string;reason:string|null;}
 export interface AssistantReply {
   answer:string;suggested_product:ProductCode|null;products:Product[];catalog_version:string;
   source:'SERVER_CATALOG';model:string;disclaimer:string;

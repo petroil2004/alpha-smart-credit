@@ -15,7 +15,7 @@ class Settings:
     llm_base_url = os.getenv("LLM_BASE_URL", "http://ollama:11434/v1").rstrip("/")
     llm_api_key = os.getenv("LLM_API_KEY", "")
     llm_model = os.getenv("LLM_MODEL", "qwen3:4b-instruct-2507-q4_K_M")
-    llm_timeout_seconds = float(os.getenv("LLM_TIMEOUT_SECONDS", "90"))
+    llm_timeout_seconds = max(1.0, min(float(os.getenv("LLM_TIMEOUT_SECONDS", "180")), 300.0))
     llm_response_format = os.getenv("LLM_RESPONSE_FORMAT", "json_schema")
 
 

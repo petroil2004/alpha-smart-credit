@@ -24,7 +24,7 @@ services:
       LLM_BASE_URL: ${LLM_BASE_URL:-http://ollama:11434/v1}
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-qwen3:4b-instruct-2507-q4_K_M}
-      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-90}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-180}
       LLM_RESPONSE_FORMAT: ${LLM_RESPONSE_FORMAT:-json_schema}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
@@ -47,8 +47,14 @@ services:
         condition: service_healthy
 
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.40.11@sha256:dea72d1e22270fe095b68fdf756d2b489d615643c5a2eaebbc5f569181e322d8
     profiles: [assistant]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
     environment:
       OLLAMA_NUM_PARALLEL: "1"
       OLLAMA_MAX_LOADED_MODELS: "1"
@@ -56,7 +62,7 @@ services:
     volumes:
       - ollama_models:/root/.ollama
     mem_limit: 6g
-    cpus: 2
+    cpus: ${OLLAMA_CPU_LIMIT:-4}
     # Deliberately no published ports. Only backend reaches this service.
 
 volumes:

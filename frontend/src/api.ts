@@ -16,6 +16,7 @@ export class ApiError extends Error {
 export function createApi(
   fetcher: typeof fetch = globalThis.fetch.bind(globalThis),
 ): Api {
+  let assistantTimeoutMs=95_000;
   async function request<T>(
     path: string,
     options: RequestInit = {},
@@ -86,8 +87,13 @@ export function createApi(
       read:id=>request<void>(`/notifications/${id}/read`,{method:'POST'}),
     },
     assistant:{
-      status:()=>request<import('./types').AssistantStatus>('/assistant/status',{},5_000),
-      chat:body=>request<import('./types').AssistantReply>('/assistant/chat',{method:'POST',body:JSON.stringify(body)},95_000),
+      status:async()=>{
+        const state=await request<import('./types').AssistantStatus>('/assistant/status',{},5_000);
+        const seconds=state.request_timeout_seconds;
+        assistantTimeoutMs=(typeof seconds==='number'&&Number.isFinite(seconds)&&seconds>=1&&seconds<=300?seconds:90)*1000+5000;
+        return state;
+      },
+      chat:body=>request<import('./types').AssistantReply>('/assistant/chat',{method:'POST',body:JSON.stringify(body)},assistantTimeoutMs),
     },
     info: createInfoApi(fetcher),
     companyProfile: () => request<CompanyProfile>("/company-profile"),
