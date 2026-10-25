@@ -98,3 +98,21 @@ describe("HTTP boundary", () => {
     await expect(createApi(fetcher).logout()).resolves.toBeUndefined();
   });
 });
+
+it('allows a slow CPU reply within the timeout advertised by the backend',async()=>{
+  vi.useFakeTimers();
+  try {
+    const fetcher=vi.fn<typeof fetch>(async(input,options)=>{
+      if(String(input).endsWith('/status'))return new Response(JSON.stringify({enabled:true,available:true,model:'cpu-model',reason:null,request_timeout_seconds:180}));
+      return new Promise<Response>((resolve,reject)=>{
+        const timer=setTimeout(()=>resolve(new Response(JSON.stringify({answer:'Оборудование',suggested_product:'equipment'}))),100_000);
+        options?.signal?.addEventListener('abort',()=>{clearTimeout(timer);reject(Error('aborted'));});
+      });
+    });
+    const assistant=createApi(fetcher).assistant!;await assistant.status();
+    const reply=assistant.chat({application_id:'test',message:'Печь',history:[]});
+    const check=expect(reply).resolves.toMatchObject({suggested_product:'equipment'});
+    await vi.advanceTimersByTimeAsync(100_000);await check;
+    expect(fetcher.mock.calls[1][1]?.signal?.aborted).toBe(false);
+  }finally{vi.useRealTimers();}
+});

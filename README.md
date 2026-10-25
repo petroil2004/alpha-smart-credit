@@ -52,6 +52,15 @@ docker compose up --build -d
 
 Кабинет доступен на `http://127.0.0.1:8080`, backend — на `http://127.0.0.1:8000`. Все три компонента приложения запускаются в Docker. Для ИИ укажите в локальном `.env` `ASSISTANT_ENABLED=true`, `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`. Порядок запуска Ollama на Windows-ПК, CPU-вариант и проверка со своим провайдером описаны в [инструкции помощника](docs/technical/assistant-integration.md). Подробности — в [backend/README.md](backend/README.md). Не запускайте тесты backend на БД с сохранёнными черновиками: инструкция описывает отдельную тестовую базу.
 
+Для проверки ИИ без компьютера автора используйте локальный CPU-профиль Docker. В `.env` включите `ASSISTANT_ENABLED=true`, оставьте `LLM_BASE_URL=http://ollama:11434/v1`, пустой ключ, модель из примера и `LLM_TIMEOUT_SECONDS=180`. Затем:
+
+```bash
+docker compose --profile assistant up -d --build --wait
+docker compose --profile assistant exec ollama ollama pull qwen3:4b-instruct-2507-q4_K_M
+```
+
+Первое скачивание образа Ollama и модели — около 5,3 ГБ на arm64. Желательно выделить Docker 4 CPU и 6 ГиБ памяти; CPU отвечает заметно медленнее GPU. Войти клиентом → новая заявка → «Помочь с выбором» → «Хочу купить печь для пекарни». Продукт выбирается только явной кнопкой после рекомендации. [Полные шаги, повторный запуск и проверочные вопросы](docs/technical/assistant-integration.md#проверка-жюри-на-cpu-без-windows-пк-и-платного-api), [результаты реального CPU-запуска](docs/technical/2026-10-25-jury-cpu-verification.md). Основной кредитный путь доступен без модели и платного API.
+
 Для отдельного режима разработки frontend (не требуется для Docker-запуска), с установленным Node.js 22.12+ поддерживаемой ветки:
 
 ```bash
