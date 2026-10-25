@@ -83,7 +83,7 @@ it('equipment application remains available for completion and submission',async
   const h=await setup({product_code:'equipment',equipment_cost_rub:'3500000.00'});
   expect(screen.getByRole('button',{name:'Отправить заявку'})).toBeInTheDocument();
   expect(screen.queryByText(/Отправка этого продукта пока недоступна/)).not.toBeInTheDocument();
-  await h.user.click(screen.getByRole('button',{name:'Сохранить и выйти'}));
+  await h.user.click(screen.getByRole('button',{name:'Все заявки'}));
   expect(await screen.findByRole('heading',{name:'Мои заявки'})).toBeInTheDocument();
 });
 
@@ -154,7 +154,7 @@ it('submission requires a ready calculation shown to the client',async()=>{
  await user.click(screen.getByRole('button',{name:'Перейти к шагу «Проверка»'}));
  await screen.findByText('Расчёт недоступен');
  expect(checkbox()).toBeDisabled();expect(send()).toBeDisabled();
- expect(screen.getByRole('button',{name:'Сохранить и выйти'})).toBeEnabled();
+ expect(screen.getByRole('button',{name:'Все заявки'})).toBeEnabled();
 });
 
 it('explicit server state check recovers a corrupt local retry receipt',async()=>{

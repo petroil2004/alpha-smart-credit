@@ -68,7 +68,7 @@ export default function ApplicationsList({
                     <span className="row-purpose">{item.purpose || "Расскажите о задаче вашего бизнеса"}</span>
                   </span>
                   <span className="row-amount" id={`application-amount-${item.id}`}>
-                    <strong>{amountText(item.amount_rub)}</strong>
+                    <strong className={item.amount_rub?undefined:"amount-empty"}>{amountText(item.amount_rub)}</strong>
                     <small>{new Intl.DateTimeFormat("ru-RU", {day:"numeric", month:"short"}).format(new Date(item.updated_at))}</small>
                   </span>
                   <span className="row-open"><Icon name="arrow" /></span>

@@ -152,7 +152,6 @@ describe("draft wizard", () => {
     await goTo(user, "Параметры");
     fireEvent.change(screen.getByLabelText("Сумма ожидаемого поступления"), { target: { value: "700000.01" } });
     await goTo(user, "Проверка");
-    await user.click(screen.getByRole("button", { name: "Сохранить и выйти" }));
     expect(
       await screen.findByLabelText("Сумма ожидаемого поступления"),
     ).toHaveValue("700000.01");
@@ -164,7 +163,6 @@ describe("draft wizard", () => {
       "Сохранённая цель",
     );
     await goTo(user, "Проверка");
-    await user.click(screen.getByRole("button", { name: "Сохранить и выйти" }));
     expect(
       await screen.findByLabelText("Сумма ожидаемого поступления"),
     ).toHaveAttribute("aria-invalid", "true");
@@ -298,9 +296,9 @@ describe("draft wizard", () => {
     fireEvent.change(screen.getByLabelText("Сумма финансирования"),{target:{value:"500000"}});
     fireEvent.change(screen.getByLabelText("Срок, месяцев"),{target:{value:"12"}});
     await goTo(user, "Проверка");
-    await user.click(screen.getByRole("button", { name: "Сохранить и выйти" }));
+    await user.click(screen.getByRole("button", { name: "Все заявки" }));
     expect(
-      await screen.findByRole("button", { name: "Сохраняем…" }),
+      await screen.findByRole("button", { name: "Все заявки" }),
     ).toBeDisabled();
     expect(
       screen.getByRole("button", { name: "Перейти к шагу «Параметры»" }),

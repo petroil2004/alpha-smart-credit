@@ -33,6 +33,7 @@ import FundingPanel from "./components/FundingPanel";
 import ReviewPanel from './components/ReviewPanel';
 import ApplicationJourney from "./components/ApplicationJourney";
 import ClientNotifications from "./components/ClientNotifications";
+import StaffProfilePage from "./components/StaffProfilePage";
 import CompanyProfilePage from './components/CompanyProfilePage';
 
 const defaultApi = createApi();
@@ -74,7 +75,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
   const [items, setItems] = useState<Application[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<Application | null>(null);
   const [selected, setSelected] = useState<Application | null>(null);
-  const [profilePage,setProfilePage]=useState(()=>window.location.hash==='#company-profile');
+  const [profilePage,setProfilePage]=useState(()=>['#company-profile','#staff-profile'].includes(window.location.hash));
   const [fields, setFields] = useState<DraftFields>(emptyDraft);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [fieldErrorAttempt, setFieldErrorAttempt] = useState(0);
@@ -285,7 +286,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
   const showList = () => leave("leave", closeApplication);
   const showCompanyProfile=()=>leave('profile',async()=>{
     await verifySession();closeApplication();setProfilePage(true);
-    window.history.replaceState(null,'',`${window.location.pathname}${window.location.search}#company-profile`);
+    window.history.replaceState(null,'',`${window.location.pathname}${window.location.search}${sessionRef.current?.company?"#company-profile":"#staff-profile"}`);
   });
   const open = (id: string) => {
     if (busy || !allowDiscard()) return;
@@ -392,16 +393,6 @@ export default function App({ api = defaultApi }: { api?: Api }) {
         }
       }
       return next;
-    });
-  };
-  const finish = () => {
-    if (selected) void run("finish", async () => {
-      if (!await autosave.flush()) {
-        setFieldErrors(autosave.getState().errors);
-        setFieldErrorAttempt(value => value + 1);
-        return;
-      }
-      closeApplication();
     });
   };
   const reloadSelected = () => {
@@ -595,7 +586,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
         <button type="button" className="brand brand-home" onClick={showList} disabled={!!busy} aria-label="На главную"><span className="brand-mark" aria-hidden="true">А</span><span>{session.company ? "Кредитный кабинет" : "Кабинет сотрудника"}</span></button>
         <nav aria-label="Основная навигация"><button className="header-link" onClick={showList} disabled={!!busy} aria-current={!selected&&!profilePage ? "page" : undefined}>{session.company ? "Мои заявки" : "Поступившие заявки"}</button></nav>
         {session.company&&<ClientNotifications key={session.user.id} api={api} session={session as import('./types').ClientSession} busy={!!busy} onOpen={openNotification} onSessionChanged={clearProfile}/>}
-        <div className="account">{session.company?<button type="button" className="header-link company-profile-link" onClick={showCompanyProfile} disabled={!!busy} aria-label={`Профиль компании: ${session.company.name}`} aria-current={profilePage?'page':undefined}>{session.company.name}</button>:<span>{session.user.name}</span>}<button className="icon-button" aria-label="Сменить профиль" title="Сменить профиль" disabled={!!busy} onClick={logout}><Icon name="logout" size={18} /></button></div>
+        <div className="account">{session.company?<button type="button" className="header-link company-profile-link" onClick={showCompanyProfile} disabled={!!busy} aria-label={`Профиль компании: ${session.company.name}`} aria-current={profilePage?'page':undefined}>{session.company.name}</button>:<button type="button" className="header-link" onClick={showCompanyProfile} disabled={!!busy} aria-label={`Профиль сотрудника: ${session.user.name}`} aria-current={profilePage?"page":undefined}>{session.user.name}</button>}<button className="icon-button" aria-label="Сменить профиль" title="Сменить профиль" disabled={!!busy} onClick={logout}><Icon name="logout" size={18} /></button></div>
       </header>
       {!selected && !profilePage && session.company && <section className="cabinet-hero" aria-labelledby="welcome-title">
         <div><h1 id="welcome-title">Новая возможность<br />для вашего бизнеса</h1><p>Выберите финансирование и следите за заявками<br className="desktop-break" /> в одном кабинете</p>
@@ -610,11 +601,11 @@ export default function App({ api = defaultApi }: { api?: Api }) {
           {pendingSubmit && <button className="button secondary" type="button" disabled={!!busy} onClick={()=>submitApplication()}>Проверить отправку</button>}
           {receiptBlocked && <button className="button secondary" disabled={!!busy} onClick={reloadSelected}>Обновить карточку</button>}
         </div></div>}
-        {profilePage&&session.company?<CompanyProfilePage api={api} session={session as import('./types').ClientSession} onSessionChanged={clearProfile}/>:selected ? session.company && selected.status==='DRAFT' ? <DraftForm api={api} key={selected.id} resetVersion={purposeReset} application={selected} companyName={session.company.name} session={session as import("./types").ClientSession}
+        {profilePage?(session.company?<CompanyProfilePage api={api} session={session as import('./types').ClientSession} onSessionChanged={clearProfile}/>:<StaffProfilePage api={api} session={session as import('./types').StaffSession} onSessionChanged={clearProfile}/>):selected ? session.company && selected.status==='DRAFT' ? <DraftForm api={api} key={selected.id} resetVersion={purposeReset} application={selected} companyName={session.company.name} session={session as import("./types").ClientSession}
           errorAttempt={fieldErrorAttempt} fields={fields} errors={{ ...autosave.errors, ...fieldErrors }} busy={!!busy || !!pendingSubmit || receiptBlocked}
-          saveStatus={autosave.status} onChange={change} onFinish={finish} onNavigate={() => void autosave.flush()} onReauthenticate={reauthenticate}
+          saveStatus={autosave.status} onChange={change} onNavigate={() => void autosave.flush()} onReauthenticate={reauthenticate}
           onSubmitApplication={submitApplication} onSessionChanged={clearProfile}/>
-          : <div className={`submitted-layout ${selected.status==='DECLINED'?'without-journey':''}`}><div className="application-stack">{session.company&&<FundingPanel key={selected.id} api={api} application={selected} session={session as import('./types').ClientSession} onUpdated={value=>{upsert(value);setSelected(value);}} onSessionChanged={clearProfile}/>}<SubmittedApplication application={selected} staff={!session.company}/>{!session.company&&<ReviewPanel api={api} application={selected} onUpdated={value=>{upsert(value);setSelected(value);}}/>}<InfoRequests key={session.user.id+selected.id} api={api} session={session} application={selected} onUpdated={value=>{upsert(value);setSelected(value);}} onSessionChanged={clearProfile} register={registerInfo}/></div>{selected.status!=='DECLINED'&&<aside className="draft-aside"><ApplicationJourney status={selected.status}/></aside>}</div>
+          : <div className={`submitted-layout ${selected.status==='DECLINED'?'without-journey':''}`}><div className="application-stack">{session.company&&<FundingPanel key={selected.id} api={api} application={selected} session={session as import('./types').ClientSession} onUpdated={value=>{upsert(value);setSelected(value);}} onSessionChanged={clearProfile}/>}<SubmittedApplication application={selected} staff={!session.company}/>{!session.company&&<ReviewPanel api={api} blocked={infoDirty} application={selected} onUpdated={value=>{upsert(value);setSelected(value);}}/>}<InfoRequests key={session.user.id+selected.id} api={api} session={session} application={selected} onUpdated={value=>{upsert(value);setSelected(value);}} onSessionChanged={clearProfile} register={registerInfo}/></div>{selected.status!=='DECLINED'&&<aside className="draft-aside"><ApplicationJourney status={selected.status}/></aside>}</div>
           : session.company ? <ApplicationsList items={items} busy={!!busy} onOpen={open} onDelete={removeDraft} onCreate={()=>create()} onChooseProduct={create} />
           : <StaffApplications items={items} busy={!!busy} onOpen={open} onRefresh={refreshList}/>}
         <footer className="page-footer"><span>Альфа Бизнес · Кредитный кабинет</span><a href="/credit-terms.html" target="_blank" rel="noopener noreferrer">Полные условия финансирования ↗</a><span>Демонстрационный режим · Синтетические данные</span></footer>

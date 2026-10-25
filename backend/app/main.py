@@ -412,3 +412,6 @@ app.include_router(notifications_router)
 
 from .disbursements import router as disbursements_router
 app.include_router(disbursements_router)
+
+from .staff_workspace import router as staff_workspace_router
+app.include_router(staff_workspace_router)

@@ -139,7 +139,12 @@ export interface ClientNotification {
 }
 export interface NotificationList {items:ClientNotification[];unread_count:number;}
 
+export interface StaffProfile {account_id:string;full_name:string;position:string;department:string;city:string;source:"DEMO";}
+export interface ManualFinancialInput {version:number;reason:string;values:{kind:FinancialValue["kind"];month:string|null;value_rub:string}[];}
+export interface StaffCorrection {id:number;actor_id:string;actor_name?:string;recorded_at:string;reason:string;values:(Omit<FinancialValue,"source">&{source:"STAFF_VERIFIED"})[];}
+
 export interface Api {
+  staffProfile?():Promise<StaffProfile>;
   disburse?(id:string,body:{version:number;confirmed:true},key:string):Promise<Application>;
   notifications?: {list():Promise<NotificationList>;read(id:number):Promise<void>};
   assistant?:{
@@ -175,6 +180,7 @@ export interface InfoMessage {id:number; text:string; actor_id:string; actor_rol
 export interface InfoRequest {
   id:string; question:string; reason:string; document_required:boolean; revision:number; reply_text:string;
   source:'SELF_REPORTED'; created_at:string; created_by:string; reply_by:string|null; closed_at:string|null; closed_by:string|null;
+  staff_corrections?:StaffCorrection[];
   financial_required?:boolean; financial_values?:FinancialValue[]|null; financial_accepted_at?:string|null;
   messages:InfoMessage[]; attachments:InfoAttachment[];
 }
@@ -182,6 +188,7 @@ export interface FinancialValue {kind:"income_rub"|"expenses_rub"|"debt_payment_
 export interface InfoCreate {version:number; question:string; reason:string; document_required:boolean; financial_required?:boolean;}
 export interface InfoSubmit {version:number; revision:number; financial_values?:FinancialValue[];}
 export interface InfoApi {
+  correctFinancial?(id:string,rid:string,body:ManualFinancialInput,key:string):Promise<Application>;
   create(id:string,body:InfoCreate,key:string):Promise<Application>;
   save(id:string,rid:string,revision:number,text:string):Promise<Application>;
   submit(id:string,rid:string,body:InfoSubmit,key:string):Promise<Application>;
