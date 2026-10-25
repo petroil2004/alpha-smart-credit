@@ -20,3 +20,13 @@ it('enables the decision when an accepted clarification updates the server asses
  view.rerender(<ReviewPanel {...props} application={{...item,assessment:{...assessment,score:100,group:'LOW',recommendation:'OFFER_REQUESTED',missing:[]}}}/>);
  expect(screen.getByRole('button',{name:'Одобрить'})).toBeEnabled();
 });
+
+it('explains low-risk refusal beside the recommendation and shows both payments',()=>{
+ const assessment:Assessment={model_version:'demo',score:90,group:'LOW',recommendation:'RECOMMEND_DECLINE',reasons:[],missing:[],formal_checks:[],calculated_at:'2026-10-25T10:00:00Z',decision_reasons:['Платёж превышает допустимую нагрузку'],affordability:{kind:'MONTHLY_PAYMENT',requested_rub:'150000.00',available_rub:'120000.00'},checks:[{source:'BKI_MOCK',label:'БКИ · локальная имитация',checked_at:'2026-10-25T10:00:00Z',status:'SUCCESS',reason_code:'NO_HISTORY',summary:'Кредитной истории нет; это не просрочка',payload_version:'v1'}]};
+ render(<ReviewPanel api={{} as Api} application={application({status:'UNDER_REVIEW',assessment})} onUpdated={()=>{}}/>);
+ expect(screen.getByText('Платёж превышает допустимую нагрузку')).toBeInTheDocument();
+ expect(screen.getByText('Платёж по заявке')).toBeInTheDocument();
+ expect(screen.getByText('Допустимый новый платёж')).toBeInTheDocument();
+ expect(screen.getByText('Кредитной истории нет; это не просрочка')).toBeInTheDocument();
+ expect(screen.getByRole('button',{name:'Одобрить'})).toBeDisabled();
+});
