@@ -38,7 +38,7 @@ function InfoWorkspace({api,session,application,onUpdated,onSessionChanged,regis
   try{
    await guard();const value=await (session.company?api.get(application.id):api.staffGet(application.id));await guard();
    // Only corrupt receipts are discarded, and only after this authorised read.
-   for(const rid of ['new',...(value.info_requests??[]).map(r=>r.id)])for(const kind of ['create','submit','message','accept-financial','staff-financial-correction','close'] as const){const receipts=new InfoReceipts(session.user.id,application.id,rid);try{receipts.read(kind);}catch(e){if(infoError(e).code==='INVALID_INFO_RECEIPT')receipts.clear(kind);else throw e;}}
+   for(const rid of ['new',...(value.info_requests??[]).map(r=>r.id)])for(const kind of ['create','submit','message','accept-financial','staff-financial-correction','staff-profile-correction','close'] as const){const receipts=new InfoReceipts(session.user.id,application.id,rid);try{receipts.read(kind);}catch(e){if(infoError(e).code==='INVALID_INFO_RECEIPT')receipts.clear(kind);else throw e;}}
    for(const r of value.info_requests??[]){try{readUpload(session.user.id,application.id,r.id);}catch(e){if(infoError(e).code==='INVALID_INFO_RECEIPT')writeUpload(session.user.id,application.id,r.id,null);else throw e;}}
    action.reload();latest.current=value;setCurrent(value);callbacks.current.onUpdated(value);setQuestion('');setError(null);setReset(n=>n+1);
   }catch(e){if(alive.current)setError(infoError(e));}

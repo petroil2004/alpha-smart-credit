@@ -161,7 +161,6 @@ export function ParameterFields(props: EditableProps & {includeEquipment?:boolea
           </Field>
         </div>
       )}
-      {props.includeEquipment!==false && fields.product_code === "equipment" && <MoneyField {...props} name="equipment_cost_rub" label="Стоимость оборудования" />}
     </>
   );
 }

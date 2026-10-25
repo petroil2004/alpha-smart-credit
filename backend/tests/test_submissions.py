@@ -67,10 +67,10 @@ def test_submit_accepts_boundaries_and_kopecks_without_financial_data(client, ch
 
 
 def test_submit_equipment_and_overdraft_with_product_facts(client):
-    equipment = draft(client, product_code='equipment', amount_rub='500000.00', term_months=12, equipment_cost_rub='600000.00')
+    equipment = draft(client, product_code='equipment', amount_rub='500000.00', term_months=12)
     equipment_result = submit(client, equipment)
     assert equipment_result.status_code == 200, equipment_result.text
-    assert equipment_result.json()['submission']['snapshot']['application']['equipment_cost_rub'] == '600000.00'
+    assert equipment_result.json()['submission']['snapshot']['application']['equipment_cost_rub'] is None
 
     overdraft = draft(client, product_code='overdraft', amount_rub='100000.00', term_months=None, usage_days=14,
                       planned_payment_rub='90000.00', planned_payment_date='2099-10-24',
@@ -78,7 +78,7 @@ def test_submit_equipment_and_overdraft_with_product_facts(client):
     overdraft_result = submit(client, overdraft)
     assert overdraft_result.status_code == 200, overdraft_result.text
     calculation = overdraft_result.json()['submission']['snapshot']['calculation']
-    assert calculation['interest_rub'] == '897.53' and calculation['due_rub'] == '90897.53'
+    assert calculation['interest_rub'] == '512.88' and calculation['due_rub'] == '90512.88'
 
 
 @pytest.mark.parametrize('field,code', [('version', 'VERSION_CONFLICT'), ('profile_version', 'PROFILE_VERSION_CONFLICT'), ('catalog_version', 'CATALOG_VERSION_CONFLICT')])

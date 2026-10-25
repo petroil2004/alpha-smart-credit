@@ -49,5 +49,5 @@ def test_private_drafts_then_explicit_send_and_staff_close(client):
 
 @pytest.mark.parametrize('content,name,kind',[(b'%PDF-1.7 synthetic','doc.pdf','application/pdf'),(b'\xff\xd8\xffsynthetic','photo.jpg','image/jpeg'),(b'\x89PNG\r\n\x1a\nsynthetic','photo.png','image/png')])
 def test_supported_document_types(client,content,name,kind):
-    item,r=opened(client);login(client)
+    item,r=opened(client,True);login(client)
     assert upload(client,item,r,content,name,kind)[0].status_code==200

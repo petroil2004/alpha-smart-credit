@@ -42,7 +42,7 @@ it('requires all product-specific parameters before review',()=>{
  const fields=fromApplication(application({product_code:'working_capital',purpose:'Товар',amount_rub:'500000.00',term_months:12}));
  expect(draftReadiness(fields)).toEqual({product:true,details:true});
  expect(draftReadiness({...fields,purpose:' '})).toEqual({product:true,details:false});
- expect(draftReadiness({...fields,product_code:'equipment'}).details).toBe(false);
+ expect(draftReadiness({...fields,product_code:'equipment'}).details).toBe(true);
  expect(draftReadiness({...fields,product_code:'equipment',equipment_cost_rub:'600000'}).details).toBe(true);
  const overdraft={...fields,product_code:'overdraft' as const,usage_days:'14',planned_payment_rub:'100000',planned_payment_date:'2026-10-25',expected_inflow_date:'2026-11-01',expected_inflow_amount_rub:'150000',expected_inflow_source:'BUYER' as const};
  expect(draftReadiness(overdraft).details).toBe(true);
@@ -58,4 +58,13 @@ it('caps the date year at four digits and derives overdraft days from the dates'
  fireEvent.change(input,{target:{value:'10.11.202612'}});
  expect(change).toHaveBeenCalledWith('planned_payment_date','2026-11-10');
  expect(prepareDraftPayload(fields).payload.usage_days).toBe(14);
+});
+
+it('shows logical errors for overdraft use above the limit and insufficient repayment',async()=>{
+ const {draftConstraints}=await import('./draft-constraints');
+ const fields=fromApplication(application({product_code:'overdraft',amount_rub:'100000.00',planned_payment_rub:'100001.00',planned_payment_date:'2099-10-24',expected_inflow_date:'2099-11-01',expected_inflow_amount_rub:'90000.00'}));
+ const catalog={catalog_version:'test',items:[{code:'overdraft',amount_min_rub:'50000.00',amount_max_rub:'2000000.00',usage_min_days:1,usage_max_days:60,annual_rate_percent:'26.00'}]} as import('./types').ProductCatalog;
+ const errors=draftConstraints(fields,catalog);
+ expect(errors.planned_payment_rub).toContain('не может превышать лимит');
+ expect(errors.expected_inflow_amount_rub).toContain('проценты');
 });

@@ -5,7 +5,7 @@ import {InfoQueue} from '../info-queue';
 import {InfoReceipts,readUpload,writeUpload} from '../info-receipts';
 import type {UploadReceipt} from '../info-receipts';
 import {useInfoAction,infoError} from '../hooks/useInfoAction';
-import ManualFinancial from "./ManualFinancial";
+import ManualFinancial from "./DataCorrections";
 import {ApiError} from '../api';
 interface Props {api:Api;session:Session;application:Application;request:InfoRequest;guard:()=>Promise<void>;accept:(a:Application)=>void;register:(c:InfoController|null)=>void;}
 const date=(value:string)=>new Intl.DateTimeFormat('ru-RU',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Moscow'}).format(new Date(value));
@@ -84,16 +84,15 @@ export default function InfoRequestPanel(props:Props){
    {staff&&!request.reply_submitted_at&&!request.closed_at&&!request.messages.some(m=>m.actor_role==='CLIENT')&&<p className="small-note">Клиент пока не добавил ответ.</p>}
    <ol className="info-messages">{request.messages.map(m=><li key={m.id}><strong>{m.actor_role==='STAFF'?'Сотрудник банка':'Клиент'}</strong><time dateTime={m.created_at}>{date(m.created_at)}</time><p>{m.text}</p>{files(request.attachments.filter(a=>a.message_id===m.id))}</li>)}</ol>
    {request.closed_at&&request.reply_text&&<div className="legacy-reply"><h4>{request.reply_submitted_at?'Неотправленный черновик':'Ответ клиента'}</h4><p className="info-text">{request.reply_text}</p>{files(pendingFiles)}</div>}
-   {staff&&(request.reply_submitted_at||request.closed_at)&&<p className="small-note">Со слов клиента. Сведения и документы проверяет сотрудник банка.</p>}
    {active&&!staff&&<>
-    <label className="field"><textarea aria-label="Сообщение по запросу" placeholder="Напишите ответ или вопрос сотруднику. Документы можно прикрепить ниже." maxLength={2000} value={queue.text} disabled={frozen} onChange={e=>queue.setText(e.target.value)}/><small>{queue.dirty?'Сохраняем черновик…':'Черновик виден только вам до отправки.'}</small></label>
+    <label className="field"><textarea aria-label="Сообщение по запросу" placeholder={request.document_required?"Напишите ответ или вопрос сотруднику. Документы можно прикрепить ниже.":"Напишите ответ или вопрос сотруднику"} maxLength={2000} value={queue.text} disabled={frozen} onChange={e=>queue.setText(e.target.value)}/>{queue.dirty&&<small>Сохраняем…</small>}</label>
     {files(pendingFiles)}
-    <div className="info-upload"><p className="small-note">PDF, PNG или JPG до 5 МБ. Не больше пяти файлов. Используйте только синтетические документы.</p>
+    {request.document_required&&<div className="info-upload"><p className="small-note">PDF, PNG или JPG до 5 МБ. Не больше пяти файлов. Используйте только синтетические документы.</p>
      {upload&&<p role="status">Загрузка «{upload.name}» ещё не подтверждена. Выберите тот же файл для повтора.</p>}
      <label className="field"><span>Прикрепить документ</span><input type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" disabled={frozen||uploadBroken||request.attachments.length>=5} onChange={e=>chooseFile(e.target.files?.[0]??null)}/></label>
      {file&&<p className="small-note">Выбран: {file.name}. Загрузите его перед отправкой.</p>}
      <button type="button" className="button secondary" disabled={!file||frozen||uploadBroken} onClick={uploadFile}>Загрузить документ</button>
-    </div>
+    </div>}
    </>}
    {active&&staff&&<label className="field"><textarea aria-label="Сообщение по запросу" placeholder="Напишите клиенту уточнение по документам или сведениям" maxLength={1000} value={message} disabled={chat.busy||!!chat.pending||frozen} onChange={e=>setMessage(e.target.value)}/></label>}
    {(active||submit.pending||chat.pending)&&<div className="info-actions">

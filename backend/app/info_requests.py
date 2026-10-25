@@ -120,9 +120,11 @@ def validate_financial_values(values, application, db):
     """Text and files never alter figures; only these explicit rows may be accepted."""
     if not values:return []
     from decimal import Decimal, InvalidOperation
+    import re
     from .models import ApplicationSubmission
     submission=db.get(ApplicationSubmission,application.id)
-    months={row.get('month') for row in (submission.snapshot.get('company',{}).get('finance',{}).get('months') or [])} if submission else set()
+    from .verified_data import financial_rows
+    months={row['month'] for row in financial_rows(submission.snapshot,submission.submitted_at)} if submission else set()
     result=[];seen=set()
     for item in values:
         if item.kind not in {'income_rub','expenses_rub','debt_payment_rub'} or item.source not in {'CLIENT_DOCUMENT','CLIENT_CONFIRMED'}:
@@ -134,6 +136,7 @@ def validate_financial_values(values, application, db):
         key=(item.kind,item.month)
         if key in seen:raise validation_error({'financial_values':'Не повторяйте один финансовый показатель'})
         seen.add(key)
+        if not re.fullmatch(r'\d{1,16}(?:\.\d{1,2})?',item.value_rub):raise validation_error({'financial_values':'Укажите неотрицательную сумму с точностью до копеек'})
         try:value=Decimal(item.value_rub)
         except InvalidOperation as exc:raise validation_error({'financial_values':'Укажите сумму с точностью до копеек'}) from exc
         if not value.is_finite() or value<0 or value>Decimal('9999999999999999.99') or value.as_tuple().exponent < -2:

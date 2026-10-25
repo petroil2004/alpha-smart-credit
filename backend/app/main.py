@@ -360,7 +360,10 @@ def update_application(
     if values['product_code']=='overdraft' and values['planned_payment_date'] and values['expected_inflow_date']:
         days=(values['expected_inflow_date']-values['planned_payment_date']).days
         if days<=0:raise validation_error({'expected_inflow_date':'Дата поступления должна быть позже даты использования средств'})
+        if days>60:raise validation_error({'expected_inflow_date':'Срок использования овердрафта не может превышать 60 дней'})
         values['usage_days']=days
+    if values['product_code']=='overdraft' and values['amount_rub'] is not None and values['planned_payment_rub'] is not None and values['planned_payment_rub']>values['amount_rub']:
+        raise validation_error({'planned_payment_rub':'Сумма использования не может превышать лимит'})
     validate_final_values(values)
     for field, value in values.items():
         setattr(application, field, value)

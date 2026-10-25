@@ -95,7 +95,7 @@ export default function DraftReview({
             </>
           ) : (
             <><Row label="Срок, месяцев">{fields.term_months.trim() || "Не указано"}</Row>
-            {fields.product_code === "equipment" && <Row label="Стоимость оборудования">{formatMoneyRub(fields.equipment_cost_rub)}</Row>}</>
+            </>
           )}
         </dl>
       </div>
