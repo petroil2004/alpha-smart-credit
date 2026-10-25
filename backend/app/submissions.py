@@ -1,4 +1,5 @@
 """Atomic registration for review, immutable submitted facts, staff read API."""
+from .business_dates import future_date_errors
 import uuid
 from typing import Annotated
 
@@ -64,7 +65,7 @@ def submit_application(application_id: uuid.UUID, payload: SubmitPayload, accoun
         raise ApiProblem(409, 'PROFILE_VERSION_CONFLICT', 'Сведения компании изменились. Обновите и подтвердите их заново.')
     if payload.catalog_version != get_catalog()['catalog_version']:
         raise ApiProblem(409, 'CATALOG_VERSION_CONFLICT', 'Условия изменились. Обновите расчёт и подтвердите заново.')
-    fields = {}
+    fields = future_date_errors({name:getattr(application,name) for name in ("planned_payment_date","expected_inflow_date")})
     if not payload.confirmed:
         fields['confirmed'] = 'Подтвердите сведения и выбранные параметры'
     if not application.purpose or not application.purpose.strip() or len(application.purpose) > 500:

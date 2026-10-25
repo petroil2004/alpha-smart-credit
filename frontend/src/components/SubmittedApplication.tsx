@@ -11,8 +11,8 @@ export default function SubmittedApplication({application,staff=false}:{applicat
   const calc:any=snapshot?.calculation;
   const decision=application.history?.slice().reverse().find(event=>event.reason_code==='STAFF_APPROVED'||event.reason_code==='STAFF_DECLINED');
   return <section className="form-card submitted-card" aria-label="Отправленная заявка">
-    <h1>{application.status==='NEEDS_INFO'?'Нужны дополнительные сведения':application.status==='UNDER_REVIEW' ? 'Заявка на рассмотрении' : application.status==='APPROVED'?'Заявка одобрена':application.status==='DECLINED'?'По заявке принято решение':'Отправленная заявка'}</h1>
-    <p>{application.status==='NEEDS_INFO'?(staff?'Ждём ответ клиента на запрос ниже.':'Ответьте на запрос банка ниже и отправьте сведения на рассмотрение.'):application.status==='APPROVED'?(staff?'Вы подтвердили положительное решение.':'Сотрудник подтвердил положительное решение по демонстрационной заявке.'):application.status==='DECLINED'?(staff?'Вы подтвердили отказ.':'Сотрудник принял итоговое решение с указанной причиной в истории заявки.'):staff?'Изучите заявку. При необходимости запросите сведения ниже.':'Дополнительные действия пока не требуются. Если понадобятся сведения, мы сообщим здесь.'}</p>
+    <h1>{application.status==='ISSUED'?'Финансирование оформлено':application.status==='NEEDS_INFO'?'Нужны дополнительные сведения':application.status==='UNDER_REVIEW' ? 'Заявка на рассмотрении' : application.status==='APPROVED'?'Заявка одобрена':application.status==='DECLINED'?'По заявке принято решение':'Отправленная заявка'}</h1>
+    <p>{application.status==='ISSUED'?'Клиент подтвердил получение финансирования. Демонстрационная операция завершена.':application.status==='NEEDS_INFO'?(staff?'Ждём ответ клиента на запрос ниже.':'Ответьте на запрос банка ниже и отправьте сведения на рассмотрение.'):application.status==='APPROVED'?(staff?'Вы подтвердили положительное решение.':'Сотрудник подтвердил положительное решение по демонстрационной заявке.'):application.status==='DECLINED'?(staff?'Вы подтвердили отказ.':'Сотрудник принял итоговое решение с указанной причиной в истории заявки.'):staff?'Изучите заявку. При необходимости запросите сведения ниже.':'Дополнительные действия пока не требуются. Если понадобятся сведения, мы сообщим здесь.'}</p>
     {decision?.comment&&<p className="decision-comment"><strong>Причина решения: </strong>{decision.comment}</p>}
     {application.status==='APPROVED'&&<h2>Одобренные условия</h2>}
     <dl className="submitted-details">
@@ -28,7 +28,7 @@ export default function SubmittedApplication({application,staff=false}:{applicat
       {calc.total_payment_rub&&<div><dt>Общая сумма выплат</dt><dd>{formatMoneyRub(calc.total_payment_rub)}</dd></div>}
       {calc.overpayment_rub&&<div><dt>Переплата</dt><dd>{formatMoneyRub(calc.overpayment_rub)}</dd></div>}</>}
     </dl>
-    <p className="small-note">{application.status==='APPROVED'?'Сотрудник одобрил указанные условия. Это демонстрация без подписания договора и выдачи денег.':'Параметры зафиксированы при отправке. Расчёт не означает одобрения.'} Все данные и условия демонстрационные.</p>
+    <p className="small-note">{['APPROVED','ISSUED'].includes(application.status)?'Одобренные параметры зафиксированы. Операции демонстрационные.':'Параметры зафиксированы при отправке. Расчёт не означает одобрения.'} Все данные и условия демонстрационные.</p>
     {staff && snapshot && <p className="small-note">Сведения компании — синтетические данные банка. Подтверждение клиента не заменяет банковскую проверку.</p>}
     {staff&&<CompanyDataView profile={snapshot?.company} historical/>}
     <details className="company-disclosure"><summary>История заявки</summary>

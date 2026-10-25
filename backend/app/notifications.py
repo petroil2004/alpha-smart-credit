@@ -15,6 +15,7 @@ TITLES = {
     'NEEDS_INFO': 'Банк запросил уточнения',
     'APPROVED': 'Заявка одобрена',
     'DECLINED': 'По заявке получен отказ',
+    'ISSUED': 'Демонстрационное финансирование оформлено',
 }
 
 
@@ -35,15 +36,16 @@ def list_notifications(account: ClientAccount, db: Session = Depends(get_db)):
     unread = db.scalar(select(func.count()).select_from(
         query.where(NotificationRead.event_id.is_(None)).subquery()
     ))
-    rows = db.execute(query.add_columns(NotificationRead.read_at).order_by(
+    rows = db.execute(query.add_columns(NotificationRead.read_at, Application.application_number).order_by(
         NotificationRead.read_at.is_not(None), ApplicationEvent.id.desc()
     ).limit(100))
     return {'unread_count': unread, 'items': [{
         'id': event.id, 'application_id': str(event.application_id),
+        'application_number': number,
         'status': event.to_status, 'title': TITLES[event.to_status],
         'message': event.comment, 'occurred_at': event.occurred_at.isoformat(),
         'read': read_at is not None,
-    } for event, read_at in rows]}
+    } for event, read_at, number in rows]}
 
 
 @router.post('/{event_id}/read', status_code=204)

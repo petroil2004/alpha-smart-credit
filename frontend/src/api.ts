@@ -79,6 +79,7 @@ export function createApi(
     }
   }
   return {
+    disburse:(id,body,key)=>request<Application>(`/applications/${encodeURIComponent(id)}/disbursement`,{method:'POST',body:JSON.stringify(body),headers:{'Idempotency-Key':key}}),
     notifications:{
       list:()=>request<import('./types').NotificationList>('/notifications'),
       read:id=>request<void>(`/notifications/${id}/read`,{method:'POST'}),

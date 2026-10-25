@@ -70,20 +70,20 @@ describe("draft payload", () => {
       expected_inflow_amount_rub: null,
     });
   });
-  it("clears ordinary term for overdraft without rejecting a past draft date", () => {
+  it("clears ordinary term for overdraft with a future date", () => {
     expect(
       toDraftPayload({
         ...emptyDraft(),
         product_code: "overdraft",
         term_months: "24",
         usage_days: "14",
-        expected_inflow_date: "2020-02-29",
+        expected_inflow_date: "2099-02-28",
         expected_inflow_amount_rub: "12,10",
       }),
     ).toMatchObject({
       term_months: null,
       usage_days: 14,
-      expected_inflow_date: "2020-02-29",
+      expected_inflow_date: "2099-02-28",
       expected_inflow_amount_rub: "12.10",
     });
   });

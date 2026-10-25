@@ -4,7 +4,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from .info_serialization import serialize_info_requests
-from .models import Account, Application, ApplicationSubmission, ApplicationEvent
+from .models import Account, Application, ApplicationSubmission, ApplicationEvent, ApplicationDisbursement
 
 def timestamp(value) -> str:
     return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -14,6 +14,7 @@ def application_values(application: Application) -> dict[str, Any]:
     money = lambda value: format(value, ".2f") if value is not None else None
     return {
         "id": str(application.id),
+        "application_number": application.application_number,
         "company_id": application.company_id,
         "status": application.status,
         "purpose": application.purpose,
@@ -42,6 +43,9 @@ def serialize_application(application: Application, db: Session, *, detail: bool
     result.update(company_name=company_name, submitted_at=timestamp(submission.submitted_at) if submission else None)
     result['next_action'] = 'CLIENT' if application.status == 'NEEDS_INFO' else 'STAFF' if application.status == 'UNDER_REVIEW' else None
     if detail:
+        if submission:
+            funding = db.get(ApplicationDisbursement, application.id)
+            result['disbursement'] = {'confirmed_at':timestamp(funding.confirmed_at), 'amount_rub':format(funding.amount_rub,'.2f'), 'kind':funding.kind} if funding else None
         result['info_requests'] = serialize_info_requests(application.id, db)
         result['submission'] = {'submitted_at': timestamp(submission.submitted_at), 'submitted_by': submission.actor_id,
                                 'snapshot': submission.snapshot} if submission else None

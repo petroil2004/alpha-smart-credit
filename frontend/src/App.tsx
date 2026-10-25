@@ -1,3 +1,4 @@
+import {applicationNumber} from "./application-number";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   Api,
@@ -28,6 +29,7 @@ import { Icon } from "./components/Icon";
 
 import InfoRequests from "./components/InfoRequests";
 import type {InfoController} from "./components/InfoRequests";
+import FundingPanel from "./components/FundingPanel";
 import ReviewPanel from './components/ReviewPanel';
 import ApplicationJourney from "./components/ApplicationJourney";
 import ClientNotifications from "./components/ClientNotifications";
@@ -343,13 +345,14 @@ export default function App({ api = defaultApi }: { api?: Api }) {
   const confirmRemoveDraft = () => {
     if (!deleteTarget || lock.current) return;
     const {id, version} = deleteTarget;
+    const number=applicationNumber(deleteTarget);
     void run("delete", async () => {
       await verifySession();
       await api.remove(id, version);
       await verifySession();
       setItems(current => current.filter(item => item.id !== id));
       setDeleteTarget(null);
-      setNotice(`Черновик № ${id.slice(-6)} удалён.`);
+      setNotice(`Черновик № ${number} удалён.`);
     });
   };
   const change = <K extends keyof DraftFields>(
@@ -537,8 +540,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
             </h1>
             <p>
               Выберите финансирование для вашего бизнеса.
-              <br />
-              Оборотный кредит, оборудование или овердрафт — от выбора до решения банка.
+
             </p>
           </div>
           <div className="login-footer">
@@ -601,7 +603,7 @@ export default function App({ api = defaultApi }: { api?: Api }) {
         </div><img className="hero-art" src="/images/credit/hero.png" alt="" width="460" height="460" fetchPriority="high" />
       </section>}
       <main className={`main-content ${selected ? "application-content" : "home-content"}`}>
-        {(selected||profilePage) && <div className="draft-page-header"><button className="back-button" aria-label="Все заявки" onClick={showList} disabled={!!busy}>← Все заявки</button>{selected&&<span className="draft-subtitle"><StatusBadge status={selected.status}/> № {selected.id.slice(-6)}</span>}</div>}
+        {(selected||profilePage) && <div className="draft-page-header"><button className="back-button" aria-label="Все заявки" onClick={showList} disabled={!!busy}>← Все заявки</button>{selected&&<span className="draft-subtitle"><StatusBadge status={selected.status}/> № {applicationNumber(selected)}</span>}</div>}
         {errorBox}
         {notice && <div className="notice success-notice" role="status"><Icon name="check" size={18} /><p>{notice}</p></div>}
         {selected && session.company && selected.status==='DRAFT' && (pendingSubmit || receiptBlocked) && <div className="notice" role="status"><div><p>Исход предыдущей отправки нужно проверить. Параметры этой попытки сохранены; повтор не создаст вторую заявку.</p>
@@ -612,10 +614,10 @@ export default function App({ api = defaultApi }: { api?: Api }) {
           errorAttempt={fieldErrorAttempt} fields={fields} errors={{ ...autosave.errors, ...fieldErrors }} busy={!!busy || !!pendingSubmit || receiptBlocked}
           saveStatus={autosave.status} onChange={change} onFinish={finish} onNavigate={() => void autosave.flush()} onReauthenticate={reauthenticate}
           onSubmitApplication={submitApplication} onSessionChanged={clearProfile}/>
-          : <div className={`submitted-layout ${selected.status==='DECLINED'?'without-journey':''}`}><div className="application-stack"><SubmittedApplication application={selected} staff={!session.company}/>{!session.company&&<ReviewPanel api={api} application={selected} onUpdated={value=>{upsert(value);setSelected(value);}}/>}<InfoRequests key={session.user.id+selected.id} api={api} session={session} application={selected} onUpdated={value=>{upsert(value);setSelected(value);}} onSessionChanged={clearProfile} register={registerInfo}/></div>{selected.status!=='DECLINED'&&<aside className="draft-aside"><ApplicationJourney status={selected.status}/></aside>}</div>
+          : <div className={`submitted-layout ${selected.status==='DECLINED'?'without-journey':''}`}><div className="application-stack">{session.company&&<FundingPanel key={selected.id} api={api} application={selected} session={session as import('./types').ClientSession} onUpdated={value=>{upsert(value);setSelected(value);}} onSessionChanged={clearProfile}/>}<SubmittedApplication application={selected} staff={!session.company}/>{!session.company&&<ReviewPanel api={api} application={selected} onUpdated={value=>{upsert(value);setSelected(value);}}/>}<InfoRequests key={session.user.id+selected.id} api={api} session={session} application={selected} onUpdated={value=>{upsert(value);setSelected(value);}} onSessionChanged={clearProfile} register={registerInfo}/></div>{selected.status!=='DECLINED'&&<aside className="draft-aside"><ApplicationJourney status={selected.status}/></aside>}</div>
           : session.company ? <ApplicationsList items={items} busy={!!busy} onOpen={open} onDelete={removeDraft} onCreate={()=>create()} onChooseProduct={create} />
           : <StaffApplications items={items} busy={!!busy} onOpen={open} onRefresh={refreshList}/>}
-        <footer className="page-footer"><span>Альфа Бизнес · Кредитный кабинет</span><span>Демонстрационный проект · Все данные синтетические</span></footer>
+        <footer className="page-footer"><span>Альфа Бизнес · Кредитный кабинет</span><a href="/credit-terms.html" target="_blank" rel="noopener noreferrer">Полные условия финансирования ↗</a><span>Демонстрационный режим · Синтетические данные</span></footer>
       </main>
     </div>
   );

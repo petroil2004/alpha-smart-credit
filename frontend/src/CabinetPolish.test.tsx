@@ -24,7 +24,7 @@ it('opens the matching application from an unread notification and marks it read
 });
 it('separates completed applications and filters the active tab by status',async()=>{
  const user=userEvent.setup(),onOpen=vi.fn();
- const items=['UNDER_REVIEW','NEEDS_INFO','APPROVED','DECLINED'].map((status,index)=>application({id:`id-${index}`,company_name:`Компания ${index}`,status}));
+ const items=['UNDER_REVIEW','NEEDS_INFO','APPROVED','DECLINED'].map((status,index)=>application({id:`id-${index}`,company_name:`Компания ${index}`,application_number:index+1,status}));
  render(<StaffApplications items={items} busy={false} onOpen={onOpen} onRefresh={()=>{}}/>);
  expect(screen.getByText('Компания 0')).toBeVisible();expect(screen.queryByText('Компания 2')).not.toBeInTheDocument();
  await user.selectOptions(screen.getByLabelText('Статус'),'NEEDS_INFO');
@@ -33,7 +33,7 @@ it('separates completed applications and filters the active tab by status',async
  expect(screen.getByLabelText('Статус')).toHaveValue('ALL');
  await user.selectOptions(screen.getByLabelText('Статус'),'APPROVED');
  expect(screen.queryByText('Компания 3')).not.toBeInTheDocument();
- await user.click(screen.getByRole('button',{name:'Открыть заявку id-2'}));expect(onOpen).toHaveBeenCalledWith('id-2');
+ await user.click(screen.getByRole('button',{name:'Открыть заявку 000003'}));expect(onOpen).toHaveBeenCalledWith('id-2');
 });
 it('requires all product-specific parameters before review',()=>{
  const fields=fromApplication(application({product_code:'working_capital',purpose:'Товар',amount_rub:'500000.00',term_months:12}));
