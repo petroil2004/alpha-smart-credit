@@ -4,6 +4,13 @@ import {application} from './test/api-fixtures';
 import type {Application} from './types';
 const initial=()=>({...application(),status:'NEEDS_INFO',info_requests:[{id:'r',question:'Вопрос',reason:'Причина',document_required:false,source:'SELF_REPORTED',created_at:'2026-10-24T00:00:00Z',created_by:'staff',reply_by:null,closed_by:null,revision:1,reply_text:'',closed_at:null,attachments:[],messages:[]}]} as Application);
 const deferred=()=>{let resolve!:(value:Application)=>void;const promise=new Promise<Application>(r=>resolve=r);return {resolve,promise};};
+it('keeps a newer assessment when a late chat response has the same application version',async()=>{
+ const {mergeInfoApplication}=await import('./info-queue');
+ const oldAssessment={model_version:'demo',score:90,group:'LOW',recommendation:'KEEP_UNDER_REVIEW',reasons:[],missing:[],formal_checks:[],calculated_at:'2026-10-25T10:00:00Z'} as const;
+ const first={...initial(),assessment:{...oldAssessment,reasons:[],missing:[],formal_checks:[]}};
+ const fresh={...first,assessment:{...first.assessment,recommendation:'OFFER_REQUESTED' as const,calculated_at:'2026-10-25T10:01:00Z'}};
+ expect(mergeInfoApplication(fresh,first).assessment).toEqual(fresh.assessment);
+});
 describe('clarification save queue',()=>{
  it('waits for upload and newest text before final submission can use revision',async()=>{
   const gate=deferred();const calls:string[]=[];
