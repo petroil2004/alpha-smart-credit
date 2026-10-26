@@ -129,7 +129,7 @@ describe("draft wizard", () => {
         application({
           purpose: "Сохранённая цель",
           product_code: "overdraft",
-          amount_rub:"500000.00",planned_payment_rub:"400000.00",planned_payment_date:"2026-10-25",expected_inflow_date:"2026-11-01",expected_inflow_source:"BUYER",
+          amount_rub:"500000.00",planned_payment_rub:"400000.00",planned_payment_date:"2099-10-25",expected_inflow_date:"2099-11-01",expected_inflow_source:"BUYER",
           usage_days: 14,
           expected_inflow_amount_rub: "700000.00",
         }),
@@ -211,9 +211,9 @@ describe("draft wizard", () => {
     await goTo(user, "Продукт");
     await user.click(screen.getByRole("radio", { name: /Овердрафт/ }));
     await goTo(user, "Параметры");
-    fireEvent.change(screen.getByLabelText("Дата использования средств"),{target:{value:"2026-10-25"}});
+    fireEvent.change(screen.getByLabelText("Дата использования средств"),{target:{value:"2099-10-25"}});
     fireEvent.change(screen.getByLabelText("Дата поступления для погашения"), {
-      target: { value: "2026-11-05" },
+      target: { value: "2099-11-05" },
     });
     await user.type(
       screen.getByLabelText("Сумма ожидаемого поступления"),
@@ -232,7 +232,7 @@ describe("draft wizard", () => {
     await goTo(user, "Параметры");
     expect(screen.queryByLabelText("Пользование, дней")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Дата поступления для погашения")).toHaveValue(
-      "05.11.2026",
+      "05.11.2099",
     );
     expect(screen.getByLabelText("Сумма ожидаемого поступления")).toHaveValue(
       "700000.00",

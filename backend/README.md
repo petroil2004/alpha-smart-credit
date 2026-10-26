@@ -6,7 +6,7 @@ FastAPI + SQLAlchemy + PostgreSQL. Актуальные возможности, 
 
 ## Локальная разработка
 
-Нужны Python 3.12 и PostgreSQL 16; зависимости в `requirements-dev.txt`. Установка в отдельное виртуальное окружение:
+Нужны Python 3.12 и PostgreSQL 16; зависимости в `requirements-dev.txt`. Из каталога `backend` создайте отдельное виртуальное окружение:
 
 ```bash
 python3 -m venv .venv

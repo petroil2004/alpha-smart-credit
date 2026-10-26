@@ -44,19 +44,20 @@ it('requires all product-specific parameters before review',()=>{
  expect(draftReadiness({...fields,purpose:' '})).toEqual({product:true,details:false});
  expect(draftReadiness({...fields,product_code:'equipment'}).details).toBe(true);
  expect(draftReadiness({...fields,product_code:'equipment',equipment_cost_rub:'600000'}).details).toBe(true);
- const overdraft={...fields,product_code:'overdraft' as const,usage_days:'14',planned_payment_rub:'100000',planned_payment_date:'2026-10-25',expected_inflow_date:'2026-11-01',expected_inflow_amount_rub:'150000',expected_inflow_source:'BUYER' as const};
+ const overdraft={...fields,product_code:'overdraft' as const,usage_days:'14',planned_payment_rub:'100000',planned_payment_date:'2099-10-25',expected_inflow_date:'2099-11-01',expected_inflow_amount_rub:'150000',expected_inflow_source:'BUYER' as const};
  expect(draftReadiness(overdraft).details).toBe(true);
+ expect(draftReadiness({...overdraft,planned_payment_date:'2000-01-01'}).details).toBe(false);
  expect(draftReadiness({...overdraft,expected_inflow_source:''}).details).toBe(false);
  expect(draftReadiness({...overdraft,planned_payment_date:'2026-02-31'}).details).toBe(false);
 });
 
 it('caps the date year at four digits and derives overdraft days from the dates',()=>{
- const fields=fromApplication(application({product_code:'overdraft',planned_payment_date:'2026-10-25',expected_inflow_date:'2026-11-08'}));
+ const fields=fromApplication(application({product_code:'overdraft',planned_payment_date:'2099-10-25',expected_inflow_date:'2099-11-08'}));
  const change=vi.fn();render(<ParameterFields fields={fields} errors={{}} onChange={change}/>);
  expect(screen.queryByLabelText('Пользование, дней')).not.toBeInTheDocument();
  const input=screen.getByLabelText('Дата использования средств');expect(input).toHaveAttribute('maxlength','10');
- fireEvent.change(input,{target:{value:'10.11.202612'}});
- expect(change).toHaveBeenCalledWith('planned_payment_date','2026-11-10');
+ fireEvent.change(input,{target:{value:'10.11.209912'}});
+ expect(change).toHaveBeenCalledWith('planned_payment_date','2099-11-10');
  expect(prepareDraftPayload(fields).payload.usage_days).toBe(14);
 });
 
