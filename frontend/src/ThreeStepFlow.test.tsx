@@ -63,11 +63,11 @@ it("keeps an invalid amount on parameters and blocks review", async () => {
 });
 
 it("edits the shared amount and inflows for overdraft without an annuity payment", async () => {
-  const { user, server, item } = await open({ product_code: "overdraft" });
+  const { user, server, item } = await open({ product_code: "overdraft", purpose:"Закупка до ожидаемой оплаты", planned_payment_rub:"90000.00", expected_inflow_source:"BUYER" });
   await user.click(screen.getByRole("button", { name: "Продолжить" }));
   expect(screen.queryByText(/Расчёт обновится автоматически/)).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText("Лимит овердрафта"), { target: { value: "100000,25" } });
-  fireEvent.change(screen.getByLabelText("Дата использования средств"),{target:{value:"2026-10-25"}});fireEvent.change(screen.getByLabelText("Дата поступления для погашения"),{target:{value:"2026-11-08"}});
+  fireEvent.change(screen.getByLabelText("Дата использования средств"),{target:{value:"2099-10-25"}});fireEvent.change(screen.getByLabelText("Дата поступления для погашения"),{target:{value:"2099-11-08"}});
   fireEvent.change(screen.getByLabelText("Сумма ожидаемого поступления"), { target: { value: "150000" } });
   await user.click(screen.getByRole("button", { name: "Продолжить" }));
   await user.click(screen.getByRole("button", {current:"step"}));
